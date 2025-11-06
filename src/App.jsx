@@ -2,11 +2,19 @@ import React, { useEffect, useState } from "react";
 import { Routes, Route, useParams, useNavigate } from "react-router-dom";
 import Feed from "./components/Feed";
 import AdminPanel from "./components/AdminPanel";
+import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
 import PostModal from "./components/PostModal";
 
 function App() {
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) return savedTheme;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -14,18 +22,14 @@ function App() {
   }, [theme]);
 
   return (
-    <div
-      className={`min-h-screen ${
-        theme === "dark"
-          ? "bg-gray-900 text-white"
-          : "bg-gray-100 text-gray-900"
-      }`}
-    >
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <Header theme={theme} setTheme={setTheme} />
       <Routes>
         <Route path="/" element={<Feed />} />
+        <Route path="/post/:id" element={<Feed />} />
+        <Route path="/top" element={<TopConfessions />} />
         <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/post/:id" element={<PostModalWrapper />} />
+        <Route path="/post-direct/:id" element={<PostModalWrapper />} />
       </Routes>
     </div>
   );
@@ -38,4 +42,3 @@ function PostModalWrapper() {
 }
 
 export default App;
-
