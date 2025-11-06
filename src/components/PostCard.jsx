@@ -1,50 +1,33 @@
-import React, { useState } from "react";
-import { Heart, MessageCircle, Share2 } from "lucide-react";
-import CommentSection from "./CommentSection";
+import React from 'react'
 
-export default function PostCard({ post }) {
-    const [likes, setLikes] = useState(post.likes || 0);
-    const [showComments, setShowComments] = useState(false);
-
+export default function PostCard({ post, onOpen }) {
+    const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
     return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow mb-6 p-4">
-        <p className="whitespace-pre-wrap mb-3">{post.content}</p>
+    <div onClick={() => onOpen && onOpen(post)} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md rounded-2xl p-4 mb-4 border border-gray-200 dark:border-gray-700 transition-colors duration-300 cursor-pointer">
+        <div className="flex justify-between items-start">
+        <div className="text-sm small-muted">{new Date(post.created_at).toLocaleString()}</div>
+        <div className="text-xs small-muted">{post.tags?.map(t => `#${t}`).join(' ')}</div>
+        </div>
+
+        <p className="mt-2 whitespace-pre-wrap">{excerpt}</p>
 
         {post.media_url && (
-        <div className="mb-3">
-            {post.media_url.endsWith(".mp4") ? (
-            <video controls className="rounded-xl w-full">
-                <source src={post.media_url} type="video/mp4" />
-            </video>
+        <div className="mt-3">
+            {post.media_type?.startsWith('image') ? (
+            <img loading="lazy" src={post.media_url} alt="media" className="w-full max-h-64 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
             ) : (
-            <img
-                src={post.media_url}
-                loading="lazy"
-                alt="confession media"
-                className="rounded-xl w-full object-cover"
-            />
+            <video src={post.media_url} className="w-full rounded-lg" controls preload="metadata" />
             )}
         </div>
         )}
 
-        <div className="flex items-center justify-between text-gray-500 dark:text-gray-400">
-        <div className="flex gap-6">
-            <button onClick={() => setLikes((n) => n + 1)} className="flex items-center gap-1 hover:text-red-500">
-            <Heart size={18} /> {likes}
-            </button>
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-1 hover:text-blue-500">
-            <MessageCircle size={18} /> Comments
-            </button>
+        <div className="mt-3 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+        <div>❤️ {post.likes_count || 0}</div>
+        <div className="flex items-center gap-3">
+            <div className="text-xs">Comments</div>
+            <div className="text-xs">Share</div>
         </div>
-        <button
-            onClick={() => navigator.share && navigator.share({ text: post.content, url: window.location.href })}
-            className="flex items-center gap-1 hover:text-green-500"
-        >
-            <Share2 size={18} /> Share
-        </button>
         </div>
-
-        {showComments && <CommentSection postId={post.id} />}
     </div>
-    );
+    )
 }

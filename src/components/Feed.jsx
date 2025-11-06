@@ -1,90 +1,62 @@
-import React, { useState, useEffect } from "react";
-import PostCard from "./PostCard";
-import { supabase } from "../lib/supabaseClient";
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import PostCard from './PostCard'
+import PostModal from './PostModal'
+import PostForm from './PostForm'
 
-export default function Feed() {
-    const [posts, setPosts] = useState([]);
-    const [content, setContent] = useState("");
-    const [file, setFile] = useState(null);
-    const [loading, setLoading] = useState(false);
+export default function Feed({ filterTag, search }) {
+    const [items, setItems] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [openPost, setOpenPost] = useState(null)
+    const [currentIndex, setCurrentIndex] = useState(-1)
+
+    useEffect(() => { fetchLatest() }, [filterTag, search])
 
     useEffect(() => {
-    fetchPosts();
-    }, []);
+    const sub = supabase.channel('public:confessions')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confessions' }, payload => {
+        if (payload.new.approved) setItems(prev => [payload.new, ...prev])
+        }).subscribe()
+    return () => supabase.removeChannel(sub)
+    }, [])
 
-    async function fetchPosts() {
-    const { data, error } = await supabase
-        .from("confessions")
-        .select("*")
-        .order("created_at", { ascending: false });
-    if (!error) setPosts(data || []);
+    async function fetchLatest() {
+    setLoading(true)
+    const q = supabase.from('confessions').select('*').eq('approved', true).order('created_at', { ascending: false }).limit(100)
+    if (filterTag) q.contains('tags', [filterTag])
+    if (search) q.ilike('text', `%${search}%`)
+    const { data } = await q
+    setItems(data || [])
+    setLoading(false)
     }
 
-    async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-
-    let mediaUrl = null;
-    if (file) {
-        const fileName = `${Date.now()}-${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("uploads")
-        .upload(fileName, file);
-        if (!uploadError) {
-        mediaUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/uploads/${fileName}`;
-        }
+    function openModal(post) {
+    const idx = items.findIndex(i => i.id === post.id)
+    setOpenPost(post)
+    setCurrentIndex(idx)
+    // update URL
+    window.history.pushState({}, '', `/post/${post.id}`)
     }
 
-    const { error } = await supabase
-        .from("confessions")
-        .insert([{ content, media_url: mediaUrl }]);
+    function closeModal() {
+    setOpenPost(null); setCurrentIndex(-1)
+    window.history.pushState({}, '', '/')
+    }
 
-    setLoading(false);
-    setContent("");
-    setFile(null);
-    fetchPosts();
+    function navigateIndex(newIndex) {
+    if (newIndex < 0 || newIndex >= items.length) return
+    const next = items[newIndex]
+    if (next) openModal(next)
     }
 
     return (
-    <div className="max-w-2xl mx-auto py-8">
-        <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 mb-8"
-        >
-        <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share your confession anonymously..."
-            className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-            rows={3}
-            required
-        />
-        <div className="flex justify-between mt-3">
-            <input
-            type="file"
-            accept="image/*,video/*"
-            onChange={(e) => setFile(e.target.files[0])}
-            />
-            <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-            {loading ? "Posting..." : "Post"}
-            </button>
+    <div className="max-w-5xl mx-auto px-6 py-8">
+        <PostForm onPosted={fetchLatest} />
+        <div className="mt-6 space-y-4">
+        {loading && <div className="text-sm small-muted">Loading...</div>}
+        {items.map(it => <PostCard key={it.id} post={it} onOpen={openModal} />)}
         </div>
-        </form>
-
-        {posts.map((post) => (
-        <motion.div
-            key={post.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-        >
-            <PostCard post={post} />
-        </motion.div>
-        ))}
+        {openPost && <PostModal post={openPost} onClose={closeModal} postsList={items} currentIndex={currentIndex} onNavigate={navigateIndex} />}
     </div>
-    );
+    )
 }

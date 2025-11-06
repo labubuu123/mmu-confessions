@@ -1,37 +1,24 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import React from 'react'
+import { Link } from 'react-router-dom'
 
 export default function Header({ theme, setTheme }) {
-    const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-    };
-
     return (
-    <header className="flex items-center justify-between px-6 py-4 bg-white shadow dark:bg-gray-800">
-        <Link
-        to="/"
-        className="text-2xl font-bold text-blue-600 dark:text-blue-400"
-        >
-        MMU Confessions
-        </Link>
-
+    <header className="py-5 px-6 sticky top-0 z-30 shadow-sm card">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
-        <Link
-            to="/admin"
-            className="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300"
-        >
-            Admin
-        </Link>
-        
-        <button
-            aria-label="Toggle Theme"
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-        >
-            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
+            <Link to="/" className="text-2xl font-bold">MMU Confessions</Link>
+            <nav className="hidden md:flex gap-3 text-sm small-muted">
+            <Link to="/">Home</Link>
+            <Link to="/top">Top</Link>
+            <Link to="/admin">Admin</Link>
+            </nav>
+        </div>
+        <div className="flex items-center gap-3">
+            <button onClick={() => { const t = theme === 'light' ? 'dark' : 'light'; setTheme(t); document.documentElement.classList.toggle('dark', t === 'dark') }} className="px-3 py-1 border rounded">
+            {theme === 'light' ? 'Dark' : 'Light'}
+            </button>
+        </div>
         </div>
     </header>
-    );
+    )
 }
