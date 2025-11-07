@@ -44,19 +44,6 @@ export default function CommentSection({ postId }) {
         setLoading(true)
 
         try {
-            // Rate limit check
-            const r = await fetch('/.netlify/functions/rate-limit', {
-                method: 'POST',
-                body: JSON.stringify({ action: 'comment' }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-            
-            if (!r.ok) {
-                alert('Too many comments — please slow down')
-                setLoading(false)
-                return
-            }
-
             const { error } = await supabase
                 .from('comments')
                 .insert([{ post_id: postId, text }])

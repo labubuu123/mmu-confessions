@@ -31,22 +31,7 @@ export default function PostForm({ onPosted }) {
         setUploadProgress(0)
 
         try {
-            // Rate limit check
-            try {
-                const rateLimitRes = await fetch('/.netlify/functions/rate-limit', {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'post' }),
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                if (!rateLimitRes.ok) {
-                    const data = await rateLimitRes.json()
-                    throw new Error(data.reason || 'Rate limit exceeded')
-                }
-            } catch (e) {
-                if (e.message.includes('slow down')) throw e
-                console.warn('Rate-limit check skipped:', e)
-            }
-
+            
             let media_urls = []
             let media_type = null
 

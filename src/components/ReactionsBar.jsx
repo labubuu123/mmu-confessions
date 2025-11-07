@@ -40,19 +40,6 @@ export default function ReactionsBar({ postId }) {
         setAnimating(emoji)
 
         try {
-            // Rate limit check
-            const r = await fetch('/.netlify/functions/rate-limit', { 
-                method: 'POST',
-                body: JSON.stringify({ action: 'reaction' }), 
-                headers: { 'Content-Type': 'application/json' } 
-            })
-            
-            if (!r.ok) {
-                alert('Too many reactions — please slow down')
-                return
-            }
-
-            // Call RPC function
             const { error } = await supabase.rpc('increment_reaction', {
                 post_id_in: postId,
                 emoji_in: emoji
