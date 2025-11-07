@@ -4,13 +4,12 @@ import CommentSection from './CommentSection'
 import ReactionsBar from './ReactionsBar'
 import AdBanner from './AdBanner'
 import { supabase } from '../lib/supabaseClient'
-import { X, ChevronLeft, ChevronRight, Share2, Copy, Check } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react'
 
 export default function PostModal({ post, postId, onClose, onNavigate }) {
     const [internalPost, setInternalPost] = useState(post)
     const [loading, setLoading] = useState(!post)
     const [error, setError] = useState(null)
-    const [copied, setCopied] = useState(false)
 
     useEffect(() => {
         function onKey(e) {
@@ -51,50 +50,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         }
     }, [post, postId])
 
-    async function handleShare() {
-        if (!internalPost) return;
-
-        const shareUrl = `${window.location.origin}/post/${internalPost.id}`;
-        const shareText = `Check out this confession on MMU Confessions`;
-
-        // Try Web Share API first (mobile)
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'MMU Confession',
-                    text: shareText,
-                    url: shareUrl
-                });
-                return;
-            } catch (e) {
-                if (e.name !== 'AbortError') {
-                    console.warn('Web Share API failed:', e);
-                }
-            }
-        }
-
-        // Fallback: Copy to clipboard
-        try {
-            await navigator.clipboard.writeText(shareUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (e) {
-            // Last resort: show prompt
-            const input = document.createElement('input');
-            input.value = shareUrl;
-            document.body.appendChild(input);
-            input.select();
-            try {
-                document.execCommand('copy');
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            } catch (err) {
-                alert('Copy this link: ' + shareUrl);
-            }
-            document.body.removeChild(input);
-        }
-    }
-
     if (loading) {
         return ReactDOM.createPortal(
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -126,7 +81,10 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         )
     }
 
-    if (!internalPost) return null;
+    if (!internalPost) return null
+
+    const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
+    const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
 
     return ReactDOM.createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -180,21 +138,59 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             {internalPost.text}
                         </p>
 
-                        {internalPost.media_url && (
-                            <div className="mt-4">
-                                {internalPost.media_type?.startsWith('image') ? (
+                        {/* Media - Multiple Images */}
+                        {internalPost.media_type === 'images' && displayImages.length > 0 && (
+                            <div className={`mt-4 ${
+                                displayImages.length === 1 ? '' :
+                                displayImages.length === 2 ? 'grid grid-cols-2 gap-2' :
+                                'grid grid-cols-2 md:grid-cols-3 gap-2'
+                            }`}>
+                                {displayImages.map((url, idx) => (
                                     <img
-                                        src={internalPost.media_url}
-                                        alt="media"
-                                        className="w-full max-h-[60vh] object-contain rounded-xl"
+                                        key={idx}
+                                        src={url}
+                                        alt={`media ${idx + 1}`}
+                                        className={`w-full object-contain rounded-xl ${
+                                            displayImages.length === 1 ? 'max-h-[60vh]' : 'max-h-64'
+                                        }`}
                                     />
-                                ) : (
-                                    <video
-                                        src={internalPost.media_url}
-                                        controls
-                                        className="w-full rounded-xl"
-                                    />
-                                )}
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Media - Video */}
+                        {internalPost.media_type === 'video' && internalPost.media_url && (
+                            <div className="mt-4">
+                                <video
+                                    src={internalPost.media_url}
+                                    controls
+                                    className="w-full rounded-xl"
+                                />
+                            </div>
+                        )}
+
+                        {/* Media - Audio */}
+                        {internalPost.media_type === 'audio' && internalPost.media_url && (
+                            <div className="mt-4">
+                                <div className="p-6 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                                            <Volume2 className="w-8 h-8 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                Voice Message
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                Tap to play
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <audio controls className="w-full">
+                                        <source src={internalPost.media_url} />
+                                        Your browser does not support audio playback.
+                                    </audio>
+                                </div>
                             </div>
                         )}
 
@@ -215,26 +211,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                         {/* Reactions */}
                         <div className="mt-6">
                             <ReactionsBar postId={internalPost.id} />
-                        </div>
-
-                        {/* Share Button */}
-                        <div className="mt-4">
-                            <button
-                                onClick={handleShare}
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition w-full justify-center"
-                            >
-                                {copied ? (
-                                    <>
-                                        <Check className="w-4 h-4 text-green-500" />
-                                        <span className="text-green-500">Link copied!</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Share2 className="w-4 h-4" />
-                                        <span>Share this confession</span>
-                                    </>
-                                )}
-                            </button>
                         </div>
 
                         {/* Ad */}

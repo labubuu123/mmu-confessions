@@ -133,7 +133,7 @@ export default function Feed() {
             {openPost && (
                 <PostModal 
                     key={openPost.id}
-                    post={openPost}
+                    post={openPost} 
                     onClose={closeModal}
                     onNavigate={handleNavigate}
                 />

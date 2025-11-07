@@ -27,7 +27,7 @@ export default function AdminPanel() {
         setLoading(true)
         setError(null)
         
-        const { data, error } = await supabase.auth.signInWithPassword({ 
+        const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password
         })

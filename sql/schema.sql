@@ -1,96 +1,133 @@
--- Drop existing policies
+ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anonymous insert" ON public.confessions;
 DROP POLICY IF EXISTS "Allow public insert" ON public.confessions;
 DROP POLICY IF EXISTS "Allow public read" ON public.confessions;
 DROP POLICY IF EXISTS "Allow admin delete" ON public.confessions;
+DROP POLICY IF EXISTS "Allow service role all" ON public.confessions;
 
--- Enable RLS
-ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
-
--- Fixed: Allow anyone to insert (no authentication required)
-CREATE POLICY "Allow anonymous insert"
+-- Allow anyone (including anonymous) to insert
+CREATE POLICY "Enable insert for all users"
 ON public.confessions
-FOR INSERT
-TO anon, authenticated
+FOR INSERT 
 WITH CHECK (true);
 
 -- Allow public to read only approved posts
-CREATE POLICY "Allow public read"
+CREATE POLICY "Enable read for approved posts"
 ON public.confessions
-FOR SELECT
-TO anon, authenticated
+FOR SELECT 
 USING (approved = true);
 
--- Allow service role to do everything (for admin functions)
-CREATE POLICY "Allow service role all"
+-- Allow service role full access (for admin functions)
+CREATE POLICY "Enable all for service role"
 ON public.confessions
 FOR ALL
-TO service_role
-USING (true)
-WITH CHECK (true);
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
 
--- Comments table
+-- ============================================
+-- COMMENTS TABLE POLICIES
+-- ============================================
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow anonymous insert comments" ON public.comments;
 DROP POLICY IF EXISTS "Allow public insert" ON public.comments;
+DROP POLICY IF EXISTS "Allow public read comments" ON public.comments;
 DROP POLICY IF EXISTS "Allow public read" ON public.comments;
 
-CREATE POLICY "Allow anonymous insert comments"
+CREATE POLICY "Enable insert for all users"
 ON public.comments
-FOR INSERT
-TO anon, authenticated
+FOR INSERT 
 WITH CHECK (true);
 
-CREATE POLICY "Allow public read comments"
+CREATE POLICY "Enable read for all users"
 ON public.comments
-FOR SELECT
-TO anon, authenticated
+FOR SELECT 
 USING (true);
 
--- Reactions table
+-- ============================================
+-- REACTIONS TABLE POLICIES
+-- ============================================
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read reactions" ON public.reactions;
+DROP POLICY IF EXISTS "Allow public insert reactions" ON public.reactions;
+DROP POLICY IF EXISTS "Allow public update reactions" ON public.reactions;
 DROP POLICY IF EXISTS "Allow public read" ON public.reactions;
 DROP POLICY IF EXISTS "Allow public insert" ON public.reactions;
 DROP POLICY IF EXISTS "Allow public update" ON public.reactions;
 
-CREATE POLICY "Allow public read reactions"
+CREATE POLICY "Enable read for all users"
 ON public.reactions
-FOR SELECT
-TO anon, authenticated
+FOR SELECT 
 USING (true);
 
-CREATE POLICY "Allow public insert reactions"
+CREATE POLICY "Enable insert for all users"
 ON public.reactions
-FOR INSERT
-TO anon, authenticated
+FOR INSERT 
 WITH CHECK (true);
 
-CREATE POLICY "Allow public update reactions"
+CREATE POLICY "Enable update for all users"
 ON public.reactions
-FOR UPDATE
-TO anon, authenticated
-USING (true)
+FOR UPDATE 
+USING (true) 
 WITH CHECK (true);
 
--- Actions log (rate limiting)
+-- ============================================
+-- ACTIONS_LOG TABLE POLICIES (for rate limiting)
+-- ============================================
 ALTER TABLE public.actions_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow service_role insert" ON public.actions_log;
 DROP POLICY IF EXISTS "Allow service_role read" ON public.actions_log;
 
-CREATE POLICY "Allow service_role insert"
+CREATE POLICY "Enable insert for service role"
 ON public.actions_log
+FOR INSERT 
+WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Enable read for service role"
+ON public.actions_log
+FOR SELECT 
+USING (auth.role() = 'service_role');
+
+-- ============================================
+-- STORAGE BUCKET POLICIES
+-- ============================================
+
+-- Create storage bucket (if not exists)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('confessions', 'confessions', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Drop existing storage policies
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can upload" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can read" ON storage.objects;
+DROP POLICY IF EXISTS "Enable insert for all users" ON storage.objects;
+DROP POLICY IF EXISTS "Enable read for all users" ON storage.objects;
+
+-- Allow anyone to upload files
+CREATE POLICY "Enable insert for all users"
+ON storage.objects
 FOR INSERT
-TO service_role
-WITH CHECK (true);
+WITH CHECK (bucket_id = 'confessions');
 
-CREATE POLICY "Allow service_role read"
-ON public.actions_log
+-- Allow anyone to read files
+CREATE POLICY "Enable read for all users"
+ON storage.objects
 FOR SELECT
-TO service_role
-USING (true);
+USING (bucket_id = 'confessions');
 
--- Fixed increment_reaction function
+-- Optional: Allow users to delete their own uploads (not required for anonymous)
+CREATE POLICY "Enable delete for uploaded files"
+ON storage.objects
+FOR DELETE
+USING (bucket_id = 'confessions');
+
+-- ============================================
+-- INCREMENT REACTION FUNCTION
+-- ============================================
 CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
 RETURNS void
 LANGUAGE plpgsql
@@ -106,7 +143,7 @@ BEGIN
     -- If it's a like emoji (thumbs up), increment likes_count
     IF emoji_in = '👍' THEN
         UPDATE public.confessions
-        SET likes_count = likes_count + 1
+        SET likes_count = COALESCE(likes_count, 0) + 1
         WHERE id = post_id_in;
     END IF;
 END;
