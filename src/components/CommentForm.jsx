@@ -1,0 +1,81 @@
+import React, { useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { Send } from 'lucide-react'
+
+function getAnonId() {
+    let anonId = localStorage.getItem('anonId')
+    if (!anonId) {
+        anonId = crypto.randomUUID()
+        localStorage.setItem('anonId', anonId)
+    }
+    return anonId
+}
+
+export default function CommentForm({ postId, parentId = null, onCommentPosted }) {
+    const [text, setText] = useState('')
+    const [loading, setLoading] = useState(false)
+
+    async function handleSubmit(e) {
+        e.preventDefault()
+        if (!text.trim() || loading) return
+
+        setLoading(true)
+        const anonId = getAnonId()
+
+        try {
+            const { data, error } = await supabase
+                .from('comments')
+                .insert([{
+                    post_id: postId,
+                    parent_id: parentId,
+                    text: text.trim(),
+                    author_id: anonId,
+                    reactions: {}
+                }])
+                .select()
+            
+            if (error) throw error
+
+            const { error: rpcError } = await supabase.rpc('increment_comment_count', {
+                post_id_in: postId
+            })
+
+            if (rpcError) throw rpcError
+
+            if (onCommentPosted && data) {
+                onCommentPosted(data[0])
+            }
+            setText('')
+        } catch (err) {
+            console.error('Comment error:', err)
+            alert('Failed to post comment: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="mb-4">
+            <div className="flex gap-2">
+                <input
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    placeholder={parentId ? "Write a reply..." : "Write a comment..."}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    maxLength={500}
+                />
+                <button
+                    type="submit"
+                    disabled={loading || !text.trim()}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                >
+                    {loading ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                        <Send className="w-4 h-4" />
+                    )}
+                </button>
+            </div>
+        </form>
+    )
+}

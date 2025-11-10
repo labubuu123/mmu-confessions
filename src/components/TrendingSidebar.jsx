@@ -7,12 +7,11 @@ export default function TrendingSidebar() {
 
     useEffect(() => {
         fetchTrending()
-        const interval = setInterval(fetchTrending, 300000) // Update every 5 minutes
+        const interval = setInterval(fetchTrending, 300000)
         return () => clearInterval(interval)
     }, [])
 
     async function fetchTrending() {
-        // Get all tags from recent posts (last 7 days)
         const sevenDaysAgo = new Date()
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -24,7 +23,6 @@ export default function TrendingSidebar() {
 
         if (!data) return
 
-        // Count tag frequency
         const tagCount = {}
         data.forEach(post => {
             if (post.tags) {
@@ -34,7 +32,6 @@ export default function TrendingSidebar() {
             }
         })
 
-        // Sort by frequency
         const sorted = Object.entries(tagCount)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)

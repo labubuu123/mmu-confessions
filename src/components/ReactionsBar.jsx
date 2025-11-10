@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-const EMOJIS = ['👍', '😂', '😍', '😡', '😢', '🔥']
+const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🤔', '🙏', '👏', '🤯']
 
 export default function ReactionsBar({ postId }) {
     const [reactions, setReactions] = useState({})
@@ -10,6 +10,7 @@ export default function ReactionsBar({ postId }) {
 
     useEffect(() => {
         fetchReactions()
+        
         const channel = supabase
             .channel(`reactions-${postId}`)
             .on('postgres_changes', {
@@ -17,46 +18,64 @@ export default function ReactionsBar({ postId }) {
                 schema: 'public',
                 table: 'reactions',
                 filter: `post_id=eq.${postId}`
-            }, () => fetchReactions())
+            }, () => {
+                fetchReactions()
+            })
             .subscribe()
         
         return () => supabase.removeChannel(channel)
     }, [postId])
 
     async function fetchReactions() {
-        const { data } = await supabase
-            .from('reactions')
-            .select('*')
-            .eq('post_id', postId)
-        
-        const map = {}
-        ;(data || []).forEach(r => map[r.emoji] = r.count)
-        setReactions(map)
+        try {
+            const { data, error } = await supabase
+                .from('reactions')
+                .select('*')
+                .eq('post_id', postId)
+            
+            if (error) {
+                console.error('Fetch reactions error:', error)
+                return
+            }
+            
+            const map = {}
+            ;(data || []).forEach(r => map[r.emoji] = r.count)
+            setReactions(map)
+        } catch (err) {
+            console.error('Error fetching reactions:', err)
+        }
     }
 
     async function handleReact(emoji) {
         if (loading) return
+        
         setLoading(true)
         setAnimating(emoji)
 
         try {
-            const { error } = await supabase.rpc('increment_reaction', {
+            const { data, error } = await supabase.rpc('increment_reaction', {
                 post_id_in: postId,
                 emoji_in: emoji
             })
 
-            if (error) throw error
+            if (error) {
+                console.error('RPC error:', error)
+                throw error
+            }
             
-            // Optimistic update
             setReactions(prev => ({
                 ...prev,
                 [emoji]: (prev[emoji] || 0) + 1
             }))
 
             setTimeout(() => setAnimating(null), 300)
+            
+            setTimeout(() => fetchReactions(), 500)
         } catch (err) {
             console.error('Failed to react:', err)
-            alert('Failed to add reaction')
+            alert('Failed to add reaction. Please try again.')
+            
+            fetchReactions()
         } finally {
             setLoading(false)
         }
@@ -70,8 +89,9 @@ export default function ReactionsBar({ postId }) {
                     onClick={() => handleReact(emoji)}
                     disabled={loading}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                        animating === emoji ? 'scale-110' : ''
+                        animating === emoji ? 'scale-110 shadow-lg' : ''
                     }`}
+                    title={`React with ${emoji}`}
                 >
                     <span className="text-xl">{emoji}</span>
                     {reactions[emoji] > 0 && (

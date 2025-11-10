@@ -5,7 +5,7 @@ export default function AdBanner({ slot, format = 'auto', style = {} }) {
     const isAdPushed = useRef(false)
 
     useEffect(() => {
-        // Only push ad once per mount
+
         if (!isAdPushed.current && adRef.current) {
             try {
                 (window.adsbygoogle = window.adsbygoogle || []).push({})

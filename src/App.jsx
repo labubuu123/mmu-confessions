@@ -5,6 +5,7 @@ import AdminPanel from "./components/AdminPanel";
 import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
 import PostModal from "./components/PostModal";
+import PolicyPage from "./components/PolicyPage";
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/post/:id" element={<Feed />} />
         <Route path="/top" element={<TopConfessions />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/policy" element={<PolicyPage />} />
         <Route path="/post-direct/:id" element={<PostModalWrapper />} />
       </Routes>
     </div>

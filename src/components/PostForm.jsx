@@ -2,11 +2,22 @@ import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
 import { extractTags } from '../utils/hashtags'
-import { Camera, Image, Film, Mic, Send, X, Volume2 } from 'lucide-react'
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const MAX_VIDEO_SIZE_MB = 25
 const MAX_IMAGES = 5
 const MAX_AUDIO_SIZE_MB = 10
+const MAX_TEXT_LENGTH = 5000
+
+function getAnonId() {
+    let anonId = localStorage.getItem('anonId')
+    if (!anonId) {
+        anonId = crypto.randomUUID()
+        localStorage.setItem('anonId', anonId)
+    }
+    return anonId
+}
 
 export default function PostForm({ onPosted }) {
     const [text, setText] = useState('')
@@ -18,6 +29,7 @@ export default function PostForm({ onPosted }) {
     const [loading, setLoading] = useState(false)
     const [msg, setMsg] = useState('')
     const [uploadProgress, setUploadProgress] = useState(0)
+    const [policyAccepted, setPolicyAccepted] = useState(false)
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -25,17 +37,27 @@ export default function PostForm({ onPosted }) {
             setMsg('Write something or attach media')
             return
         }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            setMsg(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`)
+            return
+        }
+
+        if (!policyAccepted) {
+            setMsg('You must accept the policy to post.')
+            return
+        }
         
         setLoading(true)
         setMsg('')
         setUploadProgress(0)
+        const anonId = getAnonId()
 
         try {
-            
             let media_urls = []
             let media_type = null
+            let single_media_url = null
 
-            // Upload images
             if (images.length > 0) {
                 setMsg('Uploading images...')
                 for (let i = 0; i < images.length; i++) {
@@ -46,7 +68,7 @@ export default function PostForm({ onPosted }) {
                     })
 
                     const ext = (compressed.name || 'image.jpg').split('.').pop()
-                    const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                    const path = `public/${Date.now()}-${anonId.substring(0, 8)}-${i}.${ext}`
 
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('confessions')
@@ -62,13 +84,13 @@ export default function PostForm({ onPosted }) {
                     setUploadProgress(((i + 1) / images.length) * 100)
                 }
                 media_type = 'images'
+                single_media_url = media_urls[0]
             }
 
-            // Upload video
             if (video) {
                 setMsg('Uploading video...')
                 const ext = (video.name || 'video.mp4').split('.').pop()
-                const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('confessions')
@@ -81,14 +103,14 @@ export default function PostForm({ onPosted }) {
                     .getPublicUrl(uploadData.path)
 
                 media_urls = [publicUrlData.publicUrl]
+                single_media_url = publicUrlData.publicUrl
                 media_type = 'video'
             }
 
-            // Upload audio
             if (audio) {
                 setMsg('Uploading audio...')
                 const ext = (audio.name || 'audio.mp3').split('.').pop()
-                const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('confessions')
@@ -101,6 +123,7 @@ export default function PostForm({ onPosted }) {
                     .getPublicUrl(uploadData.path)
 
                 media_urls = [publicUrlData.publicUrl]
+                single_media_url = publicUrlData.publicUrl
                 media_type = 'audio'
             }
 
@@ -109,12 +132,16 @@ export default function PostForm({ onPosted }) {
 
             const { data, error } = await supabase.from('confessions')
                 .insert([{
-                    text,
-                    media_url: media_urls.length > 0 ? media_urls[0] : null,
-                    media_urls: media_urls.length > 1 ? media_urls : null,
+                    text: text.trim(),
+                    author_id: anonId,
+                    media_url: single_media_url,
+                    media_urls: media_urls.length > 0 ? media_urls : null,
                     media_type,
                     tags,
-                    approved: true
+                    approved: true,
+                    likes_count: 0,
+                    comments_count: 0,
+                    reported: false
                 }])
                 .select()
 
@@ -127,15 +154,16 @@ export default function PostForm({ onPosted }) {
                 onPosted(data[0])
             }
 
-            // Reset form
             setText('')
             setImages([])
             setVideo(null)
             setAudio(null)
             setPreviews([])
             setVideoPreview(null)
+            setPolicyAccepted(false)
             setUploadProgress(0)
             setMsg('Posted successfully! ✓')
+            
             setTimeout(() => setMsg(''), 3000)
         } catch (err) {
             console.error('Post error:', err)
@@ -154,7 +182,6 @@ export default function PostForm({ onPosted }) {
             return
         }
 
-        // Clear other media
         setVideo(null)
         setVideoPreview(null)
         setAudio(null)
@@ -162,7 +189,6 @@ export default function PostForm({ onPosted }) {
         setImages(files)
         setMsg('')
 
-        // Create previews
         const newPreviews = []
         files.forEach(file => {
             const reader = new FileReader()
@@ -186,7 +212,6 @@ export default function PostForm({ onPosted }) {
             return
         }
 
-        // Clear other media
         setImages([])
         setPreviews([])
         setAudio(null)
@@ -211,7 +236,6 @@ export default function PostForm({ onPosted }) {
             return
         }
 
-        // Clear other media
         setImages([])
         setPreviews([])
         setVideo(null)
@@ -235,23 +259,38 @@ export default function PostForm({ onPosted }) {
         setAudio(null)
     }
 
+    const charCount = text.length
+    const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Share Your Confession
+                </h2>
+            </div>
+
             <form onSubmit={handleSubmit}>
                 <div className="flex gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
                         A
                     </div>
-                    <textarea
-                        value={text}
-                        onChange={e => setText(e.target.value)}
-                        placeholder="What's on your mind? Share anonymously..."
-                        className="flex-1 p-4 border-0 rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        rows="3"
-                    />
+                    <div className="flex-1">
+                        <textarea
+                            value={text}
+                            onChange={e => setText(e.target.value)}
+                            placeholder="What's on your mind? Share anonymously... (Use #hashtags to categorize)"
+                            className="w-full p-4 border-0 rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-gray-900 dark:text-gray-100"
+                            rows="4"
+                            maxLength={MAX_TEXT_LENGTH}
+                        />
+                        <div className={`text-xs text-right mt-1 ${isNearLimit ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {charCount} / {MAX_TEXT_LENGTH}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Image Previews */}
                 {previews.length > 0 && (
                     <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-2">
                         {previews.map((preview, idx) => (
@@ -273,7 +312,6 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
-                {/* Video Preview */}
                 {videoPreview && (
                     <div className="mb-4 relative">
                         <video src={videoPreview} className="w-full max-h-96 rounded-xl" controls />
@@ -287,7 +325,6 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
-                {/* Audio Preview */}
                 {audio && (
                     <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
                         <Volume2 className="w-6 h-6 text-indigo-600" />
@@ -309,9 +346,12 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
-                {/* Upload Progress */}
                 {loading && uploadProgress > 0 && uploadProgress < 100 && (
                     <div className="mb-4">
+                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            <span>Uploading...</span>
+                            <span>{Math.round(uploadProgress)}%</span>
+                        </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                             <div
                                 className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
@@ -321,7 +361,31 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="mb-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={policyAccepted}
+                            onChange={(e) => setPolicyAccepted(e.target.checked)}
+                            className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                            I have read and agree to the{' '}
+                            <Link
+                                to="/policy"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                Community Guidelines
+                            </Link>
+                            .
+                        </span>
+                    </label>
+                </div>
+
+                <div className="flex items-center justify-between">
                     <div className="flex gap-1">
                         <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                             <Image className="w-5 h-5 text-green-500" />
@@ -369,7 +433,7 @@ export default function PostForm({ onPosted }) {
 
                     <button
                         type="submit"
-                        disabled={loading || (!text.trim() && images.length === 0 && !video && !audio)}
+                        disabled={loading || (!text.trim() && images.length === 0 && !video && !audio) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                         className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         {loading ? (
@@ -388,7 +452,7 @@ export default function PostForm({ onPosted }) {
 
                 {msg && (
                     <div className={`mt-3 text-sm px-4 py-2 rounded-lg ${
-                        msg.includes('Failed') || msg.includes('large') || msg.includes('Maximum')
+                        msg.includes('Failed') || msg.includes('large') || msg.includes('Maximum') || msg.includes('too long') || msg.includes('must accept')
                             ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
                             : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                     }`}>

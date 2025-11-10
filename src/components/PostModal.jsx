@@ -3,13 +3,15 @@ import ReactDOM from 'react-dom'
 import CommentSection from './CommentSection'
 import ReactionsBar from './ReactionsBar'
 import AdBanner from './AdBanner'
+import AnonAvatar from './AnonAvatar'
 import { supabase } from '../lib/supabaseClient'
-import { X, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink } from 'lucide-react'
 
 export default function PostModal({ post, postId, onClose, onNavigate }) {
     const [internalPost, setInternalPost] = useState(post)
     const [loading, setLoading] = useState(!post)
     const [error, setError] = useState(null)
+    const [reportLoading, setReportLoading] = useState(false)
 
     useEffect(() => {
         function onKey(e) {
@@ -48,7 +50,50 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             }
             fetchPost()
         }
+
+        if (postId || post?.id) {
+            const id = postId || post.id
+            const channel = supabase
+                .channel(`post-${id}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'confessions',
+                    filter: `id=eq.${id}`
+                }, payload => {
+                    setInternalPost(payload.new)
+                })
+                .subscribe()
+            
+            return () => supabase.removeChannel(channel)
+        }
     }, [post, postId])
+
+    async function handleReport() {
+        if (!internalPost) return
+        
+        const confirmed = window.confirm('Report this post as inappropriate? This will flag it for moderator review.')
+        if (!confirmed) return
+
+        setReportLoading(true)
+
+        try {
+            const { error } = await supabase
+                .from('confessions')
+                .update({ reported: true })
+                .eq('id', internalPost.id)
+
+            if (error) throw error
+
+            alert('Post reported successfully. Thank you for helping keep our community safe.')
+            setInternalPost(prev => ({ ...prev, reported: true }))
+        } catch (err) {
+            console.error('Report error:', err)
+            alert('Failed to report post: ' + err.message)
+        } finally {
+            setReportLoading(false)
+        }
+    }
 
     if (loading) {
         return ReactDOM.createPortal(
@@ -90,33 +135,30 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={onClose} />
 
-            {/* Navigation Arrows */}
             {onNavigate && (
                 <>
                     <button
                         onClick={() => onNavigate('prev')}
                         className="absolute left-4 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-sm transition hidden md:block"
+                        title="Previous post (←)"
                     >
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <button
                         onClick={() => onNavigate('next')}
                         className="absolute right-4 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-sm transition hidden md:block"
+                        title="Next post (→)"
                     >
                         <ChevronRight className="w-6 h-6" />
                     </button>
                 </>
             )}
 
-            {/* Modal Content */}
             <div className="relative max-w-3xl w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
                 <div className="max-h-[90vh] overflow-y-auto">
-                    {/* Header */}
                     <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                A
-                            </div>
+                            <AnonAvatar authorId={internalPost.author_id} />
                             <div>
                                 <div className="font-semibold text-gray-900 dark:text-gray-100">Anonymous</div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -124,21 +166,30 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleReport}
+                                disabled={reportLoading || internalPost.reported}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition disabled:opacity-50"
+                                title={internalPost.reported ? "Already reported" : "Report"}
+                            >
+                                <Flag className={`w-5 h-5 ${internalPost.reported ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}`} />
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
+                                title="Close (Esc)"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Content */}
                     <div className="p-6">
                         <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed text-lg">
                             {internalPost.text}
                         </p>
 
-                        {/* Media - Multiple Images */}
                         {internalPost.media_type === 'images' && displayImages.length > 0 && (
                             <div className={`mt-4 ${
                                 displayImages.length === 1 ? '' :
@@ -146,19 +197,28 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 'grid grid-cols-2 md:grid-cols-3 gap-2'
                             }`}>
                                 {displayImages.map((url, idx) => (
-                                    <img
+                                    <a
                                         key={idx}
-                                        src={url}
-                                        alt={`media ${idx + 1}`}
-                                        className={`w-full object-contain rounded-xl ${
-                                            displayImages.length === 1 ? 'max-h-[60vh]' : 'max-h-64'
-                                        }`}
-                                    />
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="relative group"
+                                    >
+                                        <img
+                                            src={url}
+                                            alt={`media ${idx + 1}`}
+                                            className={`w-full object-contain rounded-xl ${
+                                                displayImages.length === 1 ? 'max-h-[60vh]' : 'max-h-64'
+                                            }`}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-xl">
+                                            <ExternalLink className="w-6 h-6 text-white" />
+                                        </div>
+                                    </a>
                                 ))}
                             </div>
                         )}
 
-                        {/* Media - Video */}
                         {internalPost.media_type === 'video' && internalPost.media_url && (
                             <div className="mt-4">
                                 <video
@@ -169,7 +229,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                         )}
 
-                        {/* Media - Audio */}
                         {internalPost.media_type === 'audio' && internalPost.media_url && (
                             <div className="mt-4">
                                 <div className="p-6 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
@@ -194,7 +253,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                         )}
 
-                        {/* Tags */}
                         {internalPost.tags && internalPost.tags.length > 0 && (
                             <div className="mt-4 flex flex-wrap gap-2">
                                 {internalPost.tags.map(tag => (
@@ -208,17 +266,10 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                         )}
 
-                        {/* Reactions */}
                         <div className="mt-6">
                             <ReactionsBar postId={internalPost.id} />
                         </div>
 
-                        {/* Ad */}
-                        <div className="mt-6">
-                            <AdBanner slot="1234567890" />
-                        </div>
-
-                        {/* Comments */}
                         <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
                             <CommentSection postId={internalPost.id} />
                         </div>
