@@ -23,7 +23,7 @@ export default function Header({ theme, setTheme }) {
                             <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 MMU Confessions
                             </span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                            <p className="text-xs text-gray-500 dark:text-gray-400"> 
                                 Share Anonymously
                             </p>
                         </div>
@@ -94,12 +94,12 @@ export default function Header({ theme, setTheme }) {
                 </div>
 
                 <nav className="md:hidden grid grid-cols-4 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <Link 
+                    <Link
                         to="/"
                         className={`flex flex-col items-center gap-1 transition ${
                             isActive('/')
                                 ? 'text-indigo-600 dark:text-indigo-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >
                         <Home className="w-5 h-5" />
@@ -110,7 +110,7 @@ export default function Header({ theme, setTheme }) {
                         className={`flex flex-col items-center gap-1 transition ${
                             isActive('/top')
                                 ? 'text-indigo-600 dark:text-indigo-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >
                         <TrendingUp className="w-5 h-5" />
