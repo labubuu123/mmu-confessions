@@ -126,7 +126,7 @@ export default function Header({ theme, setTheme }) {
                     >
                         <FileText className="w-5 h-5" />
                         <span className="text-xs font-medium">Policy</span>
-                    </Lgink>
+                    </Link>
                     <Link
                         to="/admin"
                         className={`flex flex-col items-center gap-1 transition ${
