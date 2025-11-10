@@ -19,11 +19,13 @@ export default function Header({ theme, setTheme }) {
                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
                             <MessageSquare className="w-6 h-6 text-white" />
                         </div>
-                        <div className="hidden sm:block">
-                            <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                        <div className="">
+                            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 MMU Confessions
                             </span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Share Anonymously</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                                Share Anonymously
+                            </p>
                         </div>
                     </Link>
 
@@ -124,7 +126,7 @@ export default function Header({ theme, setTheme }) {
                     >
                         <FileText className="w-5 h-5" />
                         <span className="text-xs font-medium">Policy</span>
-                    </Link>
+                    </Lgink>
                     <Link
                         to="/admin"
                         className={`flex flex-col items-center gap-1 transition ${
