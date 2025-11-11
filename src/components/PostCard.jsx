@@ -132,7 +132,13 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 <AnonAvatar authorId={post.author_id} />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">Anonymous</div>
+                        <div className={`font-semibold ${
+                            post.author_name
+                                ? 'text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-900 dark:text-gray-100'
+                        }`}>
+                            {post.author_name || 'Anonymous'}
+                        </div>
                         <div className="flex items-center gap-2">
                             {dayjs(post.created_at).isAfter(dayjs().subtract(1, 'hour')) && (
                                 <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">

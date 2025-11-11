@@ -71,8 +71,12 @@ export default function Comment({ comment, postId }) {
             <div className="flex-1 min-w-0">
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-1">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            Anonymous
+                        <div className={`text-sm font-medium ${
+                            internalComment.author_name
+                                ? 'text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-900 dark:text-gray-100'
+                        }`}>
+                            {internalComment.author_name || 'Anonymous'}
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="text-xs text-gray-500 dark:text-gray-400">

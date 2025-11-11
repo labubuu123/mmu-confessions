@@ -452,7 +452,13 @@ export default function AdminPanel() {
                                                         <AnonAvatar authorId={c.author_id} size="sm" />
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Anonymous</span>
+                                                                <span className={`text-xs font-bold ${
+                                                                    c.author_name
+                                                                        ? 'text-indigo-600 dark:text-indigo-400'
+                                                                        : 'text-gray-800 dark:text-gray-200'
+                                                                }`}>
+                                                                    {c.author_name || 'Anonymous'}
+                                                                </span>
                                                                 <span className="text-xs text-gray-500 dark:text-gray-400">{dayjs(c.created_at).fromNow()}</span>
                                                             </div>
                                                             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap break-words">

@@ -51,6 +51,7 @@ export default function PostForm({ onPosted }) {
         setLoading(true)
         setMsg('')
         setUploadProgress(0)
+        const { data: { session } } = await supabase.auth.getSession()
         const anonId = getAnonId()
 
         try {
@@ -134,6 +135,7 @@ export default function PostForm({ onPosted }) {
                 .insert([{
                     text: text.trim(),
                     author_id: anonId,
+                    author_name: session ? 'Admin' : null,
                     media_url: single_media_url,
                     media_urls: media_urls.length > 0 ? media_urls : null,
                     media_type,

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.confessions (
     media_urls TEXT[],
     media_type TEXT,
     tags TEXT[],
+    author_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.comments (
     parent_id BIGINT REFERENCES public.comments(id) ON DELETE CASCADE DEFAULT NULL,
     author_id TEXT,
     text TEXT NOT NULL,
+    author_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     reactions JSONB DEFAULT '{}'::jsonb
