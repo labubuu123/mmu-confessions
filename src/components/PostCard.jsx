@@ -89,15 +89,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative"
         >
             <div className="absolute top-3 right-3 z-10 flex flex-col items-end sm:flex-row sm:flex-wrap sm:justify-end gap-2">
-                
-                {post.tags && post.tags.length > 0 && (
-                    post.tags.slice(0, 2).map(t => (
-                        <span key={t} className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium order-3 sm:order-1">
-                            #{t}
-                        </span>
-                    ))
-                )}
-
                 {isNew && (
                     <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1 order-2">
                         <Clock className="w-3 h-3" />
