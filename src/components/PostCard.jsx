@@ -146,7 +146,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             </div>
 
             <div className="px-4 pb-3">
-                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-loose">
                     {excerpt}
                 </p>
             </div>
