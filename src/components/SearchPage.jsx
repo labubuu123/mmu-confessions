@@ -71,7 +71,8 @@ export default function SearchPage() {
                 )
             } else {
                 query_builder = query_builder.or(
-                    `text.ilike.%${query}%,author_name.ilike.%${query}%`
+                    `text.textSearch.'${query}',author_name.ilike.%${query}%`,
+                    { textSearchOptions: { config: 'english', type: 'websearch' } }
                 )
             }
         }
@@ -95,7 +96,7 @@ export default function SearchPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            🔍 Search Confessions
+                            Search Confessions
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                             Find confessions by keywords or tags

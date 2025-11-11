@@ -296,6 +296,13 @@ export default function AdminPanel() {
                         )}
                     </form>
                 </div>
+
+                <div className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
+                    <p>Having issues? Contact the developer:</p>
+                    <p className="font-medium">
+                        Zyora Lab - <a href="mailto:zyoralab@gmail.com" className="text-indigo-600 dark:text-indigo-400 hover:underline">zyoralab@gmail.com</a>
+                    </p>
+                </div>
             </div>
         )
     }
@@ -367,7 +374,7 @@ export default function AdminPanel() {
                                                     Approved
                                                 </span>
                                             ) : (
-                                                <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
+                                                <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/3mmu-confessions-0d7e37ead908add9c72fdb1a3c5fd4f59c390c62/src/components/AdminPanel.jsx text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
                                                     <AlertTriangle className="w-3 h-3" />
                                                     Pending
                                                 </span>
