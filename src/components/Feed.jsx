@@ -27,6 +27,7 @@ export default function Feed() {
             .from('confessions')
             .select('*')
             .eq('approved', true)
+            .order('pinned', { ascending: false })
             .order('created_at', { ascending: false })
             .range(currentPage * 10, (currentPage + 1) * 10 - 1)
 

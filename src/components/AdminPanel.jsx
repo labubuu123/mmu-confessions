@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { 
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
-    MessageCircle, ChevronDown, ChevronUp
+    MessageCircle, ChevronDown, ChevronUp, Pin, PinOff
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -141,6 +141,27 @@ export default function AdminPanel() {
         } catch (err) {
             console.error('Mark review error:', err)
             alert('Failed to mark for review: ' + err.message)
+        } finally {
+            setActionLoading(prev => ({ ...prev, [postId]: null }))
+        }
+    }
+
+    async function handleTogglePin(postId, isPinned) {
+        setActionLoading(prev => ({ ...prev, [postId]: 'pin' }))
+
+        try {
+            const { error } = await supabase
+                .from('confessions')
+                .update({ pinned: !isPinned })
+                .eq('id', postId)
+
+            if (error) throw error
+
+            alert(isPinned ? 'Post unpinned!' : 'Post pinned!')
+            setPosts(prev => prev.map(p => p.id === postId ? { ...p, pinned: !isPinned } : p))
+        } catch (err) {
+            console.error('Pin error:', err)
+            alert('Failed to update pin: ' + err.message)
         } finally {
             setActionLoading(prev => ({ ...prev, [postId]: null }))
         }
@@ -335,6 +356,11 @@ export default function AdminPanel() {
                                             {new Date(p.created_at).toLocaleString()} • ID: {p.id}
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            {p.pinned && (
+                                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded flex items-center gap-1">
+                                                    📌 Pinned
+                                                </span>
+                                            )}
                                             {p.approved ? (
                                                 <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded flex items-center gap-1">
                                                     <CheckCircle className="w-3 h-3" />
@@ -380,6 +406,25 @@ export default function AdminPanel() {
                                     )}
 
                                     <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                            onClick={() => handleTogglePin(p.id, p.pinned)}
+                                            disabled={actionLoading[p.id]}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${
+                                                p.pinned
+                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
+                                            }`}
+                                        >
+                                            {actionLoading[p.id] === 'pin' ? (
+                                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            ) : p.pinned ? (
+                                                <PinOff className="w-4 h-4" />
+                                            ) : (
+                                                <Pin className="w-4 h-4" />
+                                            )}
+                                            {p.pinned ? 'Unpin' : 'Pin'}
+                                        </button>
+
                                         <button
                                             onClick={() => handleDelete(p.id)}
                                             disabled={actionLoading[p.id]}

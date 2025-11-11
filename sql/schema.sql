@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.confessions (
     media_type TEXT,
     tags TEXT[],
     author_name TEXT,
+    pinned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -305,6 +306,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_created_at ON public.comments(created_at
 CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON public.comments(parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_reactions_post_id ON public.reactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_confessions_pinned ON public.confessions(pinned DESC);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;

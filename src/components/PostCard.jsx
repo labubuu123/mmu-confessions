@@ -86,21 +86,42 @@ export default function PostCard({ post: initialPost, onOpen }) {
             onClick={() => onOpen && onOpen(post)}
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative"
         >
-            {(isHotPost || isTrendingPost) && (
-                <div className="absolute top-3 right-3 z-10 flex gap-2">
-                    {isHotPost && (
-                        <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">
-                            🔥 HOT
-                        </div>
-                    )}
-                    {isTrendingPost && !isHotPost && (
-                        <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" />
-                            TRENDING
-                        </div>
-                    )}
-                </div>
-            )}
+            <div className="absolute top-3 right-3 z-10 flex flex-wrap justify-end gap-2">
+                
+                {post.tags && post.tags.length > 0 && (
+                    post.tags.slice(0, 2).map(t => (
+                        <span key={t} className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
+                            #{t}
+                        </span>
+                    ))
+                )}
+
+                {dayjs(post.created_at).isAfter(dayjs().subtract(1, 'hour')) && (
+                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        NEW
+                    </span>
+                )}
+
+                {post.pinned && (
+                    <div className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                        📌 PINNED
+                    </div>
+                )}
+
+                {isHotPost && (
+                    <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                        🔥 HOT
+                    </div>
+                )}
+
+                {isTrendingPost && !isHotPost && (
+                    <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        TRENDING
+                    </div>
+                )}
+            </div>
 
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             
@@ -109,28 +130,11 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                         <div className={`font-semibold ${
-                            post.author_name
-                                ? 'text-indigo-600 dark:text-indigo-400'
+                            post.author_name 
+                                ? 'text-indigo-600 dark:text-indigo-400' 
                                 : 'text-gray-900 dark:text-gray-100'
                         }`}>
                             {post.author_name || 'Anonymous'}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {dayjs(post.created_at).isAfter(dayjs().subtract(1, 'hour')) && (
-                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    NEW
-                                </span>
-                            )}
-                            {post.tags && post.tags.length > 0 && (
-                                <div className="flex gap-1 flex-wrap">
-                                    {post.tags.slice(0, 2).map(t => (
-                                        <span key={t} className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
-                                            #{t}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
