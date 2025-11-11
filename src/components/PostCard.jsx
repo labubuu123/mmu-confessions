@@ -4,6 +4,7 @@ import AnonAvatar from './AnonAvatar'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { renderTextWithHashtags } from '../utils/hashtags'
 
 dayjs.extend(relativeTime)
 
@@ -138,7 +139,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
 
             <div className="px-4 pb-3">
                 <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-loose">
-                    {excerpt}
+                    {renderTextWithHashtags(excerpt)}
                 </p>
             </div>
 

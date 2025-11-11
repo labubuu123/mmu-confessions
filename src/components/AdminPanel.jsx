@@ -28,6 +28,26 @@ export default function AdminPanel() {
 
     useEffect(() => {
         checkSession()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if (event === 'SIGNED_OUT') {
+                    setUser(null)
+                    setPosts([])
+                    setSelectedPosts(new Set())
+                    setComments({})
+                    setVisibleComments({})
+                    setError(null)
+                } else if (event === 'SIGNED_IN') {
+                    setUser(session.user)
+                    fetchPosts()
+                }
+            }
+        )
+
+        return () => {
+            subscription?.unsubscribe()
+        }
     }, [])
 
     async function checkSession() {
@@ -55,9 +75,6 @@ export default function AdminPanel() {
             setError('Sign-in error: ' + error.message)
             return
         }
-        
-        setUser(data.user)
-        fetchPosts()
     }
 
     async function signOut() {
@@ -65,10 +82,22 @@ export default function AdminPanel() {
         if (!confirmed) return
 
         setLoading(true)
-        await supabase.auth.signOut()
-        setUser(null)
-        setPosts([])
-        setLoading(false)
+        setError(null)
+        try {
+            const { error } = await supabase.auth.signOut()
+            if (error) throw error
+            
+            setUser(null)
+            setPosts([])
+            setSelectedPosts(new Set())
+
+        } catch (err) {
+            console.error('Sign-out error:', err)
+            alert('Failed to sign out: ' + err.message)
+            setError('Sign-out error: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     async function fetchPosts() {
@@ -154,7 +183,7 @@ export default function AdminPanel() {
 
 ${failedDeletes.length > 0 ? 'Check console for error details on failed deletions.' : ''}`)
     }
-
+    
     function togglePostSelection(postId) {
         setSelectedPosts(prev => {
             const newSet = new Set(prev)
@@ -166,7 +195,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             return newSet
         })
     }
-
+    
     function toggleSelectAll() {
         if (selectedPosts.size === posts.length) {
             setSelectedPosts(new Set())
@@ -297,8 +326,6 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             setActionLoading(prev => ({ ...prev, [commentId]: null }))
         }
     }
-
-
 
     if (!user) {
         return (
@@ -457,7 +484,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     </button>
                 </div>
             )}
-
+            
             {loading && posts.length === 0 ? (
                 <div className="flex justify-center items-center py-20">
                     <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -471,7 +498,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                 key={p.id}
                                 className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${
                                     isSelected
-                                        ? 'border-indigo-500 ring-2 ring-indigo-500/50'
+                                        ? 'border-indigo-500 ring-2 ring-indigo-500/50' 
                                         : 'border-gray-200 dark:border-gray-700'
                                 } p-5`}
                             >
@@ -485,7 +512,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                             disabled={bulkLoading}
                                         />
                                     </div>
-
+                                    
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="text-xs text-gray-500 dark:text-gray-400">

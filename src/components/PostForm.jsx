@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
-import { extractTags } from '../utils/hashtags'
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText } from 'lucide-react'
+import { extractTags, extractHashtagsForPreview } from '../utils/hashtags' 
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const MAX_VIDEO_SIZE_MB = 25
@@ -30,6 +30,8 @@ export default function PostForm({ onPosted }) {
     const [msg, setMsg] = useState('')
     const [uploadProgress, setUploadProgress] = useState(0)
     const [policyAccepted, setPolicyAccepted] = useState(false)
+
+    const detectedTags = extractHashtagsForPreview(text);
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -274,7 +276,7 @@ export default function PostForm({ onPosted }) {
             </div>
 
             <form onSubmit={handleSubmit}>
-                <div className="flex gap-3 mb-4">
+                <div className="flex gap-3 mb-1">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
                         A
                     </div>
@@ -293,8 +295,27 @@ export default function PostForm({ onPosted }) {
                     </div>
                 </div>
 
+                {detectedTags.length > 0 && (
+                    <div className="mb-4 ml-14 -mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <Tag className="w-4 h-4" />
+                            Detected Tags
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {detectedTags.map((tag, index) => (
+                            <span
+                                key={index}
+                                className="px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full"
+                            >
+                                {tag}
+                            </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {previews.length > 0 && (
-                    <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="my-4 grid grid-cols-2 md:grid-cols-3 gap-2">
                         {previews.map((preview, idx) => (
                             <div key={idx} className="relative group">
                                 <img
@@ -315,7 +336,7 @@ export default function PostForm({ onPosted }) {
                 )}
 
                 {videoPreview && (
-                    <div className="mb-4 relative">
+                    <div className="my-4 relative">
                         <video src={videoPreview} className="w-full max-h-96 rounded-xl" controls />
                         <button
                             type="button"
@@ -328,7 +349,7 @@ export default function PostForm({ onPosted }) {
                 )}
 
                 {audio && (
-                    <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
+                    <div className="my-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
                         <Volume2 className="w-6 h-6 text-indigo-600" />
                         <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -349,7 +370,7 @@ export default function PostForm({ onPosted }) {
                 )}
 
                 {loading && uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="mb-4">
+                    <div className="my-4">
                         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
                             <span>Uploading...</span>
                             <span>{Math.round(uploadProgress)}%</span>
@@ -400,7 +421,7 @@ export default function PostForm({ onPosted }) {
                                 multiple
                                 onChange={handleImageChange}
                                 className="hidden"
-                                disabled={loading || video || audio}
+                                disabled={loading || !!video || !!audio}
                             />
                         </label>
 
@@ -414,7 +435,7 @@ export default function PostForm({ onPosted }) {
                                 accept="video/*"
                                 onChange={handleVideoChange}
                                 className="hidden"
-                                disabled={loading || images.length > 0 || audio}
+                                disabled={loading || images.length > 0 || !!audio}
                             />
                         </label>
 
@@ -428,7 +449,7 @@ export default function PostForm({ onPosted }) {
                                 accept="audio/*"
                                 onChange={handleAudioChange}
                                 className="hidden"
-                                disabled={loading || images.length > 0 || video}
+                                disabled={loading || images.length > 0 || !!video}
                             />
                         </label>
                     </div>
