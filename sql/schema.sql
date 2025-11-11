@@ -298,6 +298,7 @@ CREATE OR REPLACE FUNCTION public.increment_report_count(post_id_in BIGINT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     UPDATE public.confessions
@@ -333,6 +334,7 @@ CREATE OR REPLACE FUNCTION public.check_post_cooldown(author_id_in TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     last_post_time TIMESTAMP WITH TIME ZONE;
