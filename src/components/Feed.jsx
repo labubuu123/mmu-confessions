@@ -1,194 +1,149 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import PostForm from './PostForm'
 import PostCard from './PostCard'
+import PostForm from './PostForm'
 import PostModal from './PostModal'
 import { useNavigate, useParams } from 'react-router-dom'
-import { TrendingUp, Clock } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
 
 export default function Feed() {
     const [posts, setPosts] = useState([])
-    const [openPost, setOpenPost] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [sortBy, setSortBy] = useState('recent')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
+    const [page, setPage] = useState(0)
+    const [hasMore, setHasMore] = useState(true)
     
+    const [newPostsAvailable, setNewPostsAvailable] = useState(false)
+
     const navigate = useNavigate()
-    const { id: urlPostId } = useParams()
+    const { id: modalPostId } = useParams()
+
+    const fetchPosts = useCallback(async (isInitial = false) => {
+        setLoading(true)
+        setError(null)
+        
+        const currentPage = isInitial ? 0 : page
+        const { data, error } = await supabase
+            .from('confessions')
+            .select('*')
+            .eq('approved', true)
+            .order('created_at', { ascending: false })
+            .range(currentPage * 10, (currentPage + 1) * 10 - 1)
+
+        setLoading(false)
+
+        if (error) {
+            setError('Could not fetch posts: ' + error.message)
+            return
+        }
+
+        if (data.length < 10) {
+            setHasMore(false)
+        }
+
+        setPosts(prev => {
+            const newPosts = data.filter(d => !prev.some(p => p.id === d.id))
+            return isInitial ? data : [...prev, ...newPosts]
+        })
+        
+        if (!isInitial) {
+            setPage(currentPage + 1)
+        } else {
+            setPage(1)
+        }
+    }, [page])
 
     useEffect(() => {
-        fetchPosts()
-    }, [sortBy])
-    
+        fetchPosts(true)
+    }, [])
+
     useEffect(() => {
         const channel = supabase
-            .channel('public:confessions')
+            .channel('new-confessions-feed')
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'confessions'
-            }, payload => {
-                if (payload.new.approved) {
-                    setPosts(prev => {
-                        if (prev.find(p => p.id === payload.new.id)) return prev
-                        return [payload.new, ...prev]
-                    })
-                }
-            })
-            .on('postgres_changes', {
-                event: 'DELETE',
-                schema: 'public',
-                table: 'confessions'
-            }, payload => {
-                setPosts(prev => prev.filter(p => p.id !== payload.old.id))
-                if (openPost && openPost.id === payload.old.id) {
-                    setOpenPost(null)
-                    navigate('/')
-                }
-            })
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'confessions'
-            }, payload => {
-                setPosts(prev => prev.map(p =>
-                    p.id === payload.new.id ? payload.new : p
-                ))
-                if (openPost && openPost.id === payload.new.id) {
-                    setOpenPost(payload.new)
+            }, (payload) => {
+                if (!posts.some(p => p.id === payload.new.id)) {
+                    setNewPostsAvailable(true)
                 }
             })
             .subscribe()
-        
-        return () => supabase.removeChannel(channel)
-    }, [openPost, navigate])
 
-    useEffect(() => {
-        if (urlPostId && posts.length > 0) {
-            const postFromUrl = posts.find(p => p.id == urlPostId)
-            if (postFromUrl) {
-                setOpenPost(postFromUrl)
-            } else {
-                fetchSinglePost(urlPostId)
-            }
+        return () => {
+            supabase.removeChannel(channel)
         }
-    }, [urlPostId, posts])
+    }, [posts])
 
-    async function fetchSinglePost(id) {
-        const { data } = await supabase
-            .from('confessions')
-            .select('*')
-            .eq('id', id)
-            .eq('approved', true)
-            .single()
-        
-        if (data) {
-            setOpenPost(data)
-        }
+
+    function handlePosted(newPost) {
+        setPosts(prev => [newPost, ...prev])
     }
 
-    async function fetchPosts() {
-        setLoading(true)
-        const query = supabase
-            .from('confessions')
-            .select('*')
-            .eq('approved', true)
-            .limit(200)
-
-        if (sortBy === 'trending') {
-            query.order('likes_count', { ascending: false })
-        } else {
-            query.order('created_at', { ascending: false })
-        }
-        
-        const { data } = await query
-        setPosts(data || [])
-        setLoading(false)
-    }
-
-    function handleNewPost(newPost) {
-        setPosts(prev => {
-            if (prev.find(p => p.id === newPost.id)) return prev
-            return [newPost, ...prev]
-        })
-    }
-
-    function openModal(post) {
-        setOpenPost(post)
+    function handleOpenModal(post) {
         navigate(`/post/${post.id}`)
     }
 
-    function closeModal() {
-        setOpenPost(null)
+    function handleCloseModal() {
         navigate('/')
     }
 
-    function handleNavigate(direction) {
-        if (!openPost) return
-        const currentIndex = posts.findIndex(p => p.id === openPost.id)
-        if (currentIndex === -1) return
-        
-        const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1
-        
-        if (newIndex >= 0 && newIndex < posts.length) {
-            const newPost = posts[newIndex]
-            setOpenPost(newPost)
-            navigate(`/post/${newPost.id}`)
-        }
+    function loadNewPosts() {
+        setNewPostsAvailable(false)
+        fetchPosts(true)
+        window.scrollTo(0, 0)
     }
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-6">
-            <PostForm onPosted={handleNewPost} />
-            
-            <div className="mb-6 flex gap-2 bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
+        <div className="max-w-2xl mx-auto px-4 py-8">
+            <PostForm onPosted={handlePosted} />
+
+            {newPostsAvailable && (
                 <button
-                    onClick={() => setSortBy('recent')}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-                        sortBy === 'recent'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
+                    onClick={loadNewPosts}
+                    className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-all shadow-lg"
                 >
-                    <Clock className="w-4 h-4" />
-                    Recent
+                    <ArrowUp className="w-5 h-5" />
+                    New Confession - Click to Load
                 </button>
-                <button
-                    onClick={() => setSortBy('trending')}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-                        sortBy === 'trending'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                >
-                    <TrendingUp className="w-4 h-4" />
-                    Trending
-                </button>
+            )}
+
+            <div className="space-y-6">
+                {posts.map(post => (
+                    <PostCard key={post.id} post={post} onOpen={handleOpenModal} />
+                ))}
             </div>
-            
-            {loading ? (
-                <div className="flex justify-center items-center py-20">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            ) : posts.length === 0 ? (
-                <div className="text-center py-20">
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                        No confessions yet. Be the first to share!
-                    </p>
-                </div>
-            ) : (
-                <div>
-                    {posts.map(p => (
-                        <PostCard key={p.id} post={p} onOpen={() => openModal(p)} />
-                    ))}
+
+            {loading && (
+                <div className="flex justify-center items-center py-10">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
-            
-            {openPost && (
+
+            {!loading && hasMore && posts.length > 0 && (
+                <div className="flex justify-center mt-8">
+                    <button
+                        onClick={() => fetchPosts()}
+                        className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                        Load More
+                    </button>
+                </div>
+            )}
+
+            {!loading && !hasMore && (
+                <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                    You've reached the end.
+                </p>
+            )}
+
+            {error && <p className="text-red-500 text-center mt-8">{error}</p>}
+
+            {modalPostId && (
                 <PostModal
-                    key={openPost.id}
-                    post={openPost}
-                    onClose={closeModal}
-                    onNavigate={handleNavigate}
+                    postId={modalPostId}
+                    onClose={handleCloseModal}
                 />
             )}
         </div>

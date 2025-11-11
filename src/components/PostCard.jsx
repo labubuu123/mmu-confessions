@@ -11,8 +11,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
     const [totalReactions, setTotalReactions] = useState(0)
-    const [viewCount, setViewCount] = useState(post.view_count || 0)
-    const [hasViewed, setHasViewed] = useState(false)
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
 
@@ -59,33 +57,11 @@ export default function PostCard({ post: initialPost, onOpen }) {
             })
             .subscribe()
 
-        const viewedPosts = JSON.parse(sessionStorage.getItem('viewedPosts') || '[]')
-        if (!viewedPosts.includes(post.id)) {
-            setHasViewed(false)
-            const timer = setTimeout(() => {
-                if (!hasViewed) {
-                    incrementViewCount()
-                    viewedPosts.push(post.id)
-                    sessionStorage.setItem('viewedPosts', JSON.stringify(viewedPosts))
-                    setHasViewed(true)
-                }
-            }, 2000)
-            return () => {
-                clearTimeout(timer)
-                supabase.removeChannel(channel)
-                supabase.removeChannel(reactionsChannel)
-            }
-        }
-
         return () => {
             supabase.removeChannel(channel)
             supabase.removeChannel(reactionsChannel)
         }
     }, [post.id])
-
-    async function incrementViewCount() {
-        setViewCount(prev => prev + 1)
-    }
 
     async function fetchReactions() {
         const { data } = await supabase
@@ -274,16 +250,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             <MessageCircle className="w-5 h-5" />
                             <span className="font-medium">{post.comments_count || 0}</span>
                         </button>
-                        
-                        {viewCount > 0 && (
-                            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                <span>{viewCount > 999 ? '999+' : viewCount}</span>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

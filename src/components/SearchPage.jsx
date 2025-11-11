@@ -64,7 +64,16 @@ export default function SearchPage() {
         if (selectedTag) {
             query_builder = query_builder.contains('tags', [selectedTag])
         } else if (query) {
-            query_builder = query_builder.ilike('text', `%${query}%`)
+            const lowerQuery = query.toLowerCase()
+            if (lowerQuery === 'anonymous') {
+                query_builder = query_builder.or(
+                    `text.ilike.%${query}%,author_name.is.null`
+                )
+            } else {
+                query_builder = query_builder.or(
+                    `text.ilike.%${query}%,author_name.ilike.%${query}%`
+                )
+            }
         }
 
         const { data } = await query_builder

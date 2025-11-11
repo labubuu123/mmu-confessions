@@ -293,6 +293,7 @@ BEGIN
 END;
 $$;
 
+
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
 CREATE INDEX IF NOT EXISTS idx_confessions_created_at ON public.confessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_confessions_likes_count ON public.confessions(likes_count DESC);
