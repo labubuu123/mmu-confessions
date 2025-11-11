@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText } from 'lucide-react'
+import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText, Search } from 'lucide-react'
 
 export default function Header({ theme, setTheme }) {
     const location = useLocation()
@@ -12,18 +12,18 @@ export default function Header({ theme, setTheme }) {
     }
 
     return (
-        <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-lg bg-opacity-95 dark:bg-opacity-95">
             <div className="max-w-5xl mx-auto px-4 py-3">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2 group">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg">
                             <MessageSquare className="w-6 h-6 text-white" />
                         </div>
                         <div className="">
                             <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 MMU Confessions
                             </span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block"> 
                                 Share Anonymously
                             </p>
                         </div>
@@ -41,6 +41,7 @@ export default function Header({ theme, setTheme }) {
                             <Home className="w-4 h-4" />
                             <span className="font-medium">Home</span>
                         </Link>
+                        
                         <Link
                             to="/top"
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
@@ -52,6 +53,19 @@ export default function Header({ theme, setTheme }) {
                             <TrendingUp className="w-4 h-4" />
                             <span className="font-medium">Top</span>
                         </Link>
+                        
+                        <Link
+                            to="/search"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                                isActive('/search')
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <Search className="w-4 h-4" />
+                            <span className="font-medium">Search</span>
+                        </Link>
+                        
                         <Link
                             to="/policy"
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
@@ -63,6 +77,7 @@ export default function Header({ theme, setTheme }) {
                             <FileText className="w-4 h-4" />
                             <span className="font-medium">Policy</span>
                         </Link>
+                        
                         <Link
                             to="/admin"
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
@@ -93,45 +108,48 @@ export default function Header({ theme, setTheme }) {
                     </button>
                 </div>
 
-                <nav className="md:hidden grid grid-cols-4 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <nav className="md:hidden grid grid-cols-4 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 gap-1">
                     <Link
                         to="/"
-                        className={`flex flex-col items-center gap-1 transition ${
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
                             isActive('/')
-                                ? 'text-indigo-600 dark:text-indigo-400'
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >
                         <Home className="w-5 h-5" />
                         <span className="text-xs font-medium">Home</span>
                     </Link>
+                    
                     <Link
                         to="/top"
-                        className={`flex flex-col items-center gap-1 transition ${
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
                             isActive('/top')
-                                ? 'text-indigo-600 dark:text-indigo-400'
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >
                         <TrendingUp className="w-5 h-5" />
                         <span className="text-xs font-medium">Top</span>
                     </Link>
+                    
                     <Link
-                        to="/policy"
-                        className={`flex flex-col items-center gap-1 transition ${
-                            isActive('/policy')
-                                ? 'text-indigo-600 dark:text-indigo-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                        to="/search"
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
+                            isActive('/search')
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >
-                        <FileText className="w-5 h-5" />
-                        <span className="text-xs font-medium">Policy</span>
+                        <Search className="w-5 h-5" />
+                        <span className="text-xs font-medium">Search</span>
                     </Link>
+                    
                     <Link
                         to="/admin"
-                        className={`flex flex-col items-center gap-1 transition ${
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
                             isActive('/admin')
-                                ? 'text-indigo-600 dark:text-indigo-400'
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                     >

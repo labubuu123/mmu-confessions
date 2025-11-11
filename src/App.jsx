@@ -6,6 +6,7 @@ import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
 import PostModal from "./components/PostModal";
 import PolicyPage from "./components/PolicyPage";
+import SearchPage from "./components/SearchPage";
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -29,10 +30,24 @@ function App() {
         <Route path="/" element={<Feed />} />
         <Route path="/post/:id" element={<Feed />} />
         <Route path="/top" element={<TopConfessions />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/policy" element={<PolicyPage />} />
         <Route path="/post-direct/:id" element={<PostModalWrapper />} />
       </Routes>
+
+      <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Made with ❤️ by MMU Students
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Share Responsibly • Respect Privacy • Be Kind
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

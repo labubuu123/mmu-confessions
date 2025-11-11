@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Heart, MessageCircle, Volume2, Share2, Bookmark } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
@@ -11,7 +11,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
     const [totalReactions, setTotalReactions] = useState(0)
-    const [isBookmarked, setIsBookmarked] = useState(false)
+    const [viewCount, setViewCount] = useState(post.view_count || 0)
+    const [hasViewed, setHasViewed] = useState(false)
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
 
@@ -22,7 +23,15 @@ export default function PostCard({ post: initialPost, onOpen }) {
         displayImages = [post.media_url]
     }
 
-    // Subscribe to real-time updates for this specific post
+    const getEngagementScore = () => {
+        const age = (Date.now() - new Date(post.created_at)) / (1000 * 60 * 60)
+        const score = (totalReactions * 2 + (post.comments_count || 0) * 3) / (age + 2)
+        return score
+    }
+
+    const isHotPost = getEngagementScore() > 5
+    const isTrendingPost = totalReactions > 20 || (post.comments_count || 0) > 10
+
     useEffect(() => {
         const channel = supabase
             .channel(`post-${post.id}`)
@@ -36,10 +45,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
             })
             .subscribe()
 
-        // Fetch reactions
         fetchReactions()
 
-        // Subscribe to reaction changes
         const reactionsChannel = supabase
             .channel(`reactions-${post.id}`)
             .on('postgres_changes', {
@@ -52,15 +59,33 @@ export default function PostCard({ post: initialPost, onOpen }) {
             })
             .subscribe()
 
-        // Check if bookmarked
-        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]')
-        setIsBookmarked(bookmarks.includes(post.id))
+        const viewedPosts = JSON.parse(sessionStorage.getItem('viewedPosts') || '[]')
+        if (!viewedPosts.includes(post.id)) {
+            setHasViewed(false)
+            const timer = setTimeout(() => {
+                if (!hasViewed) {
+                    incrementViewCount()
+                    viewedPosts.push(post.id)
+                    sessionStorage.setItem('viewedPosts', JSON.stringify(viewedPosts))
+                    setHasViewed(true)
+                }
+            }, 2000)
+            return () => {
+                clearTimeout(timer)
+                supabase.removeChannel(channel)
+                supabase.removeChannel(reactionsChannel)
+            }
+        }
 
         return () => {
             supabase.removeChannel(channel)
             supabase.removeChannel(reactionsChannel)
         }
     }, [post.id])
+
+    async function incrementViewCount() {
+        setViewCount(prev => prev + 1)
+    }
 
     async function fetchReactions() {
         const { data } = await supabase
@@ -80,56 +105,41 @@ export default function PostCard({ post: initialPost, onOpen }) {
         }
     }
 
-    const handleBookmark = (e) => {
-        e.stopPropagation()
-        const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]')
-        
-        if (isBookmarked) {
-            const updated = bookmarks.filter(id => id !== post.id)
-            localStorage.setItem('bookmarks', JSON.stringify(updated))
-            setIsBookmarked(false)
-        } else {
-            bookmarks.push(post.id)
-            localStorage.setItem('bookmarks', JSON.stringify(bookmarks))
-            setIsBookmarked(true)
-        }
-    }
-
-    const handleShare = async (e) => {
-        e.stopPropagation()
-        const shareData = {
-            title: 'MMU Confession',
-            text: excerpt,
-            url: `${window.location.origin}/#/post/${post.id}`
-        }
-        
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData)
-            } catch (err) {
-                console.log('Share cancelled')
-            }
-        } else {
-            navigator.clipboard.writeText(shareData.url)
-            alert('Link copied to clipboard!')
-        }
-    }
-
     return (
         <div
             onClick={() => onOpen && onOpen(post)}
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative"
         >
-            {/* Hover gradient effect */}
+            {(isHotPost || isTrendingPost) && (
+                <div className="absolute top-3 right-3 z-10 flex gap-2">
+                    {isHotPost && (
+                        <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                            🔥 HOT
+                        </div>
+                    )}
+                    {isTrendingPost && !isHotPost && (
+                        <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            TRENDING
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             
-            {/* Header */}
             <div className="p-4 flex items-start gap-3 relative">
                 <AnonAvatar authorId={post.author_id} />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                         <div className="font-semibold text-gray-900 dark:text-gray-100">Anonymous</div>
                         <div className="flex items-center gap-2">
+                            {dayjs(post.created_at).isAfter(dayjs().subtract(1, 'hour')) && (
+                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    NEW
+                                </span>
+                            )}
                             {post.tags && post.tags.length > 0 && (
                                 <div className="flex gap-1 flex-wrap">
                                     {post.tags.slice(0, 2).map(t => (
@@ -147,14 +157,12 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="px-4 pb-3">
                 <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
                     {excerpt}
                 </p>
             </div>
 
-            {/* Media */}
             {post.media_type === 'images' && displayImages.length > 0 && (
                 <div className={`w-full ${
                     displayImages.length === 1 ? '' :
@@ -218,15 +226,13 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
             )}
 
-            {/* Stats and Actions */}
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                {/* Reaction Preview */}
                 {totalReactions > 0 && (
                     <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex -space-x-1">
                             {Object.keys(reactions).slice(0, 5).map((emoji, i) => (
-                                <span 
-                                    key={emoji} 
+                                <span
+                                    key={emoji}
                                     className="text-base bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 w-7 h-7 flex items-center justify-center" 
                                     style={{ zIndex: 5 - i }}
                                 >
@@ -262,27 +268,16 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             <MessageCircle className="w-5 h-5" />
                             <span className="font-medium">{post.comments_count || 0}</span>
                         </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleBookmark}
-                            className={`p-2 rounded-lg transition-all ${
-                                isBookmarked
-                                    ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' 
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
-                        >
-                            <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
-                        </button>
-                        <button
-                            onClick={handleShare}
-                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
-                            title="Share"
-                        >
-                            <Share2 className="w-5 h-5" />
-                        </button>
+                        
+                        {viewCount > 0 && (
+                            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>{viewCount > 999 ? '999+' : viewCount}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

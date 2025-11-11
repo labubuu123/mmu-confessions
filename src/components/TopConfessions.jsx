@@ -11,11 +11,9 @@ export default function TopConfessions() {
     const [lastUpdate, setLastUpdate] = useState(new Date())
     const navigate = useNavigate()
 
-    // Initial fetch and setup real-time subscriptions
     useEffect(() => {
         fetchTop()
         
-        // Real-time subscription for all confession changes
         const channel = supabase
             .channel('top-confessions-realtime')
             .on('postgres_changes', {
@@ -32,7 +30,6 @@ export default function TopConfessions() {
                 table: 'reactions'
             }, (payload) => {
                 console.log('Reaction update received:', payload)
-                // When reactions change, refetch to update counts
                 fetchTop()
             })
             .on('postgres_changes', {
@@ -41,12 +38,10 @@ export default function TopConfessions() {
                 table: 'comments'
             }, (payload) => {
                 console.log('Comment update received:', payload)
-                // When comments change, refetch to update counts
                 fetchTop()
             })
             .subscribe()
 
-        // Auto-refresh every 30 seconds as fallback
         const interval = setInterval(() => {
             setUpdating(true)
             fetchTop().finally(() => setUpdating(false))
@@ -101,7 +96,6 @@ export default function TopConfessions() {
         
         const { data } = await query
         
-        // Fetch reactions for each post to display
         if (data) {
             const postsWithReactions = await Promise.all(
                 data.map(async (post) => {
@@ -148,7 +142,6 @@ export default function TopConfessions() {
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-8">
-            {/* Header with refresh indicator */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -178,7 +171,6 @@ export default function TopConfessions() {
                     </button>
                 </div>
 
-                {/* Time range filter */}
                 <div className="flex gap-2 bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
                     {[
                         { value: 'all', label: 'All Time', icon: '🌟' },
@@ -201,7 +193,6 @@ export default function TopConfessions() {
                 </div>
             </div>
 
-            {/* Live update indicator */}
             {updating && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -225,7 +216,6 @@ export default function TopConfessions() {
                             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700 p-5 cursor-pointer transition-all duration-300 group"
                         >
                             <div className="flex gap-4">
-                                {/* Ranking badge */}
                                 <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl relative ${
                                     index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg' :
                                     index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700 shadow-md' :
@@ -245,10 +235,8 @@ export default function TopConfessions() {
                                         {item.text}
                                     </p>
 
-                                    {/* Enhanced stats display */}
                                     <div className="flex items-center justify-between flex-wrap gap-3">
                                         <div className="flex items-center gap-3 text-sm">
-                                            {/* Reactions with emojis */}
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-full">
                                                 <div className="flex -space-x-1">
                                                     {item.reactions && Object.keys(item.reactions).slice(0, 3).map((emoji, i) => (
@@ -262,7 +250,6 @@ export default function TopConfessions() {
                                                 </span>
                                             </div>
                                             
-                                            {/* Comments */}
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
                                                 <MessageCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                                 <span className="font-bold text-blue-600 dark:text-blue-400">
@@ -270,7 +257,6 @@ export default function TopConfessions() {
                                                 </span>
                                             </div>
                                             
-                                            {/* Date */}
                                             <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                                                 <Calendar className="w-4 h-4" />
                                                 <span className="text-xs">
@@ -282,7 +268,6 @@ export default function TopConfessions() {
                                             </div>
                                         </div>
                                         
-                                        {/* Tags */}
                                         {item.tags && item.tags.length > 0 && (
                                             <div className="flex gap-1 flex-wrap">
                                                 {item.tags.slice(0, 2).map(tag => (
