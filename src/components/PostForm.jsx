@@ -6,7 +6,7 @@ import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText } from 'lucide-r
 import { Link } from 'react-router-dom'
 
 const MAX_VIDEO_SIZE_MB = 25
-const MAX_IMAGES = 5
+const MAX_IMAGES = 3
 const MAX_AUDIO_SIZE_MB = 10
 const MAX_TEXT_LENGTH = 5000
 
