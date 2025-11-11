@@ -81,42 +81,44 @@ export default function PostCard({ post: initialPost, onOpen }) {
         }
     }
 
+    const isNew = dayjs(post.created_at).isAfter(dayjs().subtract(30, 'minute'))
+
     return (
         <div
             onClick={() => onOpen && onOpen(post)}
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative"
         >
-            <div className="absolute top-3 right-3 z-10 flex flex-wrap justify-end gap-2">
+            <div className="absolute top-3 right-3 z-10 flex flex-col items-end sm:flex-row sm:flex-wrap sm:justify-end gap-2">
                 
                 {post.tags && post.tags.length > 0 && (
                     post.tags.slice(0, 2).map(t => (
-                        <span key={t} className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
+                        <span key={t} className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium order-3 sm:order-1">
                             #{t}
                         </span>
                     ))
                 )}
 
-                {dayjs(post.created_at).isAfter(dayjs().subtract(1, 'hour')) && (
-                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1">
+                {isNew && (
+                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1 order-2">
                         <Clock className="w-3 h-3" />
                         NEW
                     </span>
                 )}
 
                 {post.pinned && (
-                    <div className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                    <div className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-1 sm:order-3">
                         📌 PINNED
                     </div>
                 )}
 
                 {isHotPost && (
-                    <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                    <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse order-4">
                         🔥 HOT
                     </div>
                 )}
 
                 {isTrendingPost && !isHotPost && (
-                    <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                    <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-5">
                         <TrendingUp className="w-3 h-3" />
                         TRENDING
                     </div>
@@ -130,8 +132,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                         <div className={`font-semibold ${
-                            post.author_name 
-                                ? 'text-indigo-600 dark:text-indigo-400' 
+                            post.author_name
+                                ? 'text-indigo-600 dark:text-indigo-400'
                                 : 'text-gray-900 dark:text-gray-100'
                         }`}>
                             {post.author_name || 'Anonymous'}
