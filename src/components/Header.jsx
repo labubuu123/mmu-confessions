@@ -23,7 +23,7 @@ export default function Header({ theme, setTheme }) {
                             <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 MMU Confessions
                             </span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block"> 
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Share Anonymously
                             </p>
                         </div>

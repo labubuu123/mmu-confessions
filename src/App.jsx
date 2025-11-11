@@ -40,7 +40,7 @@ function App() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              Made with ❤️ by MMU Students
+              Made by MMU Students
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Share Responsibly • Respect Privacy • Be Kind
