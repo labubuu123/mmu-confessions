@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { 
+import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
-    MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square
+    MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
+    ShieldOff
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -210,13 +211,13 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
         try {
             const { error } = await supabase
                 .from('confessions')
-                .update({ approved: true, reported: false })
+                .update({ approved: true, reported: false, report_count: 0 })
                 .eq('id', postId)
 
             if (error) throw error
 
             alert('Post approved!')
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, approved: true, reported: false } : p))
+            setPosts(prev => prev.map(p => p.id === postId ? { ...p, approved: true, reported: false, report_count: 0 } : p))
         } catch (err) {
             console.error('Approve error:', err)
             alert('Failed to approve: ' + err.message)
@@ -267,6 +268,26 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
         }
     }
 
+    async function handleClearReport(postId) {
+        setActionLoading(prev => ({ ...prev, [postId]: 'clear-report' }))
+
+        try {
+            const { error } = await supabase.rpc('clear_report_status', {
+                post_id_in: postId
+            })
+
+            if (error) throw error
+
+            alert('Report status cleared!')
+            setPosts(prev => prev.map(p => p.id === postId ? { ...p, reported: false, report_count: 0 } : p))
+        } catch (err) {
+            console.error('Clear report error:', err)
+            alert('Failed to clear report: ' + err.message)
+        } finally {
+            setActionLoading(prev => ({ ...prev, [postId]: null }))
+        }
+    }
+
     async function toggleComments(postId) {
         const isVisible = !!visibleComments[postId]
         setVisibleComments(prev => ({ ...prev, [postId]: !isVisible }))
@@ -311,14 +332,19 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
 
             alert('Comment deleted successfully!')
 
-            setComments(prev => ({
-                ...prev,
-                [postId]: prev[postId].filter(c => c.id !== commentId)
-            }))
+            await fetchCommentsForPost(postId)
 
-            setPosts(prev => prev.map(p =>
-                p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p
-            ))
+            const { data: updatedPost, error: postError } = await supabase
+                .from('confessions')
+                .select('*')
+                .eq('id', postId)
+                .single()
+
+            if (postError) console.error('Error re-fetching post:', postError)
+            if (updatedPost) {
+                setPosts(prev => prev.map(p => p.id === postId ? updatedPost : p))
+            }
+
         } catch (err) {
             console.error('Delete comment error:', err)
             alert('Failed to delete comment: ' + err.message)
@@ -518,7 +544,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                                 {new Date(p.created_at).toLocaleString()} • ID: {p.id}
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 flex-wrap justify-end">
                                                 {p.pinned && (
                                                     <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded flex items-center gap-1">
                                                         📌 Pinned
@@ -535,12 +561,17 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                         Pending
                                                     </span>
                                                 )}
-                                                {p.reported && (
+                                                {p.reported ? (
                                                     <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs rounded flex items-center gap-1">
                                                         <AlertTriangle className="w-3 h-3" />
-                                                        Reported
+                                                        Reported ({p.report_count || 0})
                                                     </span>
-                                                )}
+                                                ) : p.report_count > 0 ? (
+                                                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
+                                                        <AlertTriangle className="w-3 h-3" />
+                                                        {p.report_count} {p.report_count === 1 ? 'Report' : 'Reports'}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                         </div>
 
@@ -616,7 +647,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                 </button>
                                             )}
 
-                                            {!p.reported && (
+                                            {!p.reported && p.report_count > 0 && (
                                                 <button
                                                     onClick={() => handleMarkReview(p.id)}
                                                     disabled={actionLoading[p.id] || bulkLoading}
@@ -627,6 +658,21 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                     ) : (
                                                         'Mark for Review'
                                                     )}
+                                                </button>
+                                            )}
+
+                                            {p.reported && (
+                                                <button
+                                                    onClick={() => handleClearReport(p.id)}
+                                                    disabled={actionLoading[p.id] || bulkLoading}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                                >
+                                                    {actionLoading[p.id] === 'clear-report' ? (
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <ShieldOff className="w-4 h-4" />
+                                                    )}
+                                                    Clear Report
                                                 </button>
                                             )}
                                         </div>

@@ -284,12 +284,66 @@ BEGIN
         WHERE id = comment_id_in;
 
         UPDATE public.confessions
-        SET 
+        SET
             comments_count = GREATEST(0, COALESCE(comments_count, 0) - deleted_count),
             updated_at = NOW()
         WHERE id = post_id_var;
     ELSE
         RAISE NOTICE 'Comment with ID % not found.', comment_id_in;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.increment_report_count(post_id_in BIGINT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE public.confessions
+    SET
+        report_count = COALESCE(report_count, 0) + 1,
+        reported = TRUE,
+        updated_at = NOW()
+    WHERE id = post_id_in;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.clear_report_status(post_id_in BIGINT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF auth.role() <> 'authenticated' THEN
+        RAISE EXCEPTION 'Access denied: Must be an authenticated admin.';
+    END IF;
+
+    UPDATE public.confessions
+    SET
+        reported = FALSE,
+        report_count = 0,
+        updated_at = NOW()
+    WHERE id = post_id_in;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.check_post_cooldown(author_id_in TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    last_post_time TIMESTAMP WITH TIME ZONE;
+BEGIN
+    SELECT created_at
+    INTO last_post_time
+    FROM public.confessions
+    WHERE author_id = author_id_in
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF last_post_time IS NOT NULL AND NOW() < (last_post_time + INTERVAL '10 minutes') THEN
+        RAISE EXCEPTION 'Please wait 10 minutes before posting again.';
     END IF;
 END;
 $$;
@@ -314,6 +368,9 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;

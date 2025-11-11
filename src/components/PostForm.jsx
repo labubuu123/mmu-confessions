@@ -57,6 +57,15 @@ export default function PostForm({ onPosted }) {
         const anonId = getAnonId()
 
         try {
+            setMsg('Checking cooldown...')
+            const { error: cooldownError } = await supabase.rpc('check_post_cooldown', {
+                author_id_in: anonId
+            })
+
+            if (cooldownError) {
+                throw new Error(cooldownError.message)
+            }
+            
             let media_urls = []
             let media_type = null
             let single_media_url = null

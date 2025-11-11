@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
@@ -12,6 +12,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
     const [totalReactions, setTotalReactions] = useState(0)
+    const [isReported, setIsReported] = useState(false)
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
 
@@ -79,6 +80,29 @@ export default function PostCard({ post: initialPost, onOpen }) {
             })
             setReactions(reactionsMap)
             setTotalReactions(total)
+        }
+    }
+
+    async function handleReport(e) {
+        e.stopPropagation()
+        if (isReported) {
+            alert('You have already reported this post.')
+            return
+        }
+        
+        const confirmed = window.confirm('Are you sure you want to report this post?')
+        if (!confirmed) return
+
+        try {
+            const { error } = await supabase.rpc('increment_report_count', {
+                post_id_in: post.id
+            })
+            if (error) throw error
+            setIsReported(true)
+            alert('Post reported successfully.')
+        } catch (err) {
+            console.error('Report error:', err)
+            alert('Failed to report post: ' + err.message)
         }
     }
 
@@ -249,6 +273,19 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             <span className="font-medium">{post.comments_count || 0}</span>
                         </button>
                     </div>
+                    <button
+                        onClick={handleReport}
+                        disabled={isReported}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                            isReported
+                                ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                        }`}
+                        title={isReported ? 'Reported' : 'Report Post'}
+                    >
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-medium hidden sm:inline">{isReported ? 'Reported' : 'Report'}</span>
+                    </button>
                 </div>
             </div>
         </div>
