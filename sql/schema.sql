@@ -384,12 +384,6 @@ EXCEPTION
 END;
 $$;
 
-CREATE TRIGGER log_confession_action
-AFTER INSERT ON public.confessions
-FOR EACH ROW
-EXECUTE FUNCTION public.log_post_action();
-
-
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
 CREATE INDEX IF NOT EXISTS idx_confessions_created_at ON public.confessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_confessions_likes_count ON public.confessions(likes_count DESC);
