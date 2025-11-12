@@ -13,7 +13,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
     const [totalReactions, setTotalReactions] = useState(0)
-    const [isReported, setIsReported] = useState(false)
+    const [isReported, setIsReported] = useState(initialPost.reported || false)
     const [poll, setPoll] = useState(null)
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text

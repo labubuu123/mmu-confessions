@@ -19,6 +19,8 @@ export default function Feed() {
     const { id: modalPostId } = useParams()
 
     const fetchPosts = useCallback(async (isInitial = false) => {
+        if (!isInitial && loading) return;
+
         setLoading(true)
         setError(null)
         
@@ -52,11 +54,26 @@ export default function Feed() {
         } else {
             setPage(1)
         }
-    }, [page])
+    }, [page, loading])
 
     useEffect(() => {
         fetchPosts(true)
     }, [])
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const isNearBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100;
+
+            if (isNearBottom && !loading && hasMore) {
+                fetchPosts();
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+
+        return () => window.removeEventListener('scroll', handleScroll);
+        
+    }, [loading, hasMore, fetchPosts]);
 
     useEffect(() => {
         const channel = supabase
@@ -119,17 +136,6 @@ export default function Feed() {
             {loading && (
                 <div className="flex justify-center items-center py-10">
                     <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            )}
-
-            {!loading && hasMore && posts.length > 0 && (
-                <div className="flex justify-center mt-8">
-                    <button
-                        onClick={() => fetchPosts()}
-                        className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                    >
-                        Load More
-                    </button>
                 </div>
             )}
 
