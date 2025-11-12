@@ -58,7 +58,9 @@ export default function PostForm({ onPosted }) {
 
         try {
             setMsg('Checking cooldown...')
-            const { error: cooldownError } = await supabase.rpc('check_post_cooldown')
+            const { error: cooldownError } = await supabase.rpc('check_post_cooldown', {
+                author_id_in: anonId
+            })
 
             if (cooldownError) {
                 throw new Error(cooldownError.message)
@@ -482,7 +484,7 @@ export default function PostForm({ onPosted }) {
 
                 {msg && (
                     <div className={`mt-3 text-sm px-4 py-2 rounded-lg ${
-                        msg.includes('Failed') || msg.includes('large') || msg.includes('Maximum') || msg.includes('too long') || msg.includes('must accept') || msg.includes('wait')
+                        msg.includes('Failed') || msg.includes('large') || msg.includes('Maximum') || msg.includes('too long') || msg.includes('must accept')
                             ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
                             : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                     }`}>
