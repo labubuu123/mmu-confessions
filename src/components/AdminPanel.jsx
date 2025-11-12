@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
@@ -12,6 +12,8 @@ import PollDisplay from './PollDisplay'
 
 dayjs.extend(relativeTime)
 
+const POSTS_PER_PAGE = 10
+
 export default function AdminPanel() {
     const [user, setUser] = useState(null)
     const [email, setEmail] = useState('')
@@ -20,6 +22,9 @@ export default function AdminPanel() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [actionLoading, setActionLoading] = useState({})
+
+    const [page, setPage] = useState(0)
+    const [hasMore, setHasMore] = useState(true)
 
     const [comments, setComments] = useState({})
     const [commentsLoading, setCommentsLoading] = useState({})
@@ -42,9 +47,11 @@ export default function AdminPanel() {
                     setVisibleComments({})
                     setError(null)
                     setPolls({})
+                    setPage(0)
+                    setHasMore(true)
                 } else if (event === 'SIGNED_IN') {
                     setUser(session.user)
-                    fetchPosts()
+                    fetchPosts(true)
                 }
             }
         )
@@ -61,23 +68,22 @@ export default function AdminPanel() {
                 return
             }
             const postIds = posts.map(p => p.id)
-            try {
-                const { data, error } = await supabase
-                    .from('polls')
-                    .select('*')
-                    .in('confession_id', postIds)
-                
-                if (error) throw error
-                
-                if (data) {
-                    const pollMap = {}
-                    data.forEach(p => {
-                        pollMap[p.confession_id] = p
-                    })
-                    setPolls(pollMap)
-                }
-            } catch (err) {
-                console.error("Failed to fetch polls for admin panel:", err)
+            const { data, error } = await supabase
+                .from('polls')
+                .select('*')
+                .in('confession_id', postIds)
+            
+            if (error) {
+                console.error("Failed to fetch polls:", err)
+                return
+            }
+            
+            if (data) {
+                const pollMap = {}
+                data.forEach(p => {
+                    pollMap[p.confession_id] = p
+                })
+                setPolls(prev => ({ ...prev, ...pollMap }))
             }
         }
 
@@ -89,7 +95,7 @@ export default function AdminPanel() {
         const session = data?.session
         if (session) {
             setUser(session.user)
-            fetchPosts()
+            fetchPosts(true)
         }
     }
 
@@ -121,10 +127,6 @@ export default function AdminPanel() {
             const { error } = await supabase.auth.signOut()
             if (error) throw error
             
-            setUser(null)
-            setPosts([])
-            setSelectedPosts(new Set())
-
         } catch (err) {
             console.error('Sign-out error:', err)
             alert('Failed to sign out: ' + err.message)
@@ -134,18 +136,46 @@ export default function AdminPanel() {
         }
     }
 
-    async function fetchPosts() {
+    const fetchPosts = useCallback(async (isInitial = false) => {
+        if (loading && !isInitial) return
+        
         setLoading(true)
-        const { data } = await supabase
+        if (isInitial) setError(null)
+        
+        const currentPage = isInitial ? 0 : page
+        const { data, error } = await supabase
             .from('confessions')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(200)
-        
-        setPosts(data || [])
+            .range(currentPage * POSTS_PER_PAGE, (currentPage + 1) * POSTS_PER_PAGE - 1)
+
         setLoading(false)
-        setSelectedPosts(new Set())
-    }
+
+        if (error) {
+            setError('Could not fetch posts: ' + error.message)
+            return
+        }
+
+        if (data.length < POSTS_PER_PAGE) {
+            setHasMore(false)
+        } else {
+            setHasMore(true)
+        }
+
+        setPosts(prev => {
+            const newPosts = data.filter(d => !prev.some(p => p.id === d.id))
+            return isInitial ? data : [...prev, ...newPosts]
+        })
+        
+        if (!isInitial) {
+            setPage(currentPage + 1)
+        } else {
+            setPage(1)
+            setSelectedPosts(new Set())
+            setHasMore(data.length === POSTS_PER_PAGE)
+        }
+    }, [page, loading])
+    // ---
 
     async function handleDelete(postId) {
         if (!window.confirm(`Are you sure you want to DELETE post ${postId}? This will delete the post, all comments, reactions, and associated media. This cannot be undone.`)) {
@@ -485,11 +515,11 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
 
                 <div className="flex gap-2">
                     <button
-                        onClick={fetchPosts}
+                        onClick={() => fetchPosts(true)}
                         disabled={loading || bulkLoading}
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
                     >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
 
@@ -789,6 +819,31 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     })}
                 </div>
             )}
+
+            {loading && posts.length > 0 && (
+                <div className="flex justify-center items-center py-10">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+            )}
+
+            {!loading && hasMore && posts.length > 0 && (
+                <div className="flex justify-center mt-8">
+                    <button
+                        onClick={() => fetchPosts()}
+                        disabled={loading || bulkLoading}
+                        className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+                    >
+                        Load More
+                    </button>
+                </div>
+            )}
+
+            {!loading && !hasMore && (
+                <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                    You've reached the end.
+                </p>
+            )}
+
         </div>
     )
 }
