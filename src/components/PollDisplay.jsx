@@ -195,7 +195,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
 
             {hasVoted && !isEnded && !isAdminReview && (
                 <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
-                    💡 You can change your vote anytime before the poll ends — just refresh the website
+                    💡 You can change your vote anytime before the poll ends — just refresh this page
                 </p>
             )}
 
