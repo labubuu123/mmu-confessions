@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
-import { extractTags, extractHashtagsForPreview } from '../utils/hashtags' 
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag } from 'lucide-react'
+import { extractTags, extractHashtagsForPreview } from '../utils/hashtags'
+// FIXED: Added BarChart3
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import PollCreator from '../components/PollCreator'
 
 const MAX_VIDEO_SIZE_MB = 25
 const MAX_IMAGES = 3
@@ -30,8 +32,9 @@ export default function PostForm({ onPosted }) {
     const [msg, setMsg] = useState('')
     const [uploadProgress, setUploadProgress] = useState(0)
     const [policyAccepted, setPolicyAccepted] = useState(false)
-
     const detectedTags = extractHashtagsForPreview(text);
+    const [showPollCreator, setShowPollCreator] = useState(false)
+    const [pollData, setPollData] = useState(null)
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -65,7 +68,6 @@ export default function PostForm({ onPosted }) {
             if (cooldownError) {
                 throw new Error(cooldownError.message)
             }
-            
             let media_urls = []
             let media_type = null
             let single_media_url = null
@@ -163,6 +165,30 @@ export default function PostForm({ onPosted }) {
                 throw error
             }
 
+            const postId = data[0].id
+
+            if (pollData && pollData.question && pollData.options.length >= 2) {
+                setMsg('Creating poll...')
+                
+                const endsAt = pollData.duration > 0
+                    ? new Date(Date.now() + pollData.duration * 24 * 60 * 60 * 1000).toISOString()
+                    : null
+
+                const { error: pollError } = await supabase
+                    .from('polls')
+                    .insert([{
+                        confession_id: postId,
+                        question: pollData.question,
+                        options: pollData.options,
+                        ends_at: endsAt,
+                        total_votes: 0
+                    }])
+
+                if (pollError) {
+                    console.error('Poll creation error:', pollError)
+                }
+            }
+
             if (onPosted && data && data.length > 0) {
                 onPosted(data[0])
             }
@@ -174,6 +200,7 @@ export default function PostForm({ onPosted }) {
             setPreviews([])
             setVideoPreview(null)
             setPolicyAccepted(false)
+            setPollData(null)
             setUploadProgress(0)
             setMsg('Posted successfully! ✓')
             
@@ -378,6 +405,18 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
+                {showPollCreator && (
+                    <div className="my-4">
+                        <PollCreator
+                            onPollData={setPollData}
+                            onRemovePoll={() => {
+                                setShowPollCreator(false)
+                                setPollData(null)
+                            }}
+                        />
+                    </div>
+                )}
+
                 {loading && uploadProgress > 0 && uploadProgress < 100 && (
                     <div className="my-4">
                         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -461,6 +500,22 @@ export default function PostForm({ onPosted }) {
                                 disabled={loading || images.length > 0 || !!video}
                             />
                         </label>
+                        
+                        <button
+                            type="button"
+                            onClick={() => setShowPollCreator(!showPollCreator)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                                showPollCreator
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                            disabled={loading}
+                        >
+                            <BarChart3 className="w-5 h-5 text-indigo-500" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                Poll
+                            </span>
+                        </button>
                     </div>
 
                     <button

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
+import PollDisplay from './PollDisplay'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -13,6 +14,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [reactions, setReactions] = useState({})
     const [totalReactions, setTotalReactions] = useState(0)
     const [isReported, setIsReported] = useState(false)
+    const [poll, setPoll] = useState(null)
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
 
@@ -46,6 +48,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             .subscribe()
 
         fetchReactions()
+        fetchPoll()
 
         const reactionsChannel = supabase
             .channel(`reactions-${post.id}`)
@@ -80,6 +83,18 @@ export default function PostCard({ post: initialPost, onOpen }) {
             })
             setReactions(reactionsMap)
             setTotalReactions(total)
+        }
+    }
+
+    async function fetchPoll() {
+        const { data } = await supabase
+            .from('polls')
+            .select('*')
+            .eq('confession_id', post.id)
+            .single()
+        
+        if (data) {
+            setPoll(data)
         }
     }
 
@@ -137,6 +152,13 @@ export default function PostCard({ post: initialPost, onOpen }) {
                     <div className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-5">
                         <TrendingUp className="w-3 h-3" />
                         TRENDING
+                    </div>
+                )}
+
+                {poll && (
+                    <div className="px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-6">
+                        <BarChart3 className="w-3 h-3" />
+                        POLL
                     </div>
                 )}
             </div>
@@ -226,6 +248,22 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                 <source src={post.media_url} />
                             </audio>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {poll && (
+                <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                        <div className="flex items-center gap-2 mb-2">
+                            <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {poll.question}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {poll.total_votes} {poll.total_votes === 1 ? 'vote' : 'votes'} • Click to view and vote
+                        </p>
                     </div>
                 </div>
             )}
