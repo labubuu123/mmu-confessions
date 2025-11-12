@@ -101,7 +101,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
     const totalVotes = poll.total_votes || 0
     const isEnded = poll.ends_at && new Date(poll.ends_at) < new Date()
     const timeRemaining = poll.ends_at ? dayjs(poll.ends_at).fromNow() : null
-    const showResults = isEnded || isAdminReview;
+    const showResults = true;
 
     return (
         <div className="mt-4 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
