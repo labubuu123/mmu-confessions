@@ -71,6 +71,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     async function handleReport() {
         if (!internalPost) return
+
+        if (internalPost.reported) {
+            alert('You have already reported this post.')
+            return
+        }
         
         const confirmed = window.confirm('Report this post as inappropriate? This will flag it for moderator review.')
         if (!confirmed) return
@@ -78,15 +83,14 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         setReportLoading(true)
 
         try {
-            const { error } = await supabase
-                .from('confessions')
-                .update({ reported: true })
-                .eq('id', internalPost.id)
+            const { error } = await supabase.rpc('increment_report_count', {
+                post_id_in: internalPost.id
+            })
 
             if (error) throw error
 
             alert('Post reported successfully. Thank you for helping keep our community safe.')
-            setInternalPost(prev => ({ ...prev, reported: true }))
+            setInternalPost(prev => ({ ...prev, reported: true, report_count: (prev.report_count || 0) + 1 }))
         } catch (err) {
             console.error('Report error:', err)
             alert('Failed to report post: ' + err.message)

@@ -382,7 +382,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.increment_report_count(post_id_in BIGINT)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
