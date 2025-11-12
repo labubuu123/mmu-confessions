@@ -3,11 +3,12 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff
+    ShieldOff, BarChart3
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import PollDisplay from './PollDisplay'
 
 dayjs.extend(relativeTime)
 
@@ -26,6 +27,7 @@ export default function AdminPanel() {
 
     const [selectedPosts, setSelectedPosts] = useState(new Set())
     const [bulkLoading, setBulkLoading] = useState(false)
+    const [polls, setPolls] = useState({})
 
     useEffect(() => {
         checkSession()
@@ -39,6 +41,7 @@ export default function AdminPanel() {
                     setComments({})
                     setVisibleComments({})
                     setError(null)
+                    setPolls({})
                 } else if (event === 'SIGNED_IN') {
                     setUser(session.user)
                     fetchPosts()
@@ -50,6 +53,36 @@ export default function AdminPanel() {
             subscription?.unsubscribe()
         }
     }, [])
+
+    useEffect(() => {
+        async function fetchPollsForPosts() {
+            if (posts.length === 0) {
+                setPolls({})
+                return
+            }
+            const postIds = posts.map(p => p.id)
+            try {
+                const { data, error } = await supabase
+                    .from('polls')
+                    .select('*')
+                    .in('confession_id', postIds)
+                
+                if (error) throw error
+                
+                if (data) {
+                    const pollMap = {}
+                    data.forEach(p => {
+                        pollMap[p.confession_id] = p
+                    })
+                    setPolls(pollMap)
+                }
+            } catch (err) {
+                console.error("Failed to fetch polls for admin panel:", err)
+            }
+        }
+
+        fetchPollsForPosts()
+    }, [posts])
 
     async function checkSession() {
         const { data } = await supabase.auth.getSession()
@@ -519,12 +552,13 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 <div className="space-y-4">
                     {posts.map(p => {
                         const isSelected = selectedPosts.has(p.id);
+                        const poll = polls[p.id];
                         return (
                             <div
                                 key={p.id}
                                 className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${
                                     isSelected
-                                        ? 'border-indigo-500 ring-2 ring-indigo-500/50' 
+                                        ? 'border-indigo-500 ring-2 ring-indigo-500/50'
                                         : 'border-gray-200 dark:border-gray-700'
                                 } p-5`}
                             >
@@ -545,6 +579,12 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                 {new Date(p.created_at).toLocaleString()} • ID: {p.id}
                                             </div>
                                             <div className="flex items-center gap-2 flex-wrap justify-end">
+                                                {poll && (
+                                                    <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded flex items-center gap-1">
+                                                        <BarChart3 className="w-3 h-3" />
+                                                        Poll
+                                                    </span>
+                                                )}
                                                 {p.pinned && (
                                                     <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded flex items-center gap-1">
                                                         📌 Pinned
@@ -578,6 +618,12 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                         <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mb-3">
                                             {p.text}
                                         </p>
+                                        
+                                        {poll && (
+                                            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                                                <PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} />
+                                            </div>
+                                        )}
 
                                         {p.media_url && (
                                             <div className="mb-3">

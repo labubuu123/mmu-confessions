@@ -15,17 +15,17 @@ function getAnonId() {
     return anonId
 }
 
-export default function PollDisplay({ confessionId, poll: initialPoll }) {
+export default function PollDisplay({ confessionId, poll: initialPoll, isAdminReview = false }) {
     const [poll, setPoll] = useState(initialPoll)
     const [userVote, setUserVote] = useState(null)
     const [voting, setVoting] = useState(false)
     const [hasVoted, setHasVoted] = useState(false)
 
     useEffect(() => {
-        if (poll) {
+        if (poll && !isAdminReview) {
             checkUserVote()
         }
-    }, [poll?.id])
+    }, [poll?.id, isAdminReview])
 
     useEffect(() => {
         if (!poll?.id) return
@@ -46,6 +46,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
     }, [poll?.id])
 
     async function checkUserVote() {
+        if (isAdminReview) return
         const anonId = getAnonId()
         const { data, error } = await supabase.rpc('get_user_poll_vote', {
             poll_id_in: poll.id,
@@ -59,7 +60,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
     }
 
     async function handleVote(optionIndex) {
-        if (voting) return
+        if (voting || isAdminReview) return
 
         const isEnded = poll.ends_at && new Date(poll.ends_at) < new Date()
         if (isEnded) {
@@ -100,6 +101,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
     const totalVotes = poll.total_votes || 0
     const isEnded = poll.ends_at && new Date(poll.ends_at) < new Date()
     const timeRemaining = poll.ends_at ? dayjs(poll.ends_at).fromNow() : null
+    const showResults = isEnded || isAdminReview;
 
     return (
         <div className="mt-4 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
@@ -131,18 +133,18 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
                         <button
                             key={index}
                             onClick={() => handleVote(index)}
-                            disabled={voting || isEnded}
+                            disabled={voting || isEnded || isAdminReview}
                             className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${
-                                isEnded || hasVoted
+                                isEnded
                                     ? 'cursor-default'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50 cursor-pointer'
                             } ${
-                                isSelected
+                                isSelected && !isAdminReview
                                     ? 'bg-white dark:bg-gray-800 border-2 border-indigo-500'
                                     : 'bg-white/70 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-600'
                             }`}
                         >
-                            {(hasVoted || isEnded) && (
+                            {showResults && (
                                 <div
                                     className="absolute inset-0 bg-indigo-100 dark:bg-indigo-900/30 transition-all duration-500"
                                     style={{ width: `${percentage}%` }}
@@ -151,7 +153,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
 
                             <div className="relative flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    {isSelected && (
+                                    {isSelected && !isAdminReview && (
                                         <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                                     )}
                                     <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -159,7 +161,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
                                     </span>
                                 </div>
 
-                                {(hasVoted || isEnded) && (
+                                {showResults && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-gray-600 dark:text-gray-400">
                                             {votes} {votes === 1 ? 'vote' : 'votes'}
@@ -191,9 +193,15 @@ export default function PollDisplay({ confessionId, poll: initialPoll }) {
                 )}
             </div>
 
-            {hasVoted && !isEnded && (
+            {hasVoted && !isEnded && !isAdminReview && (
                 <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
-                    💡 You can change your vote anytime before the poll ends
+                    💡 You can change your vote anytime before the poll ends — just refresh the website
+                </p>
+            )}
+
+            {isAdminReview && (
+                <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
+                    (Admin read-only view)
                 </p>
             )}
         </div>

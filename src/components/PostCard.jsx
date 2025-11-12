@@ -254,17 +254,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
 
             {poll && (
                 <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                        <div className="flex items-center gap-2 mb-2">
-                            <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {poll.question}
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {poll.total_votes} {poll.total_votes === 1 ? 'vote' : 'votes'} • Click to view and vote
-                        </p>
-                    </div>
+                    <PollDisplay poll={poll} confessionId={post.id} />
                 </div>
             )}
 
@@ -314,7 +304,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                     <button
                         onClick={handleReport}
                         disabled={isReported}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1.push-all ${
                             isReported
                                 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
