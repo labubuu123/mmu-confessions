@@ -10,7 +10,7 @@ dayjs.extend(relativeTime)
 
 const COMMENT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🤔', '🙏', '👏', '🤯']
 
-export default function Comment({ comment, postId }) { 
+export default function Comment({ comment, postId }) {
     const [isReplying, setIsReplying] = useState(false)
     const [reactionLoading, setReactionLoading] = useState(false)
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)

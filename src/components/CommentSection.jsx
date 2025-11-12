@@ -105,10 +105,10 @@ export default function CommentSection({ postId }) {
                 <div className="space-y-5 mt-6">
                     {renderedComments.length > 0 ? (
                         renderedComments.map(comment => (
-                            <Comment 
-                                key={comment.id} 
-                                comment={comment} 
-                                postId={postId} 
+                            <Comment
+                                key={comment.id}
+                                comment={comment}
+                                postId={postId}
                             />
                         ))
                     ) : (

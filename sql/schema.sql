@@ -64,6 +64,14 @@ BEGIN
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.reactions', pol.policyname); END LOOP;
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='actions_log'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.actions_log', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='polls'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.polls', pol.policyname); END LOOP;
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='poll_votes'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.poll_votes', pol.policyname); END LOOP;
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='user_reputation'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.user_reputation', pol.policyname); END LOOP;
+
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol.policyname); END LOOP;
 END $$;
@@ -89,8 +97,20 @@ CREATE TABLE IF NOT EXISTS public.poll_votes (
     UNIQUE(poll_id, voter_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.user_reputation (
+    author_id TEXT PRIMARY KEY,
+    post_count INTEGER DEFAULT 0,
+    comment_count INTEGER DEFAULT 0,
+    post_reactions_received_count INTEGER DEFAULT 0,
+    comment_reactions_received_count INTEGER DEFAULT 0,
+    badges TEXT[] DEFAULT ARRAY[]::TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Enable insert for all users"
 ON public.confessions
@@ -215,6 +235,11 @@ ON public.poll_votes
 FOR DELETE
 USING ((SELECT auth.role()) = 'authenticated');
 
+CREATE POLICY "Enable read for all users"
+ON public.user_reputation
+FOR SELECT
+USING (true);
+
 CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
 RETURNS void
 LANGUAGE plpgsql
@@ -229,7 +254,7 @@ BEGIN
 
     IF emoji_in = '👍' THEN
         UPDATE public.confessions
-        SET 
+        SET
             likes_count = COALESCE(likes_count, 0) + 1,
             updated_at = NOW()
         WHERE id = post_id_in;
@@ -508,6 +533,275 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_comment_reaction_total(reactions_json JSONB)
+RETURNS INTEGER
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+    total INTEGER := 0;
+    r_value TEXT;
+BEGIN
+    IF reactions_json IS NULL THEN
+        RETURN 0;
+    END IF;
+    
+    FOR r_value IN SELECT value FROM jsonb_each_text(reactions_json)
+    LOOP
+        total := total + r_value::INTEGER;
+    END LOOP;
+    
+    RETURN total;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.recalculate_user_badges(author_id_in TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    rep_record RECORD;
+    new_badges TEXT[] := ARRAY[]::TEXT[];
+BEGIN
+    SELECT * INTO rep_record
+    FROM public.user_reputation
+    WHERE author_id = author_id_in;
+
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+
+    IF (rep_record.post_count + rep_record.comment_count) >= 10 THEN
+        new_badges := array_append(new_badges, 'ACTIVE_MEMBER');
+    END IF;
+    
+    IF rep_record.comment_count >= 5 THEN
+        new_badges := array_append(new_badges, 'HELPFUL_COMMENTER');
+    END IF;
+
+    IF (rep_record.post_reactions_received_count + rep_record.comment_reactions_received_count) >= 20 THEN
+        new_badges := array_append(new_badges, 'SUPPORTIVE_FRIEND');
+    END IF;
+
+    UPDATE public.user_reputation
+    SET badges = new_badges
+    WHERE author_id = author_id_in;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.handle_new_confession()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF NEW.author_id IS NOT NULL THEN
+        INSERT INTO public.user_reputation (author_id, post_count)
+        VALUES (NEW.author_id, 1)
+        ON CONFLICT (author_id)
+        DO UPDATE SET
+            post_count = public.user_reputation.post_count + 1,
+            updated_at = NOW();
+        
+        PERFORM public.recalculate_user_badges(NEW.author_id);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.handle_new_comment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF NEW.author_id IS NOT NULL THEN
+        INSERT INTO public.user_reputation (author_id, comment_count)
+        VALUES (NEW.author_id, 1)
+        ON CONFLICT (author_id)
+        DO UPDATE SET
+            comment_count = public.user_reputation.comment_count + 1,
+            updated_at = NOW();
+            
+        PERFORM public.recalculate_user_badges(NEW.author_id);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.handle_post_reaction()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    post_author_id TEXT;
+    reaction_diff INTEGER;
+BEGIN
+    SELECT author_id INTO post_author_id
+    FROM public.confessions
+    WHERE id = NEW.post_id;
+
+    IF post_author_id IS NOT NULL THEN
+        IF TG_OP = 'INSERT' THEN
+            reaction_diff := NEW.count;
+        ELSIF TG_OP = 'UPDATE' THEN
+            reaction_diff := NEW.count - OLD.count;
+        END IF;
+
+        INSERT INTO public.user_reputation (author_id, post_reactions_received_count)
+        VALUES (post_author_id, reaction_diff)
+        ON CONFLICT (author_id)
+        DO UPDATE SET
+            post_reactions_received_count = public.user_reputation.post_reactions_received_count + reaction_diff,
+            updated_at = NOW();
+            
+        PERFORM public.recalculate_user_badges(post_author_id);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.handle_comment_reaction()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    old_total INTEGER;
+    new_total INTEGER;
+    reaction_diff INTEGER;
+BEGIN
+    IF OLD.reactions IS DISTINCT FROM NEW.reactions AND NEW.author_id IS NOT NULL THEN
+        old_total := public.get_comment_reaction_total(OLD.reactions);
+        new_total := public.get_comment_reaction_total(NEW.reactions);
+        reaction_diff := new_total - old_total;
+
+        IF reaction_diff != 0 THEN
+            INSERT INTO public.user_reputation (author_id, comment_reactions_received_count)
+            VALUES (NEW.author_id, reaction_diff)
+            ON CONFLICT (author_id)
+            DO UPDATE SET
+                comment_reactions_received_count = public.user_reputation.comment_reactions_received_count + reaction_diff,
+                updated_at = NOW();
+                
+            PERFORM public.recalculate_user_badges(NEW.author_id);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_confessions_with_reputation(
+    page_number INT,
+    page_size INT
+)
+RETURNS TABLE (
+    id BIGINT,
+    text TEXT,
+    author_id TEXT,
+    approved BOOLEAN,
+    reported BOOLEAN,
+    likes_count INTEGER,
+    comments_count INTEGER,
+    media_url TEXT,
+    media_urls TEXT[],
+    media_type TEXT,
+    tags TEXT[],
+    author_name TEXT,
+    pinned BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    author_reputation JSONB
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        c.*,
+        COALESCE(
+            jsonb_build_object('badges', ur.badges),
+            '{"badges": []}'::jsonb
+        ) AS author_reputation
+    FROM
+        public.confessions c
+    LEFT JOIN
+        public.user_reputation ur ON c.author_id = ur.author_id
+    WHERE
+        c.approved = true
+    ORDER BY
+        c.pinned DESC,
+        c.created_at DESC
+    OFFSET
+        page_number * page_size
+    LIMIT
+        page_size;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_comments_with_reputation(
+    post_id_in BIGINT
+)
+RETURNS TABLE (
+    id BIGINT,
+    post_id BIGINT,
+    parent_id BIGINT,
+    author_id TEXT,
+    text TEXT,
+    author_name TEXT,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    reactions JSONB,
+    author_reputation JSONB
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        co.*,
+        COALESCE(
+            jsonb_build_object('badges', ur.badges),
+            '{"badges": []}'::jsonb
+        ) AS author_reputation
+    FROM
+        public.comments co
+    LEFT JOIN
+        public.user_reputation ur ON co.author_id = ur.author_id
+    WHERE
+        co.post_id = post_id_in
+    ORDER BY
+        co.created_at DESC;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
+CREATE TRIGGER on_new_confession
+    AFTER INSERT ON public.confessions
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_confession();
+
+DROP TRIGGER IF EXISTS on_new_comment ON public.comments;
+CREATE TRIGGER on_new_comment
+    AFTER INSERT ON public.comments
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_comment();
+
+DROP TRIGGER IF EXISTS on_post_reaction ON public.reactions;
+CREATE TRIGGER on_post_reaction
+    AFTER INSERT OR UPDATE ON public.reactions
+    FOR EACH ROW EXECUTE FUNCTION public.handle_post_reaction();
+
+DROP TRIGGER IF EXISTS on_comment_reaction ON public.comments;
+CREATE TRIGGER on_comment_reaction
+    AFTER UPDATE OF reactions ON public.comments
+    FOR EACH ROW EXECUTE FUNCTION public.handle_comment_reaction();
 
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
 CREATE INDEX IF NOT EXISTS idx_confessions_created_at ON public.confessions(created_at DESC);
@@ -538,7 +832,15 @@ GRANT ALL ON SEQUENCE polls_id_seq TO anon, authenticated;
 GRANT ALL ON SEQUENCE poll_votes_id_seq TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
-
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
+GRANT ALL ON public.user_reputation TO anon, authenticated;
+GRANT ALL ON FUNCTION public.get_comment_reaction_total(JSONB) TO anon, authenticated;
+GRANT ALL ON FUNCTION public.recalculate_user_badges(TEXT) TO anon, authenticated;
+GRANT ALL ON FUNCTION public.handle_new_confession() TO anon, authenticated;
+GRANT ALL ON FUNCTION public.handle_new_comment() TO anon, authenticated;
+GRANT ALL ON FUNCTION public.handle_post_reaction() TO anon, authenticated;
+GRANT ALL ON FUNCTION public.handle_comment_reaction() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_confessions_with_reputation(INT, INT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_comments_with_reputation(BIGINT) TO anon, authenticated;
