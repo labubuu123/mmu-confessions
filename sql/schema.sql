@@ -330,7 +330,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.check_post_cooldown(author_id_in TEXT)
+CREATE OR REPLACE FUNCTION public.check_post_cooldown()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -338,11 +338,19 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
     last_post_time TIMESTAMP WITH TIME ZONE;
+    user_ip TEXT;
 BEGIN
+    user_ip := inet_client_addr()::text;
+    
+    IF user_ip IS NULL THEN
+        user_ip := '0.0.0.0';
+    END IF;
+
     SELECT created_at
     INTO last_post_time
-    FROM public.confessions
-    WHERE author_id = author_id_in
+    FROM public.actions_log
+    WHERE ip_address = user_ip
+        AND action_type = 'post_confession'
     ORDER BY created_at DESC
     LIMIT 1;
 
@@ -351,6 +359,35 @@ BEGIN
     END IF;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.log_post_action()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    user_ip TEXT;
+    user_agent_str TEXT;
+BEGIN
+    user_ip := inet_client_addr()::text;
+    
+    user_agent_str := current_setting('request.headers', true)::json->>'user-agent';
+    
+    INSERT INTO public.actions_log (action_type, ip_address, user_agent)
+    VALUES ('post_confession', user_ip, user_agent_str);
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER log_confession_action
+AFTER INSERT ON public.confessions
+FOR EACH ROW
+EXECUTE FUNCTION public.log_post_action();
 
 
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
@@ -365,6 +402,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON public.comments(parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_reactions_post_id ON public.reactions(post_id);
 CREATE INDEX IF NOT EXISTS idx_confessions_pinned ON public.confessions(pinned DESC);
+CREATE INDEX IF NOT EXISTS idx_actions_log_ip_type ON public.actions_log(ip_address, action_type, created_at DESC);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
@@ -373,7 +411,8 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_post_cooldown() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_post_action() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
