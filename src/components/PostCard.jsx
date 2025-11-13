@@ -165,7 +165,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const getPostAge = () => {
         const hours = dayjs().diff(dayjs(post.created_at), 'hour')
         if (hours < 1) return { label: 'NEW', color: 'green' }
-        if (hours < 24) return { label: 'RECENT', color: 'blue' }
         return null
     }
 
