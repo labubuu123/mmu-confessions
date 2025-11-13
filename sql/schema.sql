@@ -124,7 +124,6 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.confessions ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
 
 CREATE POLICY "Enable insert for all users"
 ON public.confessions
@@ -824,21 +823,6 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION increment_view_count(post_id_in BIGINT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-BEGIN
-    UPDATE public.confessions
-    SET
-        view_count = COALESCE(view_count, 0) + 1,
-        updated_at = NOW()
-    WHERE id = post_id_in;
-END;
-$$;
-
 DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
 CREATE TRIGGER on_new_confession
     AFTER INSERT ON public.confessions
@@ -874,7 +858,6 @@ CREATE INDEX IF NOT EXISTS idx_poll_votes_poll_id ON public.poll_votes(poll_id);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_voter_id ON public.poll_votes(voter_id);
 CREATE INDEX IF NOT EXISTS idx_events_confession_id ON public.events(confession_id);
 CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DESC);
-CREATE INDEX IF NOT EXISTS idx_confessions_view_count ON public.confessions(view_count DESC);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
@@ -905,4 +888,3 @@ GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticate
 GRANT EXECUTE ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_view_count(BIGINT) TO anon, authenticated;
