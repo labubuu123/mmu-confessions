@@ -134,15 +134,13 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                             key={index}
                             onClick={() => handleVote(index)}
                             disabled={voting || isEnded || isAdminReview}
-                            className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${
-                                isEnded
+                            className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${isEnded
                                     ? 'cursor-default'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50 cursor-pointer'
-                            } ${
-                                isSelected && !isAdminReview
+                                } ${isSelected && !isAdminReview
                                     ? 'bg-white dark:bg-gray-800 border-2 border-indigo-500'
                                     : 'bg-white/70 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-600'
-                            }`}
+                                }`}
                         >
                             {showResults && (
                                 <div

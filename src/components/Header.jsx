@@ -1,10 +1,10 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText, Search, Users } from 'lucide-react'
+import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText, Search, Users, BarChart3 } from 'lucide-react'
 
 export default function Header({ theme, setTheme, onlineCount }) {
     const location = useLocation()
-    
+
     const isActive = (path) => {
         if (path === '/' && location.pathname === '/') return true
         if (path !== '/' && location.pathname.startsWith(path)) return true
@@ -32,59 +32,65 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     <nav className="hidden md:flex items-center gap-1">
                         <Link
                             to="/"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                                isActive('/')
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/')
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
                         >
                             <Home className="w-4 h-4" />
                             <span className="font-medium">Home</span>
                         </Link>
-                        
+
                         <Link
                             to="/top"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                                isActive('/top')
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/top')
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
                         >
                             <TrendingUp className="w-4 h-4" />
                             <span className="font-medium">Top</span>
                         </Link>
-                        
+
                         <Link
                             to="/search"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                                isActive('/search')
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/search')
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
                         >
                             <Search className="w-4 h-4" />
                             <span className="font-medium">Search</span>
                         </Link>
-                        
+
                         <Link
-                            to="/policy"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                                isActive('/policy')
+                            to="/analytics"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/analytics')
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
+                        >
+                            <BarChart3 className="w-4 h-4" />
+                            <span className="font-medium">My Stats</span>
+                        </Link>
+
+                        <Link
+                            to="/policy"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/policy')
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
                         >
                             <FileText className="w-4 h-4" />
                             <span className="font-medium">Policy</span>
                         </Link>
-                        
+
                         <Link
                             to="/admin"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                                isActive('/admin')
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${isActive('/admin')
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
                         >
                             <Shield className="w-4 h-4" />
                             <span className="font-medium">Admin</span>
@@ -122,50 +128,57 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     </div>
                 </div>
 
-                <nav className="md:hidden grid grid-cols-4 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 gap-1">
+                <nav className="md:hidden grid grid-cols-5 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 gap-1">
                     <Link
                         to="/"
-                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
-                            isActive('/')
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${isActive('/')
                                 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                        }`}
+                            }`}
                     >
                         <Home className="w-5 h-5" />
                         <span className="text-xs font-medium">Home</span>
                     </Link>
-                    
+
                     <Link
                         to="/top"
-                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
-                            isActive('/top')
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${isActive('/top')
                                 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                        }`}
+                            }`}
                     >
                         <TrendingUp className="w-5 h-5" />
                         <span className="text-xs font-medium">Top</span>
                     </Link>
-                    
+
                     <Link
                         to="/search"
-                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
-                            isActive('/search')
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${isActive('/search')
                                 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                        }`}
+                            }`}
                     >
                         <Search className="w-5 h-5" />
                         <span className="text-xs font-medium">Search</span>
                     </Link>
-                    
+
+                    <Link
+                        to="/analytics"
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${isActive('/analytics')
+                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                            }`}
+                    >
+                        <BarChart3 className="w-5 h-5" />
+                        <span className="text-xs font-medium">Stats</span>
+                    </Link>
+
                     <Link
                         to="/admin"
-                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${
-                            isActive('/admin')
+                        className={`flex flex-col items-center gap-1 py-2 rounded-lg transition ${isActive('/admin')
                                 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                        }`}
+                            }`}
                     >
                         <Shield className="w-5 h-5" />
                         <span className="text-xs font-medium">Admin</span>

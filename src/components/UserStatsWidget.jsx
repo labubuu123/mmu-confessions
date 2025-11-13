@@ -33,13 +33,13 @@ export default function UserStatsWidget() {
         if (posts && posts.length > 0) {
             const dates = posts.map(p => new Date(p.created_at).toDateString())
             const uniqueDates = [...new Set(dates)].sort()
-            
+
             let currentStreak = 1
             for (let i = uniqueDates.length - 1; i > 0; i--) {
                 const current = new Date(uniqueDates[i])
                 const prev = new Date(uniqueDates[i - 1])
                 const diffDays = (current - prev) / (1000 * 60 * 60 * 24)
-                
+
                 if (diffDays === 1) {
                     currentStreak++
                 } else {

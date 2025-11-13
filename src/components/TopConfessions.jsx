@@ -17,7 +17,7 @@ export default function TopConfessions() {
 
     const fetchTop = useCallback(async () => {
         setLoading(true)
-        
+
         let query = supabase
             .from('confessions')
             .select('*')
@@ -34,9 +34,9 @@ export default function TopConfessions() {
             monthAgo.setMonth(monthAgo.getMonth() - 1)
             query = query.gte('created_at', monthAgo.toISOString())
         }
-        
+
         const { data } = await query
-        
+
         if (data) {
             const postsWithReactions = await Promise.all(
                 data.map(async (post) => {
@@ -44,12 +44,12 @@ export default function TopConfessions() {
                         .from('reactions')
                         .select('emoji, count')
                         .eq('post_id', post.id)
-                    
+
                     const reactionsMap = {}
                     reactions?.forEach(r => {
                         reactionsMap[r.emoji] = r.count
                     })
-                    
+
                     return { ...post, reactions: reactionsMap }
                 })
             )
@@ -64,7 +64,7 @@ export default function TopConfessions() {
         } else {
             setItems([])
         }
-        
+
         setLoading(false)
         setLastUpdate(new Date())
     }, [timeRange, getTotalReactions])
@@ -76,7 +76,7 @@ export default function TopConfessions() {
 
     useEffect(() => {
         fetchTop()
-        
+
         const channel = supabase
             .channel('top-confessions-realtime')
             .on('postgres_changes', {
@@ -108,7 +108,7 @@ export default function TopConfessions() {
             setUpdating(true)
             fetchTop().finally(() => setUpdating(false))
         }, 30000)
-        
+
         return () => {
             supabase.removeChannel(channel)
             clearInterval(interval)
@@ -147,7 +147,7 @@ export default function TopConfessions() {
                             </p>
                         </div>
                     </div>
-                    
+
                     <button
                         onClick={() => {
                             setUpdating(true)
@@ -170,11 +170,10 @@ export default function TopConfessions() {
                         <button
                             key={value}
                             onClick={() => setTimeRange(value)}
-                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition text-sm ${
-                                timeRange === value
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition text-sm ${timeRange === value
                                     ? 'bg-indigo-600 text-white'
                                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
+                                }`}
                         >
                             <span className="mr-1">{icon}</span>
                             {label}
@@ -206,12 +205,11 @@ export default function TopConfessions() {
                             className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700 p-5 cursor-pointer transition-all duration-300 group"
                         >
                             <div className="flex gap-4">
-                                <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl relative ${
-                                    index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg' :
-                                    index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700 shadow-md' :
-                                    index === 2 ? 'bg-gradient-to-br from-orange-300 to-orange-400 text-white shadow-md' :
-                                    'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}>
+                                <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl relative ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg' :
+                                        index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700 shadow-md' :
+                                            index === 2 ? 'bg-gradient-to-br from-orange-300 to-orange-400 text-white shadow-md' :
+                                                'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                    }`}>
                                     {index < 3 && (
                                         <div className="absolute -top-1 -right-1 text-lg">
                                             {index === 0 ? '👑' : index === 1 ? '🥈' : '🥉'}
@@ -239,14 +237,14 @@ export default function TopConfessions() {
                                                     {getTotalReactions(item.reactions)}
                                                 </span>
                                             </div>
-                                            
+
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-full">
                                                 <MessageCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                                 <span className="font-bold text-blue-600 dark:text-blue-400">
                                                     {item.comments_count || 0}
                                                 </span>
                                             </div>
-                                            
+
                                             <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                                                 <Calendar className="w-4 h-4" />
                                                 <span className="text-xs">
@@ -257,7 +255,7 @@ export default function TopConfessions() {
                                                 </span>
                                             </div>
                                         </div>
-                                        
+
                                         {item.tags && item.tags.length > 0 && (
                                             <div className="flex gap-1 flex-wrap">
                                                 {item.tags.slice(0, 2).map(tag => (

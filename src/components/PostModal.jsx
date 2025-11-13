@@ -5,7 +5,7 @@ import ReactionsBar from './ReactionsBar'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
-import ImageZoomModal from './ImageZoomModal'
+import ImageGalleryModal from './ImageGalleryModal'
 import { supabase } from '../lib/supabaseClient'
 import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Eye, Link as LinkIcon, Check, Download } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -75,10 +75,10 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                     table: 'confessions',
                     filter: `id=eq.${id}`
                 }, payload => {
-                    setInternalPost(payload.new)
+                    setInternalPost(prev => ({ ...prev, ...payload.new }))
                 })
                 .subscribe()
-            
+
             return () => supabase.removeChannel(channel)
         }
     }, [post, postId])
@@ -97,7 +97,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             .select('*')
             .eq('confession_id', id)
             .single()
-        
+
         if (eventData) {
             setEvent(eventData)
         } else {
@@ -106,7 +106,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                 .select('*')
                 .eq('confession_id', id)
                 .single()
-            
+
             if (pollData) {
                 setPoll(pollData)
             }
@@ -120,7 +120,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             alert('You have already reported this post.')
             return
         }
-        
+
         const confirmed = window.confirm('Report this post as inappropriate? This will flag it for moderator review.')
         if (!confirmed) return
 
@@ -145,7 +145,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     async function handleCopyLink() {
         const url = `${window.location.origin}${window.location.pathname}#/post/${internalPost.id}`
-        
+
         try {
             await navigator.clipboard.writeText(url)
             setLinkCopied(true)
@@ -246,9 +246,8 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleCopyLink}
-                                    className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition ${
-                                        linkCopied ? 'text-green-500' : ''
-                                    }`}
+                                    className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition ${linkCopied ? 'text-green-500' : ''
+                                        }`}
                                     title="Copy Link"
                                 >
                                     {linkCopied ? <Check className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
@@ -271,17 +270,17 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                         </div>
 
+
                         <div className="p-6">
                             <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed text-lg">
                                 {internalPost.text}
                             </p>
 
                             {internalPost.media_type === 'images' && displayImages.length > 0 && (
-                                <div className={`mt-4 ${
-                                    displayImages.length === 1 ? '' :
-                                    displayImages.length === 2 ? 'grid grid-cols-2 gap-2' :
-                                    'grid grid-cols-2 md:grid-cols-3 gap-2'
-                                }`}>
+                                <div className={`mt-4 ${displayImages.length === 1 ? '' :
+                                        displayImages.length === 2 ? 'grid grid-cols-2 gap-2' :
+                                            'grid grid-cols-2 md:grid-cols-3 gap-2'
+                                    }`}>
                                     {displayImages.map((url, idx) => (
                                         <div
                                             key={idx}
@@ -291,9 +290,8 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                             <img
                                                 src={url}
                                                 alt={`media ${idx + 1}`}
-                                                className={`w-full object-contain rounded-xl ${
-                                                    displayImages.length === 1 ? 'max-h-[60vh]' : 'max-h-64'
-                                                }`}
+                                                className={`w-full object-contain rounded-xl ${displayImages.length === 1 ? 'max-h-[60vh]' : 'max-h-64'
+                                                    }`}
                                             />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-xl">
                                                 <ExternalLink className="w-6 h-6 text-white" />
@@ -381,8 +379,9 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             </div>
 
             {zoomedImage && (
-                <ImageZoomModal
-                    imageUrl={zoomedImage}
+                <ImageGalleryModal
+                    images={displayImages}
+                    initialIndex={displayImages.indexOf(zoomedImage)}
                     onClose={() => setZoomedImage(null)}
                 />
             )}

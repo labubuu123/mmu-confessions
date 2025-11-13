@@ -10,7 +10,7 @@ export default function ReactionsBar({ postId }) {
 
     useEffect(() => {
         fetchReactions()
-        
+
         const channel = supabase
             .channel(`reactions-${postId}`)
             .on('postgres_changes', {
@@ -22,7 +22,7 @@ export default function ReactionsBar({ postId }) {
                 fetchReactions()
             })
             .subscribe()
-        
+
         return () => supabase.removeChannel(channel)
     }, [postId])
 
@@ -32,14 +32,14 @@ export default function ReactionsBar({ postId }) {
                 .from('reactions')
                 .select('*')
                 .eq('post_id', postId)
-            
+
             if (error) {
                 console.error('Fetch reactions error:', error)
                 return
             }
-            
+
             const map = {}
-            ;(data || []).forEach(r => map[r.emoji] = r.count)
+                ; (data || []).forEach(r => map[r.emoji] = r.count)
             setReactions(map)
         } catch (err) {
             console.error('Error fetching reactions:', err)
@@ -48,7 +48,7 @@ export default function ReactionsBar({ postId }) {
 
     async function handleReact(emoji) {
         if (loading) return
-        
+
         setLoading(true)
         setAnimating(emoji)
 
@@ -89,9 +89,8 @@ export default function ReactionsBar({ postId }) {
                     key={emoji}
                     onClick={() => handleReact(emoji)}
                     disabled={loading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                        animating === emoji ? 'scale-110 shadow-lg' : ''
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${animating === emoji ? 'scale-110 shadow-lg' : ''
+                        }`}
                     title={`React with ${emoji}`}
                 >
                     <span className="text-xl">{emoji}</span>

@@ -22,11 +22,10 @@ export default function MoodSelector({ selectedMood, onSelectMood }) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                    selectedMood
-                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${selectedMood
+                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
             >
                 {selectedMood ? (
                     <>
@@ -37,7 +36,7 @@ export default function MoodSelector({ selectedMood, onSelectMood }) {
                     </>
                 ) : (
                     <>
-                        <Smile className="w-5 h-5 text-gray-500" />
+                        <Smile className="w-5 h-5 text-yellow-500" />
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                             Mood
                         </span>
@@ -77,19 +76,17 @@ export default function MoodSelector({ selectedMood, onSelectMood }) {
                                         onSelectMood(mood)
                                         setIsOpen(false)
                                     }}
-                                    className={`group relative flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
-                                        selectedMood?.label === mood.label
-                                            ? `bg-gradient-to-br ${mood.color} shadow-lg scale-110`
-                                            : 'hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-110'
-                                    }`}
+                                    className={`group relative flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${selectedMood?.label === mood.label
+                                        ? `bg-gradient-to-br ${mood.color} shadow-lg scale-110`
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-110'
+                                        }`}
                                     title={mood.label}
                                 >
                                     <span className="text-2xl">{mood.emoji}</span>
-                                    <span className={`text-[10px] font-medium transition ${
-                                        selectedMood?.label === mood.label
-                                            ? 'text-white'
-                                            : 'text-gray-600 dark:text-gray-400'
-                                    }`}>
+                                    <span className={`text-[10px] font-medium transition ${selectedMood?.label === mood.label
+                                        ? 'text-white'
+                                        : 'text-gray-600 dark:text-gray-400'
+                                        }`}>
                                         {mood.label}
                                     </span>
                                 </button>

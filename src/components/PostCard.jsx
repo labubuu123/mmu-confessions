@@ -3,7 +3,9 @@ import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarCha
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
-import ImageZoomModal from './ImageZoomModal'
+import ImageGalleryModal from './ImageGalleryModal'
+import ReactionTooltip from './ReactionToolTip'
+import { MoodBadge } from './MoodSelector'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -19,8 +21,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [event, setEvent] = useState(null)
     const [linkCopied, setLinkCopied] = useState(false)
     const [zoomedImage, setZoomedImage] = useState(null)
-    const [topReactions, setTopReactions] = useState([])
-
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
         return Object.values(reactionsObj).reduce((sum, count) => sum + count, 0)
@@ -83,18 +83,13 @@ export default function PostCard({ post: initialPost, onOpen }) {
             .from('reactions')
             .select('emoji, count')
             .eq('post_id', post.id)
-        
+
         if (data) {
             const reactionsMap = {}
             data.forEach(r => {
                 reactionsMap[r.emoji] = r.count
             })
             setReactions(reactionsMap)
-            
-            const sorted = data
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 3)
-            setTopReactions(sorted)
         }
     }
 
@@ -104,7 +99,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             .select('*')
             .eq('confession_id', post.id)
             .single()
-        
+
         if (eventData) {
             setEvent(eventData)
         } else {
@@ -113,7 +108,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 .select('*')
                 .eq('confession_id', post.id)
                 .single()
-            
+
             if (pollData) {
                 setPoll(pollData)
             }
@@ -126,7 +121,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             alert('You have already reported this post.')
             return
         }
-        
+
         const confirmed = window.confirm('Are you sure you want to report this post?')
         if (!confirmed) return
 
@@ -146,7 +141,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
     async function handleCopyLink(e) {
         e.stopPropagation()
         const url = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
-        
+
         try {
             await navigator.clipboard.writeText(url)
             setLinkCopied(true)
@@ -220,17 +215,19 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
 
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                
+
                 <div className="p-4 flex items-start gap-3 relative">
                     <AnonAvatar authorId={post.author_id} />
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                            <div className={`font-semibold ${
-                                post.author_name
-                                    ? 'text-indigo-600 dark:text-indigo-400'
-                                    : 'text-gray-900 dark:text-gray-100'
-                            }`}>
-                                {post.author_name || 'Anonymous'}
+                            <div className="flex items-center gap-2">
+                                <div className={`font-semibold ${post.author_name
+                                        ? 'text-indigo-600 dark:text-indigo-400'
+                                        : 'text-gray-900 dark:text-gray-100'
+                                    }`}>
+                                    {post.author_name || 'Anonymous'}
+                                </div>
+                                {post.mood && <MoodBadge mood={JSON.parse(post.mood)} />}
                             </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -246,12 +243,11 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
 
                 {post.media_type === 'images' && displayImages.length > 0 && (
-                    <div className={`w-full ${
-                        displayImages.length === 1 ? '' :
-                        displayImages.length === 2 ? 'grid grid-cols-2' :
-                        displayImages.length === 3 ? 'grid grid-cols-3' :
-                        'grid grid-cols-2'
-                    } gap-0.5`}>
+                    <div className={`w-full ${displayImages.length === 1 ? '' :
+                            displayImages.length === 2 ? 'grid grid-cols-2' :
+                                displayImages.length === 3 ? 'grid grid-cols-3' :
+                                    'grid grid-cols-2'
+                        } gap-0.5`}>
                         {displayImages.slice(0, 4).map((url, idx) => (
                             <div
                                 key={idx}
@@ -262,9 +258,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                     loading="lazy"
                                     src={url}
                                     alt={`media ${idx + 1}`}
-                                    className={`w-full object-cover transition-transform group-hover/img:scale-105 ${
-                                        displayImages.length === 1 ? 'max-h-96' : 'h-48'
-                                    }`}
+                                    className={`w-full object-cover transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-96' : 'h-48'
+                                        }`}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
                                 {idx === 3 && displayImages.length > 4 && (
@@ -324,7 +319,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                         />
                     </div>
                 )}
-                
+
                 {poll && !event && (
                     <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
                         <PollDisplay poll={poll} confessionId={post.id} />
@@ -332,22 +327,9 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 )}
 
                 <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                    {(currentTotalReactions > 0 || topReactions.length > 0) && (
-                        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex -space-x-1">
-                                {topReactions.map((r, i) => (
-                                    <span
-                                        key={r.emoji}
-                                        className="text-base bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 w-7 h-7 flex items-center justify-center" 
-                                        style={{ zIndex: 5 - i }}
-                                    >
-                                        {r.emoji}
-                                    </span>
-                                ))}
-                            </div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                {currentTotalReactions} {currentTotalReactions === 1 ? 'reaction' : 'reactions'}
-                            </span>
+                    {(currentTotalReactions > 0) && (
+                        <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                            <ReactionTooltip reactions={reactions} />
                         </div>
                     )}
 
@@ -377,11 +359,10 @@ export default function PostCard({ post: initialPost, onOpen }) {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleCopyLink}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    linkCopied
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${linkCopied
                                         ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                                         : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
-                                }`}
+                                    }`}
                                 title="Copy Link"
                             >
                                 {linkCopied ? (
@@ -393,11 +374,10 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             <button
                                 onClick={handleReport}
                                 disabled={isReported}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    isReported
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${isReported
                                         ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                         : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                                }`}
+                                    }`}
                                 title={isReported ? 'Reported' : 'Report Post'}
                             >
                                 <AlertTriangle className="w-5 h-5" />
@@ -408,8 +388,9 @@ export default function PostCard({ post: initialPost, onOpen }) {
             </div>
 
             {zoomedImage && (
-                <ImageZoomModal
-                    imageUrl={zoomedImage}
+                <ImageGalleryModal
+                    images={displayImages}
+                    initialIndex={displayImages.indexOf(zoomedImage)}
                     onClose={() => setZoomedImage(null)}
                 />
             )}

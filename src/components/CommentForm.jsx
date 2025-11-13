@@ -35,7 +35,7 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                     reactions: {}
                 }])
                 .select()
-            
+
             if (error) throw error
 
             const { error: rpcError } = await supabase.rpc('increment_comment_count', {

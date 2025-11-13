@@ -50,7 +50,7 @@ export default function Comment({ comment, postId }) {
                 .eq('id', comment.id)
 
             if (error) throw error
-            
+
             setInternalComment(prev => ({ ...prev, reactions: updatedReactions }))
             setShowEmojiPicker(false)
         } catch (err) {
@@ -71,11 +71,10 @@ export default function Comment({ comment, postId }) {
             <div className="flex-1 min-w-0">
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-1">
-                        <div className={`text-sm font-medium ${
-                            internalComment.author_name
+                        <div className={`text-sm font-medium ${internalComment.author_name
                                 ? 'text-indigo-600 dark:text-indigo-400'
                                 : 'text-gray-900 dark:text-gray-100'
-                        }`}>
+                            }`}>
                             {internalComment.author_name || 'Anonymous'}
                         </div>
                         <div className="flex items-center gap-2">
@@ -84,11 +83,11 @@ export default function Comment({ comment, postId }) {
                             </div>
                         </div>
                     </div>
-                    
+
                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
                         {internalComment.text}
                     </p>
-                    
+
                     {internalComment.reactions && Object.keys(internalComment.reactions).length > 0 && (
                         <div className="mt-2 flex items-center gap-1 flex-wrap">
                             {Object.entries(internalComment.reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
@@ -103,7 +102,7 @@ export default function Comment({ comment, postId }) {
                         </div>
                     )}
                 </div>
-                
+
                 <div className="mt-2 flex items-center gap-4 pl-1">
                     <div className="relative">
                         <button
@@ -114,7 +113,7 @@ export default function Comment({ comment, postId }) {
                             <Smile className="w-4 h-4" />
                             <span>React</span>
                         </button>
-                        
+
                         {showEmojiPicker && (
                             <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 flex gap-1 z-10">
                                 {COMMENT_EMOJIS.map(emoji => (
@@ -130,7 +129,7 @@ export default function Comment({ comment, postId }) {
                             </div>
                         )}
                     </div>
-                    
+
                     <button
                         onClick={() => setIsReplying(prev => !prev)}
                         className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600"
@@ -149,7 +148,7 @@ export default function Comment({ comment, postId }) {
                         />
                     </div>
                 )}
-                
+
                 {replies.length > 0 && (
                     <div className="mt-4 space-y-4 pl-6 border-l-2 border-gray-200 dark:border-gray-700">
                         {replies.map(reply => (

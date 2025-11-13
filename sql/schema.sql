@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS public.confessions (
     author_name TEXT,
     pinned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    mood JSONB DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.comments (

@@ -1,11 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags'
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react'
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus, Save } from 'lucide-react' // Added Save
 import { Link } from 'react-router-dom'
 import PollCreator from '../components/PollCreator'
 import EventCreator from '../components/EventCreator'
+import { useDrafts } from './DraftManager'
+import DraftManager from './DraftManager'
+import Modal from './Modal'
+import MoodSelector from './MoodSelector'
+import { useNotifications } from './NotificationSystem'
 
 
 const MAX_VIDEO_SIZE_MB = 25
@@ -30,7 +35,6 @@ export default function PostForm({ onPosted }) {
     const [previews, setPreviews] = useState([])
     const [videoPreview, setVideoPreview] = useState(null)
     const [loading, setLoading] = useState(false)
-    const [msg, setMsg] = useState('')
     const [uploadProgress, setUploadProgress] = useState(0)
     const [policyAccepted, setPolicyAccepted] = useState(false)
     const detectedTags = extractHashtagsForPreview(text);
@@ -38,38 +42,51 @@ export default function PostForm({ onPosted }) {
     const [pollData, setPollData] = useState(null)
     const [showEventCreator, setShowEventCreator] = useState(false)
     const [eventData, setEventData] = useState(null)
+    const { success, error, warning, info } = useNotifications()
+    const { drafts, saveDraft } = useDrafts()
+    const [showDrafts, setShowDrafts] = useState(false)
+    const [selectedMood, setSelectedMood] = useState(null)
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (text.trim()) {
+                saveDraft(text, { images, video, audio })
+            }
+        }, 5000)
+
+        return () => clearTimeout(timer)
+    }, [text, images, video, audio, saveDraft])
 
     async function handleSubmit(e) {
         e.preventDefault()
 
         if (showEventCreator && (!eventData || !eventData.event_name || !eventData.start_time)) {
-            setMsg('Please fill in all required event fields (Event Name and Start Time).')
+            error('Please fill in all required event fields (Event Name and Start Time).')
             return
         }
-        
+
         if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
-            setMsg('Write something or attach media')
+            warning('Write something or attach media')
             return
         }
 
         if (text.length > MAX_TEXT_LENGTH) {
-            setMsg(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`)
+            error(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`)
             return
         }
 
         if (!policyAccepted) {
-            setMsg('You must accept the policy to post.')
+            warning('You must accept the policy to post.')
             return
         }
-        
+
         setLoading(true)
-        setMsg('')
         setUploadProgress(0)
         const { data: { session } } = await supabase.auth.getSession()
         const anonId = getAnonId()
 
         try {
-            setMsg('Checking cooldown...')
+            info('Checking cooldown...')
             const { error: cooldownError } = await supabase.rpc('check_post_cooldown', {
                 author_id_in: anonId
             })
@@ -82,7 +99,7 @@ export default function PostForm({ onPosted }) {
             let single_media_url = null
 
             if (images.length > 0) {
-                setMsg('Uploading images...')
+                info('Uploading images...')
                 for (let i = 0; i < images.length; i++) {
                     const img = images[i]
                     const compressed = await imageCompression(img, {
@@ -111,7 +128,7 @@ export default function PostForm({ onPosted }) {
             }
 
             if (video) {
-                setMsg('Uploading video...')
+                info('Uploading video...')
                 const ext = (video.name || 'video.mp4').split('.').pop()
                 const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
 
@@ -131,7 +148,7 @@ export default function PostForm({ onPosted }) {
             }
 
             if (audio) {
-                setMsg('Uploading audio...')
+                info('Uploading audio...')
                 const ext = (audio.name || 'audio.mp3').split('.').pop()
                 const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
 
@@ -150,10 +167,10 @@ export default function PostForm({ onPosted }) {
                 media_type = 'audio'
             }
 
-            setMsg('Posting...')
+            info('Posting...')
             const tags = extractTags(text)
 
-            const { data, error } = await supabase.from('confessions')
+            const { data, error: insertError } = await supabase.from('confessions')
                 .insert([{
                     text: text.trim(),
                     author_id: anonId,
@@ -165,20 +182,21 @@ export default function PostForm({ onPosted }) {
                     approved: true,
                     likes_count: 0,
                     comments_count: 0,
-                    reported: false
+                    reported: false,
+                    mood: selectedMood ? JSON.stringify(selectedMood) : null
                 }])
                 .select()
 
-            if (error) {
-                console.error('Insert error:', error)
-                throw error
+            if (insertError) {
+                console.error('Insert error:', insertError)
+                throw insertError
             }
 
             const postId = data[0].id
 
             if (pollData && pollData.question && pollData.options.length >= 2) {
-                setMsg('Creating poll...')
-                
+                info('Creating poll...')
+
                 const endsAt = pollData.duration > 0
                     ? new Date(Date.now() + pollData.duration * 24 * 60 * 60 * 1000).toISOString()
                     : null
@@ -199,8 +217,8 @@ export default function PostForm({ onPosted }) {
             }
 
             if (eventData && eventData.event_name && eventData.start_time) {
-                setMsg('Creating event...')
-                
+                info('Creating event...')
+
                 const { error: eventError } = await supabase
                     .from('events')
                     .insert([{
@@ -214,7 +232,7 @@ export default function PostForm({ onPosted }) {
 
                 if (eventError) {
                     console.error('Event creation error:', eventError)
-                    alert('Post created, but event failed to save: ' + eventError.message)
+                    error('Post created, but event failed to save: ' + eventError.message)
                 }
             }
 
@@ -233,13 +251,13 @@ export default function PostForm({ onPosted }) {
             setShowPollCreator(false)
             setEventData(null)
             setShowEventCreator(false)
+            setSelectedMood(null)
             setUploadProgress(0)
-            setMsg('Posted successfully! ✓')
-            
-            setTimeout(() => setMsg(''), 3000)
+            success('Posted successfully!')
+
         } catch (err) {
             console.error('Post error:', err)
-            setMsg('Failed to post: ' + (err.message || err))
+            error('Failed to post: ' + (err.message || err))
         } finally {
             setLoading(false)
         }
@@ -250,7 +268,7 @@ export default function PostForm({ onPosted }) {
         if (files.length === 0) return
 
         if (files.length > MAX_IMAGES) {
-            setMsg(`Maximum ${MAX_IMAGES} images allowed`)
+            warning(`Maximum ${MAX_IMAGES} images allowed`)
             return
         }
 
@@ -259,7 +277,6 @@ export default function PostForm({ onPosted }) {
         setAudio(null)
 
         setImages(files)
-        setMsg('')
 
         const newPreviews = []
         files.forEach(file => {
@@ -279,7 +296,7 @@ export default function PostForm({ onPosted }) {
         if (!file) return
 
         if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
-            setMsg(`Video must be under ${MAX_VIDEO_SIZE_MB}MB`)
+            error(`Video must be under ${MAX_VIDEO_SIZE_MB}MB`)
             e.target.value = null
             return
         }
@@ -289,7 +306,6 @@ export default function PostForm({ onPosted }) {
         setAudio(null)
 
         setVideo(file)
-        setMsg('')
 
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -303,7 +319,7 @@ export default function PostForm({ onPosted }) {
         if (!file) return
 
         if (file.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
-            setMsg(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`)
+            error(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`)
             e.target.value = null
             return
         }
@@ -314,7 +330,6 @@ export default function PostForm({ onPosted }) {
         setVideoPreview(null)
 
         setAudio(file)
-        setMsg('')
     }
 
     function removeImage(index) {
@@ -335,284 +350,300 @@ export default function PostForm({ onPosted }) {
     const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Share Your Confession
-                </h2>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-                <div className="flex gap-3 mb-1">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                        A
+        <>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            Share Your Confession
+                        </h2>
                     </div>
-                    <div className="flex-1">
-                        <textarea
-                            value={text}
-                            onChange={e => setText(e.target.value)}
-                            placeholder="What's on your mind? Share anonymously... (Use #hashtags to categorize)"
-                            className="w-full p-4 border-0 rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-gray-900 dark:text-gray-100"
-                            rows="4"
-                            maxLength={MAX_TEXT_LENGTH}
-                        />
-                        <div className={`text-xs text-right mt-1 ${isNearLimit ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                            {charCount} / {MAX_TEXT_LENGTH}
-                        </div>
-                    </div>
-                </div>
-
-                {detectedTags.length > 0 && (
-                    <div className="mb-4 ml-14 -mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            <Tag className="w-4 h-4" />
-                            Detected Tags
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {detectedTags.map((tag, index) => (
-                            <span
-                                key={index}
-                                className="px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full"
-                            >
-                                {tag}
-                            </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {previews.length > 0 && (
-                    <div className="my-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {previews.map((preview, idx) => (
-                            <div key={idx} className="relative group">
-                                <img
-                                    src={preview}
-                                    alt={`Preview ${idx + 1}`}
-                                    className="w-full h-32 object-cover rounded-lg"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => removeImage(idx)}
-                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {videoPreview && (
-                    <div className="my-4 relative">
-                        <video src={videoPreview} className="w-full max-h-96 rounded-xl" controls />
-                        <button
-                            type="button"
-                            onClick={removeVideo}
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                )}
-
-                {audio && (
-                    <div className="my-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
-                        <Volume2 className="w-6 h-6 text-indigo-600" />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {audio.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {(audio.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={removeAudio}
-                            className="text-red-500 hover:text-red-600"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                )}
-
-                {showPollCreator && (
-                    <div className="my-4">
-                        <PollCreator
-                            onPollData={setPollData}
-                            onRemovePoll={() => {
-                                setShowPollCreator(false)
-                                setPollData(null)
-                            }}
-                        />
-                    </div>
-                )}
-
-                {showEventCreator && (
-                    <div className="my-4">
-                        <EventCreator
-                            onEventData={setEventData}
-                            onRemoveEvent={() => {
-                                setShowEventCreator(false)
-                                setEventData(null)
-                            }}
-                        />
-                    </div>
-                )}
-
-                {loading && uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="my-4">
-                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            <span>Uploading...</span>
-                            <span>{Math.round(uploadProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div
-                                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${uploadProgress}%` }}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                <div className="mb-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={policyAccepted}
-                            onChange={(e) => setPolicyAccepted(e.target.checked)}
-                            className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                            I have read and agree to the{' '}
-                            <Link
-                                to="/policy"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-600 dark:text-indigo-400 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                Community Guidelines
-                            </Link>
-                            .
-                        </span>
-                    </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                    <div className="flex gap-1">
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Image className="w-5 h-5 text-green-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Photos
-                            </span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={handleImageChange}
-                                className="hidden"
-                                disabled={loading || !!video || !!audio}
-                            />
-                        </label>
-
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Film className="w-5 h-5 text-red-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Video
-                            </span>
-                            <input
-                                type="file"
-                                accept="video/*"
-                                onChange={handleVideoChange}
-                                className="hidden"
-                                disabled={loading || images.length > 0 || !!audio}
-                            />
-                        </label>
-
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Mic className="w-5 h-5 text-purple-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Audio
-                            </span>
-                            <input
-                                type="file"
-                                accept="audio/*"
-                                onChange={handleAudioChange}
-                                className="hidden"
-                                disabled={loading || images.length > 0 || !!video}
-                            />
-                        </label>
-                        
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowPollCreator(!showPollCreator)
-                                setShowEventCreator(false)
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                                showPollCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            disabled={loading || showEventCreator}
-                        >
-                            <BarChart3 className="w-5 h-5 text-indigo-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Poll
-                            </span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowEventCreator(!showEventCreator)
-                                setShowPollCreator(false)
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                                showEventCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            disabled={loading || showPollCreator}
-                        >
-                            <CalendarPlus className="w-5 h-5 text-orange-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Event
-                            </span>
-                        </button>
-                    </div>
-
                     <button
-                        type="submit"
-                        disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        onClick={() => setShowDrafts(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all"
                     >
-                        {loading ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span className="hidden sm:inline">Posting...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Send className="w-4 h-4" />
-                                <span className="hidden sm:inline">Post</span>
-                            </>
-                        )}
+                        <Save className="w-4 h-4" />
+                        <span>Drafts ({drafts.length})</span>
                     </button>
                 </div>
 
-                {msg && (
-                    <div className={`mt-3 text-sm px-4 py-2 rounded-lg ${
-                        msg.includes('Failed') || msg.includes('large') || msg.includes('Maximum') || msg.includes('too long') || msg.includes('must accept')
-                            ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                            : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                    }`}>
-                        {msg}
+                <form onSubmit={handleSubmit}>
+                    <div className="flex gap-3 mb-1">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                            A
+                        </div>
+                        <div className="flex-1">
+                            <textarea
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                                placeholder="What's on your mind? Share anonymously... (Use #hashtags to categorize)"
+                                className="w-full p-4 border-0 rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-gray-900 dark:text-gray-100"
+                                rows="4"
+                                maxLength={MAX_TEXT_LENGTH}
+                            />
+                            <div className={`text-xs text-right mt-1 ${isNearLimit ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {charCount} / {MAX_TEXT_LENGTH}
+                            </div>
+                        </div>
                     </div>
-                )}
-            </form>
-        </div>
+
+                    {detectedTags.length > 0 && (
+                        <div className="mb-4 ml-14 -mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <Tag className="w-4 h-4" />
+                                Detected Tags
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {detectedTags.map((tag, index) => (
+                                    <span
+                                        key={index}
+                                        className="px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {previews.length > 0 && (
+                        <div className="my-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {previews.map((preview, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={preview}
+                                        alt={`Preview ${idx + 1}`}
+                                        className="w-full h-32 object-cover rounded-lg"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(idx)}
+                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {videoPreview && (
+                        <div className="my-4 relative">
+                            <video src={videoPreview} className="w-full max-h-96 rounded-xl" controls />
+                            <button
+                                type="button"
+                                onClick={removeVideo}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
+
+                    {audio && (
+                        <div className="my-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
+                            <Volume2 className="w-6 h-6 text-indigo-600" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {audio.name}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {(audio.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={removeAudio}
+                                className="text-red-500 hover:text-red-600"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
+
+                    {showPollCreator && (
+                        <div className="my-4">
+                            <PollCreator
+                                onPollData={setPollData}
+                                onRemovePoll={() => {
+                                    setShowPollCreator(false)
+                                    setPollData(null)
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {showEventCreator && (
+                        <div className="my-4">
+                            <EventCreator
+                                onEventData={setEventData}
+                                onRemoveEvent={() => {
+                                    setShowEventCreator(false)
+                                    setEventData(null)
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {loading && uploadProgress > 0 && uploadProgress < 100 && (
+                        <div className="my-4">
+                            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                <span>Uploading...</span>
+                                <span>{Math.round(uploadProgress)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div
+                                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mb-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={policyAccepted}
+                                onChange={(e) => setPolicyAccepted(e.target.checked)}
+                                className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                                I have read and agree to the{' '}
+                                <Link
+                                    to="/policy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    Community Guidelines
+                                </Link>
+                                .
+                            </span>
+                        </label>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap gap-1">
+                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Image className="w-5 h-5 text-green-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Photos
+                                </span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                    disabled={loading || !!video || !!audio}
+                                />
+                            </label>
+
+                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Film className="w-5 h-5 text-red-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Video
+                                </span>
+                                <input
+                                    type="file"
+                                    accept="video/*"
+                                    onChange={handleVideoChange}
+                                    className="hidden"
+                                    disabled={loading || images.length > 0 || !!audio}
+                                />
+                            </label>
+
+                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Mic className="w-5 h-5 text-purple-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Audio
+                                </span>
+                                <input
+                                    type="file"
+                                    accept="audio/*"
+                                    onChange={handleAudioChange}
+                                    className="hidden"
+                                    disabled={loading || images.length > 0 || !!video}
+                                />
+                            </label>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowPollCreator(!showPollCreator)
+                                    setShowEventCreator(false)
+                                }}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showPollCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading || showEventCreator}
+                            >
+                                <BarChart3 className="w-5 h-5 text-indigo-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Poll
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowEventCreator(!showEventCreator)
+                                    setShowPollCreator(false)
+                                }}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showEventCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading || showPollCreator}
+                            >
+                                <CalendarPlus className="w-5 h-5 text-orange-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Event
+                                </span>
+                            </button>
+
+                            <MoodSelector
+                                selectedMood={selectedMood}
+                                onSelectMood={setSelectedMood}
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span className="hidden sm:inline">Posting...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Send className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Post</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {showDrafts && (
+                <Modal onClose={() => setShowDrafts(false)}>
+                    <DraftManager
+                        onLoadDraft={(draft) => {
+                            setText(draft.text)
+                            setShowDrafts(false)
+                        }}
+                        onClose={() => setShowDrafts(false)}
+                    />
+                </Modal>
+            )}
+        </>
     )
 }

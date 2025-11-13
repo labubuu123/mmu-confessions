@@ -73,12 +73,12 @@ export default function AdminPanel() {
                 .from('polls')
                 .select('*')
                 .in('confession_id', postIds)
-            
+
             if (error) {
                 console.error("Failed to fetch polls:", error)
                 return
             }
-            
+
             if (data) {
                 const pollMap = {}
                 data.forEach(p => {
@@ -104,14 +104,14 @@ export default function AdminPanel() {
         e.preventDefault()
         setLoading(true)
         setError(null)
-        
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password
         })
-        
+
         setLoading(false)
-        
+
         if (error) {
             setError('Sign-in error: ' + error.message)
             return
@@ -127,7 +127,7 @@ export default function AdminPanel() {
         try {
             const { error } = await supabase.auth.signOut()
             if (error) throw error
-            
+
         } catch (err) {
             console.error('Sign-out error:', err)
             alert('Failed to sign out: ' + err.message)
@@ -139,10 +139,10 @@ export default function AdminPanel() {
 
     const fetchPosts = useCallback(async (isInitial = false) => {
         if (loading && !isInitial) return
-        
+
         setLoading(true)
         if (isInitial) setError(null)
-        
+
         const currentPage = isInitial ? 0 : page
         const { data, error } = await supabase
             .from('confessions')
@@ -167,7 +167,7 @@ export default function AdminPanel() {
             const newPosts = data.filter(d => !prev.some(p => p.id === d.id))
             return isInitial ? data : [...prev, ...newPosts]
         })
-        
+
         if (!isInitial) {
             setPage(currentPage + 1)
         } else {
@@ -247,7 +247,7 @@ export default function AdminPanel() {
 
 ${failedDeletes.length > 0 ? 'Check console for error details on failed deletions.' : ''}`)
     }
-    
+
     function togglePostSelection(postId) {
         setSelectedPosts(prev => {
             const newSet = new Set(prev)
@@ -259,7 +259,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             return newSet
         })
     }
-    
+
     function toggleSelectAll() {
         if (selectedPosts.size === posts.length) {
             setSelectedPosts(new Set())
@@ -368,9 +368,9 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 .select('*')
                 .eq('post_id', postId)
                 .order('created_at', { ascending: false })
-            
+
             if (error) throw error
-            
+
             setComments(prev => ({ ...prev, [postId]: data || [] }))
         } catch (err) {
             console.error('Fetch comments error:', err)
@@ -573,7 +573,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     </button>
                 </div>
             )}
-            
+
             {loading && posts.length === 0 ? (
                 <div className="flex justify-center items-center py-20">
                     <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -585,15 +585,14 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                         const poll = polls[p.id];
                         const hasEvent = p.events && p.events.length > 0;
                         const event = hasEvent ? p.events[0] : null;
-                        
+
                         return (
                             <div
                                 key={p.id}
-                                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${
-                                    isSelected
+                                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${isSelected
                                         ? 'border-indigo-500 ring-2 ring-indigo-500/50'
                                         : 'border-gray-200 dark:border-gray-700'
-                                } p-5`}
+                                    } p-5`}
                             >
                                 <div className="flex items-start gap-4">
                                     <div className="pt-1">
@@ -605,7 +604,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                             disabled={bulkLoading}
                                         />
                                     </div>
-                                    
+
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -657,7 +656,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                         <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mb-3">
                                             {p.text}
                                         </p>
-                                        
+
                                         {poll && (
                                             <div className="mb-3" onClick={(e) => e.stopPropagation()}>
                                                 <PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} />
@@ -700,11 +699,10 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                             <button
                                                 onClick={() => handleTogglePin(p.id, p.pinned)}
                                                 disabled={actionLoading[p.id] || bulkLoading}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${
-                                                    p.pinned
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${p.pinned
                                                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                                         : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
-                                                }`}
+                                                    }`}
                                             >
                                                 {actionLoading[p.id] === 'pin' ? (
                                                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -793,7 +791,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                             <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                                                         </div>
                                                     )}
-                                                    
+
                                                     {!commentsLoading[p.id] && comments[p.id]?.length === 0 && (
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">No comments found for this post.</p>
                                                     )}
@@ -803,11 +801,10 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                             <AnonAvatar authorId={c.author_id} size="sm" />
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-bold ${
-                                                                        c.author_name
+                                                                    <span className={`text-xs font-bold ${c.author_name
                                                                             ? 'text-indigo-600 dark:text-indigo-400'
                                                                             : 'text-gray-800 dark:text-gray-200'
-                                                                    }`}>
+                                                                        }`}>
                                                                         {c.author_name || 'Anonymous'}
                                                                     </span>
                                                                     <span className="text-xs text-gray-500 dark:text-gray-400">{dayjs(c.created_at).fromNow()}</span>

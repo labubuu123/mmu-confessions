@@ -68,7 +68,7 @@ export default function PolicyPage() {
                             cn="3. 个人意见：群里的发言僅代表发言者的个人意見与建议。"
                         />
                     </Section>
-                    
+
                     <Section icon={<Shield />} title="Moderation & Reporting" titleCN="版主权限与举报">
                         <Rule
                             en="Moderator's Rights: Moderators have the absolute right to process, delete, or hide any post/reply, without prior notice or reason."

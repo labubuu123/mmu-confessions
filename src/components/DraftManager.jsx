@@ -1,112 +1,126 @@
-import React, { useState, useEffect } from 'react'
-import { Save, Trash2, Clock, FileText } from 'lucide-react'
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Save, Trash2, FileText, X } from 'lucide-react';
 
-const DRAFTS_KEY = 'confession_drafts'
+const DRAFT_KEY = 'mmu_confession_drafts';
 
-export function useDrafts() {
-    const [drafts, setDrafts] = useState([])
+const DraftContext = createContext();
+
+export const DraftProvider = ({ children }) => {
+    const [drafts, setDrafts] = useState([]);
 
     useEffect(() => {
-        loadDrafts()
-    }, [])
-
-    function loadDrafts() {
         try {
-            const saved = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]')
-            setDrafts(saved)
+            const storedDrafts = localStorage.getItem(DRAFT_KEY);
+            if (storedDrafts) {
+                setDrafts(JSON.parse(storedDrafts));
+            }
         } catch (e) {
-            setDrafts([])
+            console.error("Failed to load drafts:", e);
+            localStorage.removeItem(DRAFT_KEY);
         }
-    }
+    }, []);
 
-    function saveDraft(text, media = null) {
-        const draft = {
-            id: Date.now(),
-            text,
-            media,
-            savedAt: new Date().toISOString()
-        }
-        const updated = [draft, ...drafts].slice(0, 3)
-        localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated))
-        setDrafts(updated)
-        return draft
-    }
+    const saveDraft = (text, media) => {
+        if (!text || !text.trim()) return;
 
-    function deleteDraft(id) {
-        const updated = drafts.filter(d => d.id !== id)
-        localStorage.setItem(DRAFTS_KEY, JSON.stringify(updated))
-        setDrafts(updated)
-    }
+        setDrafts(prevDrafts => {
+            const newDraft = {
+                id: Date.now(),
+                text,
+                media,
+                createdAt: new Date().toISOString(),
+            };
+            const updatedDrafts = [newDraft, ...prevDrafts].slice(0, 10);
+            try {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(updatedDrafts));
+            } catch (e) {
+                console.error("Failed to save draft:", e);
+            }
+            return updatedDrafts;
+        });
+    };
 
-    function clearAllDrafts() {
-        localStorage.removeItem(DRAFTS_KEY)
-        setDrafts([])
-    }
+    const deleteDraft = (id) => {
+        setDrafts(prevDrafts => {
+            const updatedDrafts = prevDrafts.filter(d => d.id !== id);
+            try {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(updatedDrafts));
+            } catch (e) {
+                console.error("Failed to delete draft:", e);
+            }
+            return updatedDrafts;
+        });
+    };
 
-    return { drafts, saveDraft, deleteDraft, clearAllDrafts, loadDrafts }
-}
-
-export default function DraftManager({ onLoadDraft, onClose }) {
-    const { drafts, deleteDraft, clearAllDrafts } = useDrafts()
-
-    if (drafts.length === 0) {
-        return (
-            <div className="p-8 text-center">
-                <FileText className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">No drafts saved</p>
-            </div>
-        )
-    }
+    const clearDrafts = () => {
+        setDrafts([]);
+        localStorage.removeItem(DRAFT_KEY);
+    };
 
     return (
-        <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Saved Drafts ({drafts.length})
-                </h3>
-                <button
-                    onClick={clearAllDrafts}
-                    className="text-xs text-red-500 hover:text-red-600"
-                >
-                    Clear All
-                </button>
-            </div>
+        <DraftContext.Provider value={{ drafts, saveDraft, deleteDraft, clearDrafts }}>
+            {children}
+        </DraftContext.Provider>
+    );
+};
 
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-                {drafts.map(draft => (
-                    <div
-                        key={draft.id}
-                        className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition"
-                    >
-                        <p className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2 mb-2">
-                            {draft.text || 'Empty draft'}
-                        </p>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                                <Clock className="w-3 h-3" />
-                                {new Date(draft.savedAt).toLocaleString()}
+export const useDrafts = () => {
+    const context = useContext(DraftContext);
+    if (!context) {
+        throw new Error('useDrafts must be used within a DraftProvider');
+    }
+    return context;
+};
+
+export default function DraftManager({ onLoadDraft, onClose }) {
+    const { drafts, deleteDraft, clearDrafts } = useDrafts();
+
+    return (
+        <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Your Drafts
+            </h2>
+
+            {drafts.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {drafts.map(draft => (
+                        <div key={draft.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                                    {draft.text}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Saved: {new Date(draft.createdAt).toLocaleString()}
+                                </p>
                             </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        onLoadDraft(draft)
-                                        onClose()
-                                    }}
-                                    className="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700"
-                                >
-                                    Load
-                                </button>
-                                <button
-                                    onClick={() => deleteDraft(draft.id)}
-                                    className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded"
-                                >
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => onLoadDraft(draft)}
+                                className="px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                            >
+                                Load
+                            </button>
+                            <button
+                                onClick={() => deleteDraft(draft.id)}
+                                className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full transition"
+                                title="Delete draft"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                    <button
+                        onClick={clearDrafts}
+                        className="w-full mt-4 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30"
+                    >
+                        Clear All Drafts
+                    </button>
+                </div>
+            ) : (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                    You have no saved drafts.
+                </p>
+            )}
         </div>
-    )
+    );
 }

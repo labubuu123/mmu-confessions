@@ -24,9 +24,8 @@ function simpleHash(str) {
 export default function AnonAvatar({ authorId, size = 'md' }) {
     if (!authorId) {
         return (
-            <div className={`rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white font-bold flex-shrink-0 ${
-                size === 'md' ? 'w-10 h-10' : 'w-8 h-8 text-xs'
-            }`}>
+            <div className={`rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white font-bold flex-shrink-0 ${size === 'md' ? 'w-10 h-10' : 'w-8 h-8 text-xs'
+                }`}>
                 A
             </div>
         )
@@ -37,9 +36,8 @@ export default function AnonAvatar({ authorId, size = 'md' }) {
     const letter = authorId.substring(0, 1).toUpperCase()
 
     return (
-        <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold flex-shrink-0 ${
-            size === 'md' ? 'w-10 h-10' : 'w-8 h-8 text-xs'
-        }`}>
+        <div className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold flex-shrink-0 ${size === 'md' ? 'w-10 h-10' : 'w-8 h-8 text-xs'
+            }`}>
             {letter}
         </div>
     )

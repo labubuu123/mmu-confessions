@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import Comment from './Comment'
 import CommentForm from './CommentForm'
 import { MessageCircle } from 'lucide-react'
+import { CommentSkeleton } from './LoadingSkeleton'
 
 const COMMENTS_PER_PAGE = 10
 
@@ -19,7 +20,7 @@ export default function CommentSection({ postId }) {
         async function fetchComments() {
             setLoading(true)
             setError(null)
-            
+
             const { data, error } = await supabase
                 .from('comments')
                 .select('*')
@@ -34,7 +35,7 @@ export default function CommentSection({ postId }) {
             }
             setLoading(false)
         }
-        
+
         if (postId) {
             fetchComments()
         }
@@ -55,7 +56,7 @@ export default function CommentSection({ postId }) {
                 roots.push(map[comment.id])
             }
         })
-        
+
         return roots
     }, [allComments])
 
@@ -69,7 +70,7 @@ export default function CommentSection({ postId }) {
     function loadMoreComments() {
         const nextPage = page + 1
         const newRenderedCount = (nextPage + 1) * COMMENTS_PER_PAGE
-        
+
         setRenderedComments(commentTree.slice(0, newRenderedCount))
         setPage(nextPage)
         setHasMore(newRenderedCount < commentTree.length)
@@ -91,11 +92,7 @@ export default function CommentSection({ postId }) {
 
             <CommentForm postId={postId} onCommentPosted={handleCommentPosted} />
 
-            {loading && (
-                <div className="flex justify-center items-center py-6">
-                    <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            )}
+            {loading && <CommentSkeleton />}
 
             {error && (
                 <p className="text-red-500 text-center py-4">{error}</p>
@@ -118,7 +115,7 @@ export default function CommentSection({ postId }) {
                             <p className="text-sm">Be the first to share your thoughts!</p>
                         </div>
                     )}
-                    
+
                     {hasMore && !loading && (
                         <div className="flex justify-center pt-4">
                             <button

@@ -34,11 +34,11 @@ export default function UserAnalytics() {
             const totalPosts = posts?.length || 0
             const approvedPosts = posts?.filter(p => p.approved).length || 0
             const totalComments = comments?.length || 0
-            
+
             const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0
             const totalPostComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0
 
-            const mostPopularPost = posts?.sort((a, b) => 
+            const mostPopularPost = posts?.sort((a, b) =>
                 (b.likes_count + b.comments_count) - (a.likes_count + a.comments_count)
             )[0]
 
@@ -50,7 +50,7 @@ export default function UserAnalytics() {
 
             const mostActiveDay = Object.entries(dayActivity)
                 .sort((a, b) => b[1] - a[1])[0]
-            
+
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
             const engagementRate = totalPosts > 0
@@ -59,16 +59,16 @@ export default function UserAnalytics() {
 
             const sortedDates = posts?.map(p => new Date(p.created_at).toDateString()).sort()
             const uniqueDates = [...new Set(sortedDates)]
-            
+
             let streak = 0
             let currentStreak = 0
             const today = new Date().toDateString()
-            
+
             for (let i = uniqueDates.length - 1; i >= 0; i--) {
                 const date = new Date(uniqueDates[i])
                 const nextDate = i < uniqueDates.length - 1 ? new Date(uniqueDates[i + 1]) : new Date()
                 const diffDays = Math.floor((nextDate - date) / (1000 * 60 * 60 * 24))
-                
+
                 if (diffDays <= 1) {
                     currentStreak++
                 } else {
@@ -118,31 +118,31 @@ export default function UserAnalytics() {
     }
 
     const achievements = [
-        { 
+        {
             name: 'First Post',
             earned: stats.totalPosts > 0,
             icon: '🎉',
             description: 'Posted your first confession'
         },
-        { 
+        {
             name: 'Prolific Writer',
             earned: stats.totalPosts >= 10,
             icon: '✍️',
             description: 'Posted 10 confessions'
         },
-        { 
+        {
             name: 'Conversation Starter',
             earned: stats.totalComments >= 20,
             icon: '💬',
             description: 'Made 20 comments'
         },
-        { 
+        {
             name: 'Popular',
             earned: stats.totalLikes >= 50,
             icon: '⭐',
             description: 'Received 50 likes'
         },
-        { 
+        {
             name: 'On Fire',
             earned: stats.streak >= 7,
             icon: '🔥',
@@ -228,11 +228,10 @@ export default function UserAnalytics() {
                     {achievements.map(achievement => (
                         <div
                             key={achievement.name}
-                            className={`text-center p-4 rounded-xl border-2 transition ${
-                                achievement.earned
+                            className={`text-center p-4 rounded-xl border-2 transition ${achievement.earned
                                     ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20'
                                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-50'
-                            }`}
+                                }`}
                             title={achievement.description}
                         >
                             <div className="text-3xl mb-2">{achievement.icon}</div>

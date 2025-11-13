@@ -58,9 +58,9 @@ export default function TrendingSidebar() {
                     >
                         <div className="flex items-center gap-3">
                             <div className={`text-lg font-bold ${idx === 0 ? 'text-orange-500' :
-                                    idx === 1 ? 'text-orange-400' :
-                                        idx === 2 ? 'text-orange-300' :
-                                            'text-gray-400'
+                                idx === 1 ? 'text-orange-400' :
+                                    idx === 2 ? 'text-orange-300' :
+                                        'text-gray-400'
                                 }`}>
                                 {idx + 1}
                             </div>

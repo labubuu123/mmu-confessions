@@ -11,7 +11,7 @@ function formatEventTime(start, end) {
         minute: 'numeric',
         hour12: true
     }
-    
+
     if (end) {
         const endDate = new Date(end)
         if (startDate.toDateString() === endDate.toDateString()) {
@@ -37,13 +37,13 @@ export default function EventDisplay({
             <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-200 mb-2">
                 {eventName}
             </h3>
-            
+
             <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
                     <Calendar className="w-4 h-4 flex-shrink-0" />
                     <span className="text-sm font-medium">{formatEventTime(startTime, endTime)}</span>
                 </div>
-                
+
                 {location && (
                     <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
                         <MapPin className="w-4 h-4 flex-shrink-0" />

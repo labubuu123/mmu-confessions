@@ -5,6 +5,7 @@ import PostForm from './PostForm'
 import PostModal from './PostModal'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowUp } from 'lucide-react'
+import { FeedSkeleton } from './LoadingSkeleton'
 
 export default function Feed() {
     const [posts, setPosts] = useState([])
@@ -12,7 +13,7 @@ export default function Feed() {
     const [error, setError] = useState(null)
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
-    
+
     const [newPostsAvailable, setNewPostsAvailable] = useState(false)
 
     const navigate = useNavigate()
@@ -23,7 +24,7 @@ export default function Feed() {
 
         setLoading(true)
         setError(null)
-        
+
         const currentPage = isInitial ? 0 : page
         const { data, error } = await supabase
             .from('confessions')
@@ -48,7 +49,7 @@ export default function Feed() {
             const newPosts = data.filter(d => !prev.some(p => p.id === d.id))
             return isInitial ? data : [...prev, ...newPosts]
         })
-        
+
         if (!isInitial) {
             setPage(currentPage + 1)
         } else {
@@ -72,7 +73,7 @@ export default function Feed() {
         window.addEventListener('scroll', handleScroll);
 
         return () => window.removeEventListener('scroll', handleScroll);
-        
+
     }, [loading, hasMore, fetchPosts]);
 
     useEffect(() => {
@@ -133,11 +134,7 @@ export default function Feed() {
                 ))}
             </div>
 
-            {loading && (
-                <div className="flex justify-center items-center py-10">
-                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            )}
+            {loading && posts.length === 0 && <FeedSkeleton count={3} />}
 
             {!loading && !hasMore && (
                 <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
