@@ -749,10 +749,10 @@ RETURNS TABLE (
     updated_at TIMESTAMP WITH TIME ZONE,
     author_reputation JSONB,
     event_name TEXT,
-    event_description TEXT,
-    event_start_time TIMESTAMP WITH TIME ZONE,
-    event_end_time TIMESTAMP WITH TIME ZONE,
-    event_location TEXT
+    description TEXT,
+    start_time TIMESTAMP WITH TIME ZONE,
+    end_time TIMESTAMP WITH TIME ZONE,
+    location TEXT
 )
 LANGUAGE plpgsql
 AS $$
@@ -765,10 +765,10 @@ BEGIN
             '{"badges": []}'::jsonb
         ) AS author_reputation,
         e.event_name,
-        e.description AS event_description,
-        e.start_time AS event_start_time,
-        e.end_time AS event_end_time,
-        e.location AS event_location
+        e.description,
+        e.start_time,
+        e.end_time,
+        e.location
     FROM
         public.confessions c
     LEFT JOIN

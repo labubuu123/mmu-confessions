@@ -15,6 +15,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
     const [reactions, setReactions] = useState({})
     const [isReported, setIsReported] = useState(initialPost.reported || false)
     const [poll, setPoll] = useState(null)
+    const [event, setEvent] = useState(null)
+
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
         return Object.values(reactionsObj).reduce((sum, count) => sum + count, 0)
@@ -52,7 +54,10 @@ export default function PostCard({ post: initialPost, onOpen }) {
             .subscribe()
 
         fetchReactions()
-        if (!post.event_name) {
+        
+        if (post.event_name && !event) {
+            fetchEvent()
+        } else if (!post.event_name && !poll) {
             fetchPoll()
         }
 
@@ -72,7 +77,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             supabase.removeChannel(channel)
             supabase.removeChannel(reactionsChannel)
         }
-    }, [post.id, post.event_name])
+    }, [post.id, post.event_name, event, poll])
 
     async function fetchReactions() {
         const { data } = await supabase
@@ -98,6 +103,18 @@ export default function PostCard({ post: initialPost, onOpen }) {
         
         if (data) {
             setPoll(data)
+        }
+    }
+
+    async function fetchEvent() {
+        const { data } = await supabase
+            .from('events')
+            .select('*')
+            .eq('confession_id', post.id)
+            .single()
+        
+        if (data) {
+            setEvent(data)
         }
     }
 
@@ -263,14 +280,14 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
             )}
 
-            {post.event_name ? (
+            {event ? (
                 <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
                     <EventDisplay
-                        eventName={post.event_name}
-                        description={post.event_description}
-                        startTime={post.event_start_time}
-                        endTime={post.event_end_time}
-                        location={post.event_location}
+                        eventName={event.event_name}
+                        description={event.description}
+                        startTime={event.start_time}
+                        endTime={event.end_time}
+                        location={event.location}
                     />
                 </div>
             ) : poll ? (

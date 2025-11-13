@@ -40,6 +40,13 @@ export default function PostForm({ onPosted }) {
 
     async function handleSubmit(e) {
         e.preventDefault()
+
+        // <-- 1. ADDED VALIDATION CHECK -->
+        if (showEventCreator && (!eventData || !eventData.event_name || !eventData.start_time)) {
+            setMsg('Please fill in all required event fields (Event Name and Start Time).')
+            return // Stop the submission
+        }
+        
         if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
             setMsg('Write something or attach media')
             return
@@ -191,9 +198,11 @@ export default function PostForm({ onPosted }) {
                 }
             }
 
-            if (eventData && eventData.event_name && eventData.start_time && eventData.location) {
+            // <-- 2. THE BUG FIX: Removed 'eventData.location' from the check -->
+            if (eventData && eventData.event_name && eventData.start_time) {
                 setMsg('Creating event...')
                 
+                // <-- 3. ADDED ERROR HANDLING -->
                 const { error: eventError } = await supabase
                     .from('events')
                     .insert([{
@@ -202,11 +211,13 @@ export default function PostForm({ onPosted }) {
                         description: eventData.description || null,
                         start_time: eventData.start_time,
                         end_time: eventData.end_time || null,
-                        location: eventData.location
+                        location: eventData.location || null // Ensure null if empty
                     }])
 
                 if (eventError) {
                     console.error('Event creation error:', eventError)
+                    // Alert the user something went wrong with the event
+                    alert('Post created, but event failed to save: ' + eventError.message)
                 }
             }
 
