@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import PollCreator from '../components/PollCreator'
 import EventCreator from '../components/EventCreator'
 
+
 const MAX_VIDEO_SIZE_MB = 25
 const MAX_IMAGES = 3
 const MAX_AUDIO_SIZE_MB = 10
@@ -41,10 +42,9 @@ export default function PostForm({ onPosted }) {
     async function handleSubmit(e) {
         e.preventDefault()
 
-        // <-- 1. ADDED VALIDATION CHECK -->
         if (showEventCreator && (!eventData || !eventData.event_name || !eventData.start_time)) {
             setMsg('Please fill in all required event fields (Event Name and Start Time).')
-            return // Stop the submission
+            return
         }
         
         if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
@@ -198,11 +198,9 @@ export default function PostForm({ onPosted }) {
                 }
             }
 
-            // <-- 2. THE BUG FIX: Removed 'eventData.location' from the check -->
             if (eventData && eventData.event_name && eventData.start_time) {
                 setMsg('Creating event...')
                 
-                // <-- 3. ADDED ERROR HANDLING -->
                 const { error: eventError } = await supabase
                     .from('events')
                     .insert([{
@@ -211,12 +209,11 @@ export default function PostForm({ onPosted }) {
                         description: eventData.description || null,
                         start_time: eventData.start_time,
                         end_time: eventData.end_time || null,
-                        location: eventData.location || null // Ensure null if empty
+                        location: eventData.location || null
                     }])
 
                 if (eventError) {
                     console.error('Event creation error:', eventError)
-                    // Alert the user something went wrong with the event
                     alert('Post created, but event failed to save: ' + eventError.message)
                 }
             }
