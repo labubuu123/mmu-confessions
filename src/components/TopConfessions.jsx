@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import { Heart, TrendingUp, MessageCircle, Calendar, RefreshCw } from 'lucide-react'
@@ -10,71 +10,12 @@ export default function TopConfessions() {
     const [timeRange, setTimeRange] = useState('all')
     const [lastUpdate, setLastUpdate] = useState(new Date())
     const navigate = useNavigate()
+    const getTotalReactions = useCallback((reactions) => {
+        if (!reactions) return 0
+        return Object.values(reactions).reduce((sum, count) => sum + count, 0)
+    }, [])
 
-    useEffect(() => {
-        fetchTop()
-        
-        const channel = supabase
-            .channel('top-confessions-realtime')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'confessions'
-            }, (payload) => {
-                console.log('Real-time update received:', payload)
-                handleRealtimeUpdate(payload)
-            })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'reactions'
-            }, (payload) => {
-                console.log('Reaction update received:', payload)
-                fetchTop()
-            })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'comments'
-            }, (payload) => {
-                console.log('Comment update received:', payload)
-                fetchTop()
-            })
-            .subscribe()
-
-        const interval = setInterval(() => {
-            setUpdating(true)
-            fetchTop().finally(() => setUpdating(false))
-        }, 30000)
-        
-        return () => {
-            supabase.removeChannel(channel)
-            clearInterval(interval)
-        }
-    }, [timeRange])
-
-    const handleRealtimeUpdate = (payload) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload
-
-        if (eventType === 'INSERT' && newRecord.approved) {
-            setItems(prev => {
-                if (prev.find(p => p.id === newRecord.id)) return prev
-                return [newRecord, ...prev].sort((a, b) => 
-                    (b.likes_count || 0) - (a.likes_count || 0)
-                )
-            })
-        } else if (eventType === 'UPDATE') {
-            setItems(prev => prev.map(item => 
-                item.id === newRecord.id ? newRecord : item
-            ).sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0)))
-        } else if (eventType === 'DELETE') {
-            setItems(prev => prev.filter(item => item.id !== oldRecord.id))
-        }
-        
-        setLastUpdate(new Date())
-    }
-
-    async function fetchTop() {
+    const fetchTop = useCallback(async () => {
         setLoading(true)
         
         let query = supabase
@@ -112,22 +53,71 @@ export default function TopConfessions() {
                     return { ...post, reactions: reactionsMap }
                 })
             )
-            setItems(postsWithReactions)
+
+            const sortedPosts = postsWithReactions.sort((a, b) => {
+                const totalA = getTotalReactions(a.reactions)
+                const totalB = getTotalReactions(b.reactions)
+                return totalB - totalA
+            })
+
+            setItems(sortedPosts)
         } else {
             setItems([])
         }
         
         setLoading(false)
         setLastUpdate(new Date())
-    }
+    }, [timeRange, getTotalReactions])
+
+    const handleRealtimeUpdate = useCallback((payload) => {
+        console.log('Real-time update received, re-fetching top confessions:', payload)
+        fetchTop()
+    }, [fetchTop])
+
+    useEffect(() => {
+        fetchTop()
+        
+        const channel = supabase
+            .channel('top-confessions-realtime')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'confessions'
+            }, (payload) => {
+                handleRealtimeUpdate(payload)
+            })
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'reactions'
+            }, (payload) => {
+                console.log('Reaction update received:', payload)
+                fetchTop()
+            })
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'comments'
+            }, (payload) => {
+                console.log('Comment update received:', payload)
+                fetchTop()
+            })
+            .subscribe()
+
+        const interval = setInterval(() => {
+            setUpdating(true)
+            fetchTop().finally(() => setUpdating(false))
+        }, 30000)
+        
+        return () => {
+            supabase.removeChannel(channel)
+            clearInterval(interval)
+        }
+    }, [timeRange, fetchTop, handleRealtimeUpdate])
+
 
     function handleClick(post) {
         navigate(`/post/${post.id}`)
-    }
-
-    const getTotalReactions = (reactions) => {
-        if (!reactions) return 0
-        return Object.values(reactions).reduce((sum, count) => sum + count, 0)
     }
 
     if (loading && items.length === 0) {
@@ -153,7 +143,7 @@ export default function TopConfessions() {
                                 🔥 Top Confessions
                             </h1>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Most liked confessions • Updated {lastUpdate.toLocaleTimeString()}
+                                Most reacted confessions • Updated {lastUpdate.toLocaleTimeString()}
                             </p>
                         </div>
                     </div>

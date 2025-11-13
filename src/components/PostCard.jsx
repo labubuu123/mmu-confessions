@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
@@ -12,9 +12,12 @@ dayjs.extend(relativeTime)
 export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
-    const [totalReactions, setTotalReactions] = useState(0)
     const [isReported, setIsReported] = useState(initialPost.reported || false)
     const [poll, setPoll] = useState(null)
+    const getTotalReactions = useCallback((reactionsObj) => {
+        if (!reactionsObj) return 0
+        return Object.values(reactionsObj).reduce((sum, count) => sum + count, 0)
+    }, [])
 
     const excerpt = post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
 
@@ -27,12 +30,12 @@ export default function PostCard({ post: initialPost, onOpen }) {
 
     const getEngagementScore = () => {
         const age = (Date.now() - new Date(post.created_at)) / (1000 * 60 * 60)
-        const score = (totalReactions * 2 + (post.comments_count || 0) * 3) / (age + 2)
+        const score = (getTotalReactions(reactions) * 2 + (post.comments_count || 0) * 3) / (age + 2)
         return score
     }
 
     const isHotPost = getEngagementScore() > 5
-    const isTrendingPost = totalReactions > 20 || (post.comments_count || 0) > 10
+    const isTrendingPost = getTotalReactions(reactions) > 20 || (post.comments_count || 0) > 10
 
     useEffect(() => {
         const channel = supabase
@@ -76,13 +79,10 @@ export default function PostCard({ post: initialPost, onOpen }) {
         
         if (data) {
             const reactionsMap = {}
-            let total = 0
             data.forEach(r => {
                 reactionsMap[r.emoji] = r.count
-                total += r.count
             })
             setReactions(reactionsMap)
-            setTotalReactions(total)
         }
     }
 
@@ -122,6 +122,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
     }
 
     const isNew = dayjs(post.created_at).isAfter(dayjs().subtract(30, 'minute'))
+    const currentTotalReactions = getTotalReactions(reactions)
 
     return (
         <div
@@ -259,7 +260,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             )}
 
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                {totalReactions > 0 && (
+                {currentTotalReactions > 0 && (
                     <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex -space-x-1">
                             {Object.keys(reactions).slice(0, 5).map((emoji, i) => (
@@ -273,7 +274,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             ))}
                         </div>
                         <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                            {totalReactions} {totalReactions === 1 ? 'reaction' : 'reactions'}
+                            {currentTotalReactions} {currentTotalReactions === 1 ? 'reaction' : 'reactions'}
                         </span>
                     </div>
                 )}

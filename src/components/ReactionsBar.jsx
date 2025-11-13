@@ -52,6 +52,13 @@ export default function ReactionsBar({ postId }) {
         setLoading(true)
         setAnimating(emoji)
 
+        const oldReactions = { ...reactions }
+
+        setReactions(prev => ({
+            ...prev,
+            [emoji]: (prev[emoji] || 0) + 1
+        }))
+
         try {
             const { data, error } = await supabase.rpc('increment_reaction', {
                 post_id_in: postId,
@@ -62,20 +69,14 @@ export default function ReactionsBar({ postId }) {
                 console.error('RPC error:', error)
                 throw error
             }
-            
-            setReactions(prev => ({
-                ...prev,
-                [emoji]: (prev[emoji] || 0) + 1
-            }))
-
             setTimeout(() => setAnimating(null), 300)
-            
-            setTimeout(() => fetchReactions(), 500)
+            setTimeout(() => fetchReactions(), 1000)
+
         } catch (err) {
             console.error('Failed to react:', err)
             alert('Failed to add reaction. Please try again.')
-            
-            fetchReactions()
+            setReactions(oldReactions)
+            setAnimating(null)
         } finally {
             setLoading(false)
         }
