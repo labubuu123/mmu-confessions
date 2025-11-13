@@ -47,10 +47,23 @@ CREATE TABLE IF NOT EXISTS public.actions_log (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.events (
+    id BIGSERIAL PRIMARY KEY,
+    confession_id BIGINT NOT NULL REFERENCES public.confessions(id) ON DELETE CASCADE,
+    event_name TEXT NOT NULL,
+    description TEXT,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE,
+    location TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.actions_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -64,16 +77,16 @@ BEGIN
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.reactions', pol.policyname); END LOOP;
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='actions_log'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.actions_log', pol.policyname); END LOOP;
-    
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='polls'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.polls', pol.policyname); END LOOP;
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='poll_votes'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.poll_votes', pol.policyname); END LOOP;
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='user_reputation'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.user_reputation', pol.policyname); END LOOP;
-
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol.policyname); END LOOP;
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='events'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.events', pol.policyname); END LOOP;
 END $$;
 
 CREATE TABLE IF NOT EXISTS public.polls (
@@ -239,6 +252,21 @@ CREATE POLICY "Enable read for all users"
 ON public.user_reputation
 FOR SELECT
 USING (true);
+
+CREATE POLICY "Enable read for all users"
+ON public.events
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable insert for all users"
+ON public.events
+FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable delete for authenticated users (admin)"
+ON public.events
+FOR DELETE
+USING ((SELECT auth.role()) = 'authenticated');
 
 CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
 RETURNS void
@@ -698,6 +726,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.get_confessions_with_reputation(integer, integer);
 CREATE OR REPLACE FUNCTION public.get_confessions_with_reputation(
     page_number INT,
     page_size INT
@@ -718,7 +747,12 @@ RETURNS TABLE (
     pinned BOOLEAN,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
-    author_reputation JSONB
+    author_reputation JSONB,
+    event_name TEXT,
+    event_description TEXT,
+    event_start_time TIMESTAMP WITH TIME ZONE,
+    event_end_time TIMESTAMP WITH TIME ZONE,
+    event_location TEXT
 )
 LANGUAGE plpgsql
 AS $$
@@ -729,11 +763,18 @@ BEGIN
         COALESCE(
             jsonb_build_object('badges', ur.badges),
             '{"badges": []}'::jsonb
-        ) AS author_reputation
+        ) AS author_reputation,
+        e.event_name,
+        e.description AS event_description,
+        e.start_time AS event_start_time,
+        e.end_time AS event_end_time,
+        e.location AS event_location
     FROM
         public.confessions c
     LEFT JOIN
         public.user_reputation ur ON c.author_id = ur.author_id
+    LEFT JOIN
+        public.events e ON c.id = e.confession_id
     WHERE
         c.approved = true
     ORDER BY
@@ -782,7 +823,6 @@ BEGIN
 END;
 $$;
 
-
 DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
 CREATE TRIGGER on_new_confession
     AFTER INSERT ON public.confessions
@@ -816,23 +856,20 @@ CREATE INDEX IF NOT EXISTS idx_confessions_pinned ON public.confessions(pinned D
 CREATE INDEX IF NOT EXISTS idx_polls_confession_id ON public.polls(confession_id);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_poll_id ON public.poll_votes(poll_id);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_voter_id ON public.poll_votes(voter_id);
+CREATE INDEX IF NOT EXISTS idx_events_confession_id ON public.events(confession_id);
+CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DESC);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 GRANT ALL ON public.polls TO anon, authenticated;
 GRANT ALL ON public.poll_votes TO anon, authenticated;
 GRANT ALL ON SEQUENCE polls_id_seq TO anon, authenticated;
 GRANT ALL ON SEQUENCE poll_votes_id_seq TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
-GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
 GRANT ALL ON public.user_reputation TO anon, authenticated;
@@ -842,5 +879,12 @@ GRANT ALL ON FUNCTION public.handle_new_confession() TO anon, authenticated;
 GRANT ALL ON FUNCTION public.handle_new_comment() TO anon, authenticated;
 GRANT ALL ON FUNCTION public.handle_post_reaction() TO anon, authenticated;
 GRANT ALL ON FUNCTION public.handle_comment_reaction() TO anon, authenticated;
+GRANT ALL ON public.events TO anon, authenticated;
+GRANT ALL ON SEQUENCE events_id_seq TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_confessions_with_reputation(INT, INT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_comments_with_reputation(BIGINT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;

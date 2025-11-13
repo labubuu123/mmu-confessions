@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
+import EventDisplay from './EventDisplay'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -46,12 +47,14 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 table: 'confessions',
                 filter: `id=eq.${post.id}`
             }, payload => {
-                setPost(payload.new)
+                setPost(prevPost => ({ ...prevPost, ...payload.new }))
             })
             .subscribe()
 
         fetchReactions()
-        fetchPoll()
+        if (!post.event_name) {
+            fetchPoll()
+        }
 
         const reactionsChannel = supabase
             .channel(`reactions-${post.id}`)
@@ -69,7 +72,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
             supabase.removeChannel(channel)
             supabase.removeChannel(reactionsChannel)
         }
-    }, [post.id])
+    }, [post.id, post.event_name])
 
     async function fetchReactions() {
         const { data } = await supabase
@@ -160,6 +163,13 @@ export default function PostCard({ post: initialPost, onOpen }) {
                     <div className="px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-6">
                         <BarChart3 className="w-3 h-3" />
                         POLL
+                    </div>
+                )}
+
+                {post.event_name && (
+                    <div className="px-3 py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 order-7">
+                        <Calendar className="w-3 h-3" />
+                        EVENT
                     </div>
                 )}
             </div>
@@ -253,11 +263,22 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
             )}
 
-            {poll && (
+            {post.event_name ? (
+                <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+                    <EventDisplay
+                        eventName={post.event_name}
+                        description={post.event_description}
+                        startTime={post.event_start_time}
+                        endTime={post.event_end_time}
+                        location={post.event_location}
+                    />
+                </div>
+            ) : poll ? (
                 <div className="px-4 pb-3" onClick={(e) => e.stopPropagation()}>
                     <PollDisplay poll={poll} confessionId={post.id} />
                 </div>
-            )}
+            ) : null}
+
 
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                 {currentTotalReactions > 0 && (

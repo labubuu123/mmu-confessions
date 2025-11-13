@@ -2,10 +2,10 @@ import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags'
-// FIXED: Added BarChart3
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3 } from 'lucide-react'
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import PollCreator from '../components/PollCreator'
+import EventCreator from '../components/EventCreator'
 
 const MAX_VIDEO_SIZE_MB = 25
 const MAX_IMAGES = 3
@@ -35,10 +35,12 @@ export default function PostForm({ onPosted }) {
     const detectedTags = extractHashtagsForPreview(text);
     const [showPollCreator, setShowPollCreator] = useState(false)
     const [pollData, setPollData] = useState(null)
+    const [showEventCreator, setShowEventCreator] = useState(false)
+    const [eventData, setEventData] = useState(null)
 
     async function handleSubmit(e) {
         e.preventDefault()
-        if (!text.trim() && images.length === 0 && !video && !audio) {
+        if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
             setMsg('Write something or attach media')
             return
         }
@@ -189,6 +191,25 @@ export default function PostForm({ onPosted }) {
                 }
             }
 
+            if (eventData && eventData.event_name && eventData.start_time && eventData.location) {
+                setMsg('Creating event...')
+                
+                const { error: eventError } = await supabase
+                    .from('events')
+                    .insert([{
+                        confession_id: postId,
+                        event_name: eventData.event_name,
+                        description: eventData.description || null,
+                        start_time: eventData.start_time,
+                        end_time: eventData.end_time || null,
+                        location: eventData.location
+                    }])
+
+                if (eventError) {
+                    console.error('Event creation error:', eventError)
+                }
+            }
+
             if (onPosted && data && data.length > 0) {
                 onPosted(data[0])
             }
@@ -201,6 +222,9 @@ export default function PostForm({ onPosted }) {
             setVideoPreview(null)
             setPolicyAccepted(false)
             setPollData(null)
+            setShowPollCreator(false)
+            setEventData(null)
+            setShowEventCreator(false)
             setUploadProgress(0)
             setMsg('Posted successfully! ✓')
             
@@ -417,6 +441,18 @@ export default function PostForm({ onPosted }) {
                     </div>
                 )}
 
+                {showEventCreator && (
+                    <div className="my-4">
+                        <EventCreator
+                            onEventData={setEventData}
+                            onRemoveEvent={() => {
+                                setShowEventCreator(false)
+                                setEventData(null)
+                            }}
+                        />
+                    </div>
+                )}
+
                 {loading && uploadProgress > 0 && uploadProgress < 100 && (
                     <div className="my-4">
                         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -503,24 +539,46 @@ export default function PostForm({ onPosted }) {
                         
                         <button
                             type="button"
-                            onClick={() => setShowPollCreator(!showPollCreator)}
+                            onClick={() => {
+                                setShowPollCreator(!showPollCreator)
+                                setShowEventCreator(false)
+                            }}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
                                 showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
-                            disabled={loading}
+                            disabled={loading || showEventCreator}
                         >
                             <BarChart3 className="w-5 h-5 text-indigo-500" />
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                 Poll
                             </span>
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowEventCreator(!showEventCreator)
+                                setShowPollCreator(false)
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                                showEventCreator
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                            disabled={loading || showPollCreator}
+                        >
+                            <CalendarPlus className="w-5 h-5 text-orange-500" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                Event
+                            </span>
+                        </button>
                     </div>
 
                     <button
                         type="submit"
-                        disabled={loading || (!text.trim() && images.length === 0 && !video && !audio) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                        disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                         className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         {loading ? (
