@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import PostCard from './PostCard'
 import PostModal from './PostModal'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Search, X, Hash, TrendingUp, Filter, Calendar, Sparkles } from 'lucide-react'
 
 export default function SearchPage() {
@@ -18,6 +18,15 @@ export default function SearchPage() {
 
     const navigate = useNavigate()
     const { id: modalPostId } = useParams()
+    const [searchParams, setSearchParams] = useSearchParams()
+
+    useEffect(() => {
+        const tagFromUrl = searchParams.get('tag');
+        if (tagFromUrl) {
+            setSelectedTag(tagFromUrl);
+            setQuery('');
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchTrendingTags()
@@ -25,10 +34,16 @@ export default function SearchPage() {
     }, [])
 
     useEffect(() => {
+        if (selectedTag) {
+            setSearchParams({ tag: selectedTag });
+        } else if (!query) {
+            setSearchParams({});
+        }
+
         if (query.length > 1 || selectedTag) {
             const timer = setTimeout(() => {
                 search()
-                saveSearchHistory(query)
+                if (query) saveSearchHistory(query);
             }, 300)
             return () => clearTimeout(timer)
         } else if (query.length === 0 && !selectedTag) {
@@ -188,11 +203,18 @@ export default function SearchPage() {
     }
 
     function handleOpenModal(post) {
-        navigate(`/post/${post.id}`)
+        navigate(`/post/${post.id}`, { state: { backgroundLocation: `/search?${searchParams.toString()}` } });
     }
 
     function handleCloseModal() {
-        navigate('/search')
+        navigate(location.state?.backgroundLocation || '/search');
+    }
+    
+    const clearSearch = () => {
+        setQuery('')
+        setSelectedTag(null)
+        setResults([])
+        setSearchParams({})
     }
 
     return (
@@ -226,11 +248,7 @@ export default function SearchPage() {
                     />
                     {(query || selectedTag) && (
                         <button
-                            onClick={() => {
-                                setQuery('')
-                                setSelectedTag(null)
-                                setResults([])
-                            }}
+                            onClick={clearSearch}
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition z-10"
                         >
                             <X className="w-5 h-5 text-gray-400" />
@@ -295,7 +313,7 @@ export default function SearchPage() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {[
-                                { value: 'all', label: 'All Posts', icon: '📝' },
+                                { value: 'all', label: 'All Posts', icon: 'All' },
                                 { value: 'popular', label: 'Popular', icon: '🔥', desc: '10+ likes' },
                                 { value: 'discussed', label: 'Discussed', icon: '💬', desc: '5+ comments' },
                                 { value: 'new', label: 'New', icon: '✨', desc: 'Last 3 days' }
@@ -346,7 +364,6 @@ export default function SearchPage() {
                 </div>
             </div>
 
-            {/* Results */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-12">
                     <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
@@ -373,7 +390,7 @@ export default function SearchPage() {
                 </div>
             ) : (query || selectedTag) ? (
                 <div className="text-center py-16">
-                    <div className="text-7xl mb-4">🔍</div>
+                    <div className="text-7xl mb-4">😢</div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                         No confessions found
                     </h3>
@@ -381,11 +398,7 @@ export default function SearchPage() {
                         Try different keywords or tags
                     </p>
                     <button
-                        onClick={() => {
-                            setQuery('')
-                            setSelectedTag(null)
-                            setFilterBy('all')
-                        }}
+                        onClick={clearSearch}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                     >
                         Clear Search
@@ -393,7 +406,7 @@ export default function SearchPage() {
                 </div>
             ) : (
                 <div className="text-center py-16">
-                    <div className="text-7xl mb-4">👆</div>
+                    <div className="text-7xl mb-4">🧐</div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                         Start searching
                     </h3>

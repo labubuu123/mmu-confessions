@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export function extractTags(text) {
     if (!text) return [];
@@ -21,7 +22,8 @@ export const extractHashtagsForPreview = (text) => {
 };
 
 /**
- * Renders text with hashtags wrapped in <strong> tags for React.
+ * --- MODIFIED: Renders text with clickable hashtags ---
+ * Renders text with hashtags wrapped in <Link> tags for React.
  * This splits the text into an array of strings and React elements.
  * @param {string} text
  * @returns {Array<string | React.ReactElement>}
@@ -36,14 +38,20 @@ export const renderTextWithHashtags = (text) => {
   
   parts.forEach((part, index) => {
     if (part) {
-        result.push(part);
+        result.push(<span key={`text-${index}`}>{part}</span>);
     }
     const tag = matches[index];
     if (tag) {
+        const tagName = tag.slice(1).toLowerCase();
         result.push(
-            <strong key={`tag-${index}`} className="font-bold text-indigo-600 dark:text-indigo-400">
+            <Link
+                key={`tag-${index}`}
+                to={`/search?tag=${tagName}`}
+                className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {tag}
-            </strong>
+            </Link>
         );
     }
   });

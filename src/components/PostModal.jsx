@@ -381,9 +381,9 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             </div>
 
             {zoomedImage && (
-                <ImageZoomModal 
-                    imageUrl={zoomedImage} 
-                    onClose={() => setZoomedImage(null)} 
+                <ImageZoomModal
+                    imageUrl={zoomedImage}
+                    onClose={() => setZoomedImage(null)}
                 />
             )}
         </>,
