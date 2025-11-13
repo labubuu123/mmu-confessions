@@ -503,6 +503,7 @@ export default function PostForm({ onPosted }) {
                     </label>
                 </div>
 
+                {/* --- THIS IS THE CORRECTED SECTION --- */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex flex-wrap gap-1">
                         <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -590,7 +591,7 @@ export default function PostForm({ onPosted }) {
                     <button
                         type="submit"
                         disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        className="flex items-center justify-center w-full sm:w-auto gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         {loading ? (
                             <>
@@ -605,6 +606,8 @@ export default function PostForm({ onPosted }) {
                         )}
                     </button>
                 </div>
+                {/* --- END OF CORRECTION --- */}
+
 
                 {msg && (
                     <div className={`mt-3 text-sm px-4 py-2 rounded-lg ${
