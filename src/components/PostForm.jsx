@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import imageCompression from 'browser-image-compression'
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags'
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus, Save } from 'lucide-react' // Added Save
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import PollCreator from '../components/PollCreator'
 import EventCreator from '../components/EventCreator'
-import { useDrafts } from './DraftManager'
-import DraftManager from './DraftManager'
-import Modal from './Modal'
 import MoodSelector from './MoodSelector'
 import { useNotifications } from './NotificationSystem'
-
 
 const MAX_VIDEO_SIZE_MB = 25
 const MAX_IMAGES = 3
@@ -43,19 +39,7 @@ export default function PostForm({ onPosted }) {
     const [showEventCreator, setShowEventCreator] = useState(false)
     const [eventData, setEventData] = useState(null)
     const { success, error, warning, info } = useNotifications()
-    const { drafts, saveDraft } = useDrafts()
-    const [showDrafts, setShowDrafts] = useState(false)
     const [selectedMood, setSelectedMood] = useState(null)
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (text.trim()) {
-                saveDraft(text, { images, video, audio })
-            }
-        }, 5000)
-
-        return () => clearTimeout(timer)
-    }, [text, images, video, audio, saveDraft])
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -359,13 +343,6 @@ export default function PostForm({ onPosted }) {
                             Share Your Confession
                         </h2>
                     </div>
-                    <button
-                        onClick={() => setShowDrafts(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all"
-                    >
-                        <Save className="w-4 h-4" />
-                        <span>Drafts ({drafts.length})</span>
-                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -577,8 +554,8 @@ export default function PostForm({ onPosted }) {
                                     setShowEventCreator(false)
                                 }}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showPollCreator
-                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                                 disabled={loading || showEventCreator}
                             >
@@ -595,8 +572,8 @@ export default function PostForm({ onPosted }) {
                                     setShowPollCreator(false)
                                 }}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showEventCreator
-                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                                 disabled={loading || showPollCreator}
                             >
@@ -632,18 +609,6 @@ export default function PostForm({ onPosted }) {
                     </div>
                 </form>
             </div>
-
-            {showDrafts && (
-                <Modal onClose={() => setShowDrafts(false)}>
-                    <DraftManager
-                        onLoadDraft={(draft) => {
-                            setText(draft.text)
-                            setShowDrafts(false)
-                        }}
-                        onClose={() => setShowDrafts(false)}
-                    />
-                </Modal>
-            )}
         </>
     )
 }
