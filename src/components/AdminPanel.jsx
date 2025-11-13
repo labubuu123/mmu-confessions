@@ -3,12 +3,13 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3
+    ShieldOff, BarChart3, Calendar
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import PollDisplay from './PollDisplay'
+import EventDisplay from './EventDisplay'
 
 dayjs.extend(relativeTime)
 
@@ -74,7 +75,7 @@ export default function AdminPanel() {
                 .in('confession_id', postIds)
             
             if (error) {
-                console.error("Failed to fetch polls:", err)
+                console.error("Failed to fetch polls:", error)
                 return
             }
             
@@ -145,7 +146,7 @@ export default function AdminPanel() {
         const currentPage = isInitial ? 0 : page
         const { data, error } = await supabase
             .from('confessions')
-            .select('*')
+            .select('*, events(*)')
             .order('created_at', { ascending: false })
             .range(currentPage * POSTS_PER_PAGE, (currentPage + 1) * POSTS_PER_PAGE - 1)
 
@@ -175,7 +176,6 @@ export default function AdminPanel() {
             setHasMore(data.length === POSTS_PER_PAGE)
         }
     }, [page, loading])
-    // ---
 
     async function handleDelete(postId) {
         if (!window.confirm(`Are you sure you want to DELETE post ${postId}? This will delete the post, all comments, reactions, and associated media. This cannot be undone.`)) {
@@ -583,6 +583,9 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     {posts.map(p => {
                         const isSelected = selectedPosts.has(p.id);
                         const poll = polls[p.id];
+                        const hasEvent = p.events && p.events.length > 0;
+                        const event = hasEvent ? p.events[0] : null;
+                        
                         return (
                             <div
                                 key={p.id}
@@ -613,6 +616,12 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                     <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded flex items-center gap-1">
                                                         <BarChart3 className="w-3 h-3" />
                                                         Poll
+                                                    </span>
+                                                )}
+                                                {hasEvent && (
+                                                    <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs rounded flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" />
+                                                        Event
                                                     </span>
                                                 )}
                                                 {p.pinned && (
@@ -652,6 +661,18 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                         {poll && (
                                             <div className="mb-3" onClick={(e) => e.stopPropagation()}>
                                                 <PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} />
+                                            </div>
+                                        )}
+
+                                        {event && (
+                                            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                                                <EventDisplay
+                                                    eventName={event.event_name}
+                                                    description={event.description}
+                                                    startTime={event.start_time}
+                                                    endTime={event.end_time}
+                                                    location={event.location}
+                                                />
                                             </div>
                                         )}
 
