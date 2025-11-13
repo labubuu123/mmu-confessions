@@ -535,7 +535,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             </div>
 
             {posts.length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-between gap-4">
+                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={toggleSelectAll}
@@ -590,8 +590,8 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             <div
                                 key={p.id}
                                 className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${isSelected
-                                        ? 'border-indigo-500 ring-2 ring-indigo-500/50'
-                                        : 'border-gray-200 dark:border-gray-700'
+                                    ? 'border-indigo-500 ring-2 ring-indigo-500/50'
+                                    : 'border-gray-200 dark:border-gray-700'
                                     } p-5`}
                             >
                                 <div className="flex items-start gap-4">
@@ -606,11 +606,11 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                                 {new Date(p.created_at).toLocaleString()} • ID: {p.id}
                                             </div>
-                                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                                            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
                                                 {poll && (
                                                     <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded flex items-center gap-1">
                                                         <BarChart3 className="w-3 h-3" />
@@ -700,8 +700,8 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                 onClick={() => handleTogglePin(p.id, p.pinned)}
                                                 disabled={actionLoading[p.id] || bulkLoading}
                                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${p.pinned
-                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
+                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
                                                     }`}
                                             >
                                                 {actionLoading[p.id] === 'pin' ? (
@@ -802,8 +802,8 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className={`text-xs font-bold ${c.author_name
-                                                                            ? 'text-indigo-600 dark:text-indigo-400'
-                                                                            : 'text-gray-800 dark:text-gray-200'
+                                                                        ? 'text-indigo-600 dark:text-indigo-400'
+                                                                        : 'text-gray-800 dark:text-gray-200'
                                                                         }`}>
                                                                         {c.author_name || 'Anonymous'}
                                                                     </span>
