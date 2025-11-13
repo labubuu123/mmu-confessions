@@ -504,94 +504,97 @@ export default function PostForm({ onPosted }) {
                 </div>
 
                 {/* --- THIS IS THE CORRECTED SECTION --- */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex flex-wrap gap-1">
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Image className="w-5 h-5 text-green-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Photos
-                            </span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={handleImageChange}
-                                className="hidden"
-                                disabled={loading || !!video || !!audio}
-                            />
-                        </label>
+                {/* 1. Changed to flex-wrap and items-center. Removed justify-between.
+                  2. Added a gap-y-4 for vertical spacing when it wraps.
+                */}
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-4">
+                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <Image className="w-5 h-5 text-green-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            Photos
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageChange}
+                            className="hidden"
+                            disabled={loading || !!video || !!audio}
+                        />
+                    </label>
 
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Film className="w-5 h-5 text-red-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Video
-                            </span>
-                            <input
-                                type="file"
-                                accept="video/*"
-                                onChange={handleVideoChange}
-                                className="hidden"
-                                disabled={loading || images.length > 0 || !!audio}
-                            />
-                        </label>
+                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <Film className="w-5 h-5 text-red-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            Video
+                        </span>
+                        <input
+                            type="file"
+                            accept="video/*"
+                            onChange={handleVideoChange}
+                            className="hidden"
+                            disabled={loading || images.length > 0 || !!audio}
+                        />
+                    </label>
 
-                        <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                            <Mic className="w-5 h-5 text-purple-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Audio
-                            </span>
-                            <input
-                                type="file"
-                                accept="audio/*"
-                                onChange={handleAudioChange}
-                                className="hidden"
-                                disabled={loading || images.length > 0 || !!video}
-                            />
-                        </label>
-                        
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowPollCreator(!showPollCreator)
-                                setShowEventCreator(false)
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                                showPollCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            disabled={loading || showEventCreator}
-                        >
-                            <BarChart3 className="w-5 h-5 text-indigo-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Poll
-                            </span>
-                        </button>
+                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <Mic className="w-5 h-5 text-purple-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            Audio
+                        </span>
+                        <input
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleAudioChange}
+                            className="hidden"
+                            disabled={loading || images.length > 0 || !!video}
+                        />
+                    </label>
+                    
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowPollCreator(!showPollCreator)
+                            setShowEventCreator(false)
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                            showPollCreator
+                                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        disabled={loading || showEventCreator}
+                    >
+                        <BarChart3 className="w-5 h-5 text-indigo-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            Poll
+                        </span>
+                    </button>
 
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowEventCreator(!showEventCreator)
-                                setShowPollCreator(false)
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
-                                showEventCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            disabled={loading || showPollCreator}
-                        >
-                            <CalendarPlus className="w-5 h-5 text-orange-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                Event
-                            </span>
-                        </button>
-                    </div>
-
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowEventCreator(!showEventCreator)
+                            setShowPollCreator(false)
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                            showEventCreator
+                                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        disabled={loading || showPollCreator}
+                    >
+                        <CalendarPlus className="w-5 h-5 text-orange-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            Event
+                        </span>
+                    </button>
+                    {/* 3. Removed the wrapper <div> around the icons.
+                      4. Added `ml-auto` to the button. Removed `w-full` and `sm:w-auto`.
+                    */}
                     <button
                         type="submit"
                         disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                        className="flex items-center justify-center w-full sm:w-auto gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        className="flex items-center justify-center ml-auto gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         {loading ? (
                             <>
