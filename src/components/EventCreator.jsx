@@ -56,7 +56,7 @@ export default function EventCreator({ onEventData, onRemoveEvent }) {
                 />
                 <input
                     type="text"
-                    placeholder="Location (e.g., 'FCI, MMU Cyberjaya')"
+                    placeholder="Location (e.g., 'FOB, MMU Melaka')"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500"
