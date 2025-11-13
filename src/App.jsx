@@ -7,6 +7,7 @@ import Header from "./components/Header";
 import PostModal from "./components/PostModal";
 import PolicyPage from "./components/PolicyPage";
 import SearchPage from "./components/SearchPage";
+import { supabase } from "./lib/supabaseClient";
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -18,14 +19,45 @@ function App() {
     return 'light';
   });
 
+  const [onlineCount, setOnlineCount] = useState(0);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: userPresenceKey,
+        },
+      },
+    });
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const newState = channel.presenceState();
+      const count = Object.keys(newState).length;
+      setOnlineCount(count);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ online_at: new Date().toISOString() });
+      }
+    });
+
+    return () => {
+      channel.untrack();
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <Header theme={theme} setTheme={setTheme} />
+      <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
       <Routes>
         <Route path="/" element={<Feed />} />
         <Route path="/post/:id" element={<Feed />} />

@@ -1,8 +1,8 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText, Search } from 'lucide-react'
+import { Home, TrendingUp, Shield, Sun, Moon, MessageSquare, FileText, Search, Users } from 'lucide-react'
 
-export default function Header({ theme, setTheme }) {
+export default function Header({ theme, setTheme, onlineCount }) {
     const location = useLocation()
     
     const isActive = (path) => {
@@ -91,21 +91,35 @@ export default function Header({ theme, setTheme }) {
                         </Link>
                     </nav>
 
-                    <button
-                        onClick={() => {
-                            const newTheme = theme === 'light' ? 'dark' : 'light';
-                            setTheme(newTheme);
-                            document.documentElement.classList.toggle('dark', newTheme === 'dark');
-                        }}
-                        className="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-                    >
-                        {theme === 'light' ? (
-                            <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                        ) : (
-                            <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                        )}
-                    </button>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <div
+                            className="hidden sm:flex items-center gap-2 text-gray-600 dark:text-gray-300" 
+                            title={`${onlineCount} users online`}
+                        >
+                            <div className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </div>
+                            <span className="text-sm font-medium">{onlineCount}</span>
+                            <Users className="w-4 h-4" />
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                const newTheme = theme === 'light' ? 'dark' : 'light';
+                                setTheme(newTheme);
+                                document.documentElement.classList.toggle('dark', newTheme === 'dark');
+                            }}
+                            className="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                        >
+                            {theme === 'light' ? (
+                                <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                            ) : (
+                                <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 <nav className="md:hidden grid grid-cols-4 items-center justify-around mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 gap-1">
