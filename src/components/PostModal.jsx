@@ -153,11 +153,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     if (loading) {
         return ReactDOM.createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 shadow-2xl">
-                    <div className="flex flex-col items-center gap-3 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">Loading...</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-gray-700 dark:text-gray-300">Loading...</p>
                     </div>
                 </div>
             </div>,
@@ -167,12 +167,12 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     if (error) {
         return ReactDOM.createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 shadow-2xl max-w-md mx-auto">
-                    <p className="text-red-500 text-sm sm:text-base mb-4">{error}</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md">
+                    <p className="text-red-500 mb-4">{error}</p>
                     <button
                         onClick={onClose}
-                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base touch-manipulation active:scale-95"
+                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                     >
                         Close
                     </button>
@@ -189,7 +189,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     return ReactDOM.createPortal(
         <>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
                 <div className="absolute inset-0" onClick={onClose} />
 
                 {onNavigate && (
@@ -211,16 +211,16 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                     </>
                 )}
 
-                <div className="relative w-full h-full sm:max-w-3xl sm:w-full bg-white dark:bg-gray-800 sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-gray-200 dark:border-gray-700 sm:max-h-[90vh] flex flex-col">
+                <div className="relative max-w-3xl w-full bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 max-h-[95vh] sm:max-h-[90vh] flex flex-col">
                     <div className="flex-1 overflow-y-auto">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2.5 sm:p-4 flex items-center justify-between z-10">
+                        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex items-center justify-between z-10">
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
                                 <AnonAvatar authorId={internalPost.author_id} size="sm" />
                                 <div className="min-w-0 flex-1">
-                                    <div className="font-semibold text-xs sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
                                         {internalPost.author_name || 'Anonymous'}
                                     </div>
-                                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
                                         {dayjs(internalPost.created_at).fromNow()}
                                     </div>
                                 </div>
@@ -228,7 +228,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                                 <button
                                     onClick={handleCopyLink}
-                                    className={`p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition touch-manipulation active:scale-95 ${linkCopied ? 'text-green-500' : ''
+                                    className={`p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition ${linkCopied ? 'text-green-500' : ''
                                         }`}
                                     title="Copy Link"
                                 >
@@ -237,14 +237,14 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 <button
                                     onClick={handleReport}
                                     disabled={reportLoading || internalPost.reported}
-                                    className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition disabled:opacity-50 touch-manipulation active:scale-95"
+                                    className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition disabled:opacity-50"
                                     title={internalPost.reported ? "Already reported" : "Report"}
                                 >
                                     <Flag className={`w-4 h-4 sm:w-5 sm:h-5 ${internalPost.reported ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}`} />
                                 </button>
                                 <button
                                     onClick={onClose}
-                                    className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition touch-manipulation active:scale-95"
+                                    className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
                                     title="Close (Esc)"
                                 >
                                     <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -252,15 +252,15 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                         </div>
 
-                        <div className="p-3 sm:p-6">
+                        <div className="p-4 sm:p-6">
                             <p className="text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
                                 {renderTextWithHashtags(internalPost.text)}
                             </p>
 
                             {internalPost.media_type === 'images' && displayImages.length > 0 && (
-                                <div className={`mt-3 sm:mt-4 ${displayImages.length === 1 ? '' :
-                                    displayImages.length === 2 ? 'grid grid-cols-2 gap-1.5 sm:gap-2' :
-                                        'grid grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2'
+                                <div className={`mt-4 ${displayImages.length === 1 ? '' :
+                                    displayImages.length === 2 ? 'grid grid-cols-2 gap-2' :
+                                        'grid grid-cols-2 md:grid-cols-3 gap-2'
                                     }`}>
                                     {displayImages.map((url, idx) => (
                                         <div
@@ -271,11 +271,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                             <img
                                                 src={url}
                                                 alt={`media ${idx + 1}`}
-                                                className={`w-full object-contain rounded-lg sm:rounded-xl ${displayImages.length === 1 ? 'max-h-[50vh] sm:max-h-[60vh]' : 'max-h-40 sm:max-h-64'
+                                                className={`w-full object-contain rounded-lg sm:rounded-xl ${displayImages.length === 1 ? 'max-h-[50vh] sm:max-h-[60vh]' : 'max-h-48 sm:max-h-64'
                                                     }`}
                                             />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg sm:rounded-xl">
-                                                <ExternalLink className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                                                <ExternalLink className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                             </div>
                                         </div>
                                     ))}
@@ -283,21 +283,21 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             )}
 
                             {internalPost.media_type === 'video' && internalPost.media_url && (
-                                <div className="mt-3 sm:mt-4">
+                                <div className="mt-4">
                                     <video
                                         src={internalPost.media_url}
                                         controls
-                                        className="w-full rounded-lg sm:rounded-xl max-h-[40vh] sm:max-h-[50vh]"
+                                        className="w-full rounded-lg sm:rounded-xl max-h-[50vh]"
                                     />
                                 </div>
                             )}
 
                             {internalPost.media_type === 'audio' && internalPost.media_url && (
-                                <div className="mt-3 sm:mt-4">
-                                    <div className="p-3 sm:p-6 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg sm:rounded-xl">
-                                        <div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-4">
-                                            <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                                                <Volume2 className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
+                                <div className="mt-4">
+                                    <div className="p-4 sm:p-6 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg sm:rounded-xl">
+                                        <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                                                <Volume2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                                             </div>
                                             <div>
                                                 <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -308,7 +308,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                                 </p>
                                             </div>
                                         </div>
-                                        <audio controls className="w-full h-8 sm:h-10">
+                                        <audio controls className="w-full">
                                             <source src={internalPost.media_url} />
                                             Your browser does not support audio playback.
                                         </audio>
@@ -317,7 +317,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             )}
 
                             {event && (
-                                <div className="mt-3 sm:mt-4">
+                                <div className="mt-4">
                                     <EventDisplay
                                         eventName={event.event_name}
                                         description={event.description}
@@ -329,17 +329,17 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             )}
 
                             {poll && !event && (
-                                <div className="mt-3 sm:mt-4">
+                                <div className="mt-4">
                                     <PollDisplay poll={poll} confessionId={internalPost.id} />
                                 </div>
                             )}
 
                             {internalPost.tags && internalPost.tags.length > 0 && (
-                                <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
+                                <div className="mt-4 flex flex-wrap gap-2">
                                     {internalPost.tags.map(tag => (
                                         <span
                                             key={tag}
-                                            className="px-2 sm:px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] sm:text-sm font-medium"
+                                            className="px-2 sm:px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs sm:text-sm font-medium"
                                         >
                                             #{tag}
                                         </span>
@@ -347,11 +347,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             )}
 
-                            <div className="mt-3 sm:mt-6">
+                            <div className="mt-4 sm:mt-6">
                                 <ReactionsBar postId={internalPost.id} />
                             </div>
 
-                            <div className="mt-3 sm:mt-6 border-t border-gray-200 dark:border-gray-700 pt-3 sm:pt-6">
+                            <div className="mt-4 sm:mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 sm:pt-6">
                                 <CommentSection postId={internalPost.id} />
                             </div>
                         </div>
