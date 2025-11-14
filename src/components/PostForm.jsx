@@ -335,19 +335,19 @@ export default function PostForm({ onPosted }) {
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                             Share Your Confession
                         </h2>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="flex gap-3 mb-1">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                    <div className="flex gap-2 sm:gap-3 mb-1">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0 text-sm sm:text-base">
                             A
                         </div>
                         <div className="flex-1">
@@ -355,7 +355,7 @@ export default function PostForm({ onPosted }) {
                                 value={text}
                                 onChange={e => setText(e.target.value)}
                                 placeholder="What's on your mind? Share anonymously... (Use #hashtags to categorize)"
-                                className="w-full p-4 border-0 rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-gray-900 dark:text-gray-100"
+                                className="w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100"
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
                             />
@@ -366,16 +366,16 @@ export default function PostForm({ onPosted }) {
                     </div>
 
                     {detectedTags.length > 0 && (
-                        <div className="mb-4 ml-14 -mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
-                            <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                <Tag className="w-4 h-4" />
+                        <div className="mb-3 sm:mb-4 ml-10 sm:ml-14 -mt-2 p-2 sm:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
+                            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <Tag className="w-3 h-3 sm:w-4 sm:h-4" />
                                 Detected Tags
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                 {detectedTags.map((tag, index) => (
                                     <span
                                         key={index}
-                                        className="px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full"
+                                        className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] sm:text-xs font-bold rounded-full"
                                     >
                                         {tag}
                                     </span>
@@ -385,18 +385,18 @@ export default function PostForm({ onPosted }) {
                     )}
 
                     {previews.length > 0 && (
-                        <div className="my-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <div className="my-3 sm:my-4 grid grid-cols-2 md:grid-cols-3 gap-2">
                             {previews.map((preview, idx) => (
                                 <div key={idx} className="relative group">
                                     <img
                                         src={preview}
                                         alt={`Preview ${idx + 1}`}
-                                        className="w-full h-32 object-cover rounded-lg"
+                                        className="w-full h-24 sm:h-32 object-cover rounded-lg"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => removeImage(idx)}
-                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
@@ -406,26 +406,26 @@ export default function PostForm({ onPosted }) {
                     )}
 
                     {videoPreview && (
-                        <div className="my-4 relative">
-                            <video src={videoPreview} className="w-full max-h-96 rounded-xl" controls />
+                        <div className="my-3 sm:my-4 relative">
+                            <video src={videoPreview} className="w-full max-h-64 sm:max-h-96 rounded-xl" controls />
                             <button
                                 type="button"
                                 onClick={removeVideo}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition"
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-600 transition"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
                         </div>
                     )}
 
                     {audio && (
-                        <div className="my-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
-                            <Volume2 className="w-6 h-6 text-indigo-600" />
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div className="my-3 sm:my-4 p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
+                            <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                     {audio.name}
                                 </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                                     {(audio.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
                             </div>
@@ -434,13 +434,13 @@ export default function PostForm({ onPosted }) {
                                 onClick={removeAudio}
                                 className="text-red-500 hover:text-red-600"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
                         </div>
                     )}
 
                     {showPollCreator && (
-                        <div className="my-4">
+                        <div className="my-3 sm:my-4">
                             <PollCreator
                                 onPollData={setPollData}
                                 onRemovePoll={() => {
@@ -452,7 +452,7 @@ export default function PostForm({ onPosted }) {
                     )}
 
                     {showEventCreator && (
-                        <div className="my-4">
+                        <div className="my-3 sm:my-4">
                             <EventCreator
                                 onEventData={setEventData}
                                 onRemoveEvent={() => {
@@ -464,8 +464,8 @@ export default function PostForm({ onPosted }) {
                     )}
 
                     {loading && uploadProgress > 0 && uploadProgress < 100 && (
-                        <div className="my-4">
-                            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        <div className="my-3 sm:my-4">
+                            <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
                                 <span>Uploading...</span>
                                 <span>{Math.round(uploadProgress)}%</span>
                             </div>
@@ -478,15 +478,15 @@ export default function PostForm({ onPosted }) {
                         </div>
                     )}
 
-                    <div className="mb-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <label className="flex items-center gap-3 cursor-pointer">
+                    <div className="mb-3 sm:mb-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={policyAccepted}
                                 onChange={(e) => setPolicyAccepted(e.target.checked)}
-                                className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 flex-shrink-0"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                                 I have read and agree to the{' '}
                                 <Link
                                     to="/policy"
@@ -502,11 +502,11 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-1">
-                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Image className="w-5 h-5 text-green-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Photos
                                 </span>
                                 <input
@@ -519,9 +519,9 @@ export default function PostForm({ onPosted }) {
                                 />
                             </label>
 
-                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Film className="w-5 h-5 text-red-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Video
                                 </span>
                                 <input
@@ -533,9 +533,9 @@ export default function PostForm({ onPosted }) {
                                 />
                             </label>
 
-                            <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Mic className="w-5 h-5 text-purple-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Audio
                                 </span>
                                 <input
@@ -553,14 +553,14 @@ export default function PostForm({ onPosted }) {
                                     setShowPollCreator(!showPollCreator)
                                     setShowEventCreator(false)
                                 }}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showPollCreator
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                                 disabled={loading || showEventCreator}
                             >
-                                <BarChart3 className="w-5 h-5 text-indigo-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Poll
                                 </span>
                             </button>
@@ -571,14 +571,14 @@ export default function PostForm({ onPosted }) {
                                     setShowEventCreator(!showEventCreator)
                                     setShowPollCreator(false)
                                 }}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${showEventCreator
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                                 disabled={loading || showPollCreator}
                             >
-                                <CalendarPlus className="w-5 h-5 text-orange-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Event
                                 </span>
                             </button>
@@ -592,7 +592,7 @@ export default function PostForm({ onPosted }) {
                         <button
                             type="submit"
                             disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                            className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (
                                 <>
