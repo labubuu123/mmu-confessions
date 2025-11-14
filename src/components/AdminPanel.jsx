@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3, Calendar
+    ShieldOff, BarChart3, Calendar, User, Clock, Heart
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -497,7 +497,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
     const allPostsSelected = posts.length > 0 && selectedPosts.size === posts.length;
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 py-8">
             <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
@@ -775,56 +775,117 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                             <button
                                                 onClick={() => toggleComments(p.id)}
-                                                className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                                className="flex items-center justify-between w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
                                             >
-                                                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    <MessageCircle className="w-4 h-4" />
-                                                    Show Comments ({p.comments_count || 0})
+                                                <div className="flex items-center gap-3">
+                                                    <MessageCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                                    <div className="text-left">
+                                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                            Comments ({p.comments_count || 0})
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                            {visibleComments[p.id] ? 'Click to hide' : 'Click to view all comments'}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                {visibleComments[p.id] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                                <div className="flex items-center gap-2">
+                                                    {p.comments_count > 0 && (
+                                                        <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-full">
+                                                            {p.comments_count}
+                                                        </span>
+                                                    )}
+                                                    {visibleComments[p.id] ?
+                                                        <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" /> :
+                                                        <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
+                                                    }
+                                                </div>
                                             </button>
 
                                             {visibleComments[p.id] && (
-                                                <div className="mt-3 pl-4 space-y-3 max-h-64 overflow-y-auto">
+                                                <div className="mt-4 space-y-3">
                                                     {commentsLoading[p.id] && (
-                                                        <div className="flex justify-center py-4">
-                                                            <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                                        <div className="flex justify-center py-8">
+                                                            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                                                         </div>
                                                     )}
 
                                                     {!commentsLoading[p.id] && comments[p.id]?.length === 0 && (
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">No comments found for this post.</p>
+                                                        <div className="text-center py-8 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                            <MessageCircle className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet</p>
+                                                        </div>
                                                     )}
 
                                                     {!commentsLoading[p.id] && comments[p.id]?.map(c => (
-                                                        <div key={c.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                                                            <AnonAvatar authorId={c.author_id} size="sm" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`text-xs font-bold ${c.author_name
-                                                                        ? 'text-indigo-600 dark:text-indigo-400'
-                                                                        : 'text-gray-800 dark:text-gray-200'
-                                                                        }`}>
-                                                                        {c.author_name || 'Anonymous'}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{dayjs(c.created_at).fromNow()}</span>
+                                                        <div key={c.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition">
+                                                            <div className="flex items-start gap-3">
+                                                                <AnonAvatar authorId={c.author_id} size="sm" />
+
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className={`text-sm font-semibold ${c.author_name
+                                                                            ? 'text-indigo-600 dark:text-indigo-400'
+                                                                            : 'text-gray-800 dark:text-gray-200'
+                                                                            }`}>
+                                                                            {c.author_name || 'Anonymous'}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                                                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                            <Clock className="w-3 h-3" />
+                                                                            {dayjs(c.created_at).fromNow()}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 whitespace-pre-wrap break-words leading-relaxed">
+                                                                        {c.text}
+                                                                    </p>
+
+                                                                    {c.reactions && Object.keys(c.reactions).length > 0 && (
+                                                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                                            {Object.entries(c.reactions)
+                                                                                .filter(([_, count]) => count > 0)
+                                                                                .map(([emoji, count]) => (
+                                                                                    <div
+                                                                                        key={emoji}
+                                                                                        className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full"
+                                                                                    >
+                                                                                        <span className="text-sm">{emoji}</span>
+                                                                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                                                                            {count}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ))
+                                                                            }
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <User className="w-3 h-3" />
+                                                                            <span>ID: {c.id}</span>
+                                                                        </div>
+                                                                        {c.parent_id && (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <MessageCircle className="w-3 h-3" />
+                                                                                <span>Reply to: {c.parent_id}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap break-words">
-                                                                    {c.text}
-                                                                </p>
+
+                                                                <button
+                                                                    onClick={() => handleDeleteComment(c.id, p.id)}
+                                                                    disabled={actionLoading[c.id] === 'delete-comment' || bulkLoading}
+                                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 disabled:opacity-50 transition flex-shrink-0"
+                                                                    title="Delete Comment"
+                                                                >
+                                                                    {actionLoading[c.id] === 'delete-comment' ? (
+                                                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    )}
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                onClick={() => handleDeleteComment(c.id, p.id)}
-                                                                disabled={actionLoading[c.id] === 'delete-comment' || bulkLoading}
-                                                                className="p-2 hover:bg-red-100 dark:hover:bg-red-800/20 rounded-full text-red-500 disabled:opacity-50"
-                                                                title="Delete Comment"
-                                                            >
-                                                                {actionLoading[c.id] === 'delete-comment' ? (
-                                                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                                ) : (
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                )}
-                                                            </button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -856,12 +917,11 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 </div>
             )}
 
-            {!loading && !hasMore && (
+            {!loading && !hasMore && posts.length > 0 && (
                 <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
                     You've reached the end.
                 </p>
             )}
-
         </div>
     )
 }
