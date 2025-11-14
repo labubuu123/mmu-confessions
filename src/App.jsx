@@ -78,6 +78,11 @@ function App() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 Made by MMU Students
               </p>
+
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                © {new Date().getFullYear()} Zyora Lab. All rights reserved.
+              </p>
+
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 Share Responsibly • Respect Privacy • Be Kind
               </p>
