@@ -817,19 +817,22 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                     )}
 
                                                     {!commentsLoading[p.id] && comments[p.id]?.map(c => (
-                                                        <div key={c.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition">
-                                                            <div className="flex items-start gap-3">
+                                                        <div
+                                                            key={c.id}
+                                                            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition"
+                                                        >
+                                                            <div className="flex items-start gap-2 sm:gap-3">
                                                                 <AnonAvatar authorId={c.author_id} size="sm" />
 
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                    <div className="flex items-start sm:items-center gap-x-2 gap-y-1 mb-2 flex-wrap">
                                                                         <span className={`text-sm font-semibold ${c.author_name
                                                                             ? 'text-indigo-600 dark:text-indigo-400'
                                                                             : 'text-gray-800 dark:text-gray-200'
                                                                             }`}>
                                                                             {c.author_name || 'Anonymous'}
                                                                         </span>
-                                                                        <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                                                                        <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">•</span>
                                                                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                                                             <Clock className="w-3 h-3" />
                                                                             {dayjs(c.created_at).fromNow()}
@@ -859,7 +862,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                                         </div>
                                                                     )}
 
-                                                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                                                    <div className="flex items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                                                                         <div className="flex items-center gap-1">
                                                                             <User className="w-3 h-3" />
                                                                             <span>ID: {c.id}</span>
@@ -876,7 +879,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                                 <button
                                                                     onClick={() => handleDeleteComment(c.id, p.id)}
                                                                     disabled={actionLoading[c.id] === 'delete-comment' || bulkLoading}
-                                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 disabled:opacity-50 transition flex-shrink-0"
+                                                                    className="p-1.5 sm:p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 disabled:opacity-50 transition flex-shrink-0"
                                                                     title="Delete Comment"
                                                                 >
                                                                     {actionLoading[c.id] === 'delete-comment' ? (
