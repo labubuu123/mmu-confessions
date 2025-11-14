@@ -13,17 +13,17 @@ export default function Header({ theme, setTheme, onlineCount }) {
 
     return (
         <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-lg bg-opacity-95 dark:bg-opacity-95">
-            <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg">
-                            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg">
+                            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
                         <div>
-                            <span className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block leading-tight">
+                            <span className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block leading-tight">
                                 MMU Confessions
                             </span>
-                            <p className="text-xs sm:text-sm md:text-base text-gray-500 dark:text-gray-400 leading-tight">
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-tight">
                                 Share Anonymously
                             </p>
                         </div>
@@ -77,7 +77,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                         <Link
                             to="/policy"
                             className={`flex items-center gap-2 px-3 xl:px-4 py-2 rounded-lg transition text-sm ${isActive('/policy')
-                                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                ? 'bg-indigo-100 dark:bg-indigo-900/3a0 text-indigo-600 dark:text-indigo-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}
                         >
@@ -97,17 +97,17 @@ export default function Header({ theme, setTheme, onlineCount }) {
                         </Link>
                     </nav>
 
-                    <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-2">
                         <div
-                            className="flex items-center gap-1.5 sm:gap-2 text-gray-600 dark:text-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                            className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                             title={`${onlineCount} users online`}
                         >
-                            <div className="relative flex h-2.5 w-2.5 sm:h-3 sm:w-3">
+                            <div className="relative flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-green-500"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
                             </div>
-                            <span className="text-sm sm:text-base md:text-lg font-semibold">{onlineCount}</span>
-                            <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                            <span className="text-sm font-semibold">{onlineCount}</span>
+                            <Users className="w-4 h-4" />
                         </div>
 
                         <button
@@ -116,13 +116,13 @@ export default function Header({ theme, setTheme, onlineCount }) {
                                 setTheme(newTheme);
                                 document.documentElement.classList.toggle('dark', newTheme === 'dark');
                             }}
-                            className="p-2.5 sm:p-3 md:p-3.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition border border-gray-200 dark:border-gray-600"
+                            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition border border-gray-200 dark:border-gray-600"
                             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
                         >
                             {theme === 'light' ? (
-                                <Moon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-gray-700 dark:text-gray-300" />
+                                <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                             ) : (
-                                <Sun className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-gray-700 dark:text-gray-300" />
+                                <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                             )}
                         </button>
                     </div>
@@ -170,7 +170,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                             }`}
                     >
                         <BarChart3 className="w-5 h-5" />
-                        <span className="text-[10px] sm:text-xs font-medium">Stats</span>
+                        <span className="text-[10px] sm:text-xs font-menu">Stats</span>
                     </Link>
 
                     <Link
