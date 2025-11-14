@@ -233,8 +233,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
                     <AnonAvatar authorId={post.author_id} />
                     <div className="flex-1 min-w-0 pr-20 sm:pr-24">
                         <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <div className={`font-semibold text-sm sm:text-base ${post.author_name
+                            <div className="flex items-center gap-2">
+                                <div className={`font-semibold text-sm sm:text-base truncate ${post.author_name
                                     ? 'text-indigo-600 dark:text-indigo-400'
                                     : 'text-gray-900 dark:text-gray-100'
                                     }`}>
