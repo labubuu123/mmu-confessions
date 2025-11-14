@@ -2,22 +2,28 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { Smile, MessageSquare } from 'lucide-react'
+import { Smile, MessageSquare, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import CommentForm from './CommentForm'
 
 dayjs.extend(relativeTime)
 
 const COMMENT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐']
+const MAX_MOBILE_DEPTH = 3
 
-export default function Comment({ comment, postId }) {
+export default function Comment({ comment, postId, depth = 0 }) {
     const [isReplying, setIsReplying] = useState(false)
     const [reactionLoading, setReactionLoading] = useState(false)
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+    const [showReplies, setShowReplies] = useState(true)
+    const [showActions, setShowActions] = useState(false)
 
-    const [replies, setReplies] =useState(comment.children || [])
-
+    const [replies, setReplies] = useState(comment.children || [])
     const [internalComment, setInternalComment] = useState(comment)
+
+    const isNested = depth > 0
+    const hasReplies = replies.length > 0
+    const reachedMaxDepth = depth >= MAX_MOBILE_DEPTH
 
     useEffect(() => {
         const channel = supabase
@@ -65,102 +71,146 @@ export default function Comment({ comment, postId }) {
         setIsReplying(false)
     }
 
+    const totalReactions = internalComment.reactions
+        ? Object.values(internalComment.reactions).reduce((sum, count) => sum + count, 0)
+        : 0
+
     return (
-        <div className="flex items-start gap-2.5 sm:gap-3">
-            <AnonAvatar authorId={internalComment.author_id} size="sm" />
-            <div className="flex-1 min-w-0">
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-2.5 sm:p-3 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-1">
-                        <div className={`text-sm font-medium ${internalComment.author_name
-                                ? 'text-indigo-600 dark:text-indigo-400'
-                                : 'text-gray-900 dark:text-gray-100'
-                            }`}>
-                            {internalComment.author_name || 'Anonymous'}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {dayjs(internalComment.created_at).fromNow()}
+        <div className={`${isNested ? 'ml-2 sm:ml-6' : ''}`}>
+            <div className="flex items-start gap-2 sm:gap-3 mb-2">
+                <AnonAvatar authorId={internalComment.author_id} size={isNested ? 'sm' : 'md'} />
+
+                <div className="flex-1 min-w-0">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className={`text-sm sm:text-base font-semibold truncate ${internalComment.author_name
+                                        ? 'text-indigo-600 dark:text-indigo-400'
+                                        : 'text-gray-900 dark:text-gray-100'
+                                    }`}>
+                                    {internalComment.author_name || 'Anonymous'}
+                                </span>
                             </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2">
+                                {dayjs(internalComment.created_at).fromNow()}
+                            </span>
                         </div>
-                    </div>
 
-                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                        {internalComment.text}
-                    </p>
+                        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                            {internalComment.text}
+                        </p>
 
-                    {internalComment.reactions && Object.keys(internalComment.reactions).length > 0 && (
-                        <div className="mt-2 flex items-center gap-1 flex-wrap">
-                            {Object.entries(internalComment.reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
-                                <div
-                                    key={emoji}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs"
-                                >
-                                    <span>{emoji}</span>
-                                    <span className="font-medium text-gray-700 dark:text-gray-300">{count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-2 flex items-center gap-2 pl-1">
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowEmojiPicker(prev => !prev)}
-                            className="flex items-center gap-1.5 rounded-md p-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                            title="React"
-                        >
-                            <Smile className="w-4 h-4" />
-                            <span>React</span>
-                        </button>
-
-                        {showEmojiPicker && (
-                            <div className="absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 flex gap-1 z-10">
-                                {COMMENT_EMOJIS.map(emoji => (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => handleReaction(emoji)}
-                                        disabled={reactionLoading}
-                                        className="text-xl hover:scale-125 transition disabled:opacity-50"
-                                    >
-                                        {emoji}
-                                    </button>
-                                ))}
+                        {totalReactions > 0 && (
+                            <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-2.5">
+                                {Object.entries(internalComment.reactions)
+                                    .filter(([_, count]) => count > 0)
+                                    .sort((a, b) => b[1] - a[1])
+                                    .slice(0, 4)
+                                    .map(([emoji, count]) => (
+                                        <div
+                                            key={emoji}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-gray-700 rounded-full border border-gray-200 dark:border-gray-600 text-xs"
+                                        >
+                                            <span className="text-sm">{emoji}</span>
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                                {count}
+                                            </span>
+                                        </div>
+                                    ))}
+                                {Object.keys(internalComment.reactions || {}).length > 4 && (
+                                    <div className="inline-flex items-center px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
+                                        +{Object.keys(internalComment.reactions).length - 4}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
 
-                    <button
-                        onClick={() => setIsReplying(prev => !prev)}
-                        className="flex items-center gap-1.5 rounded-md p-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Reply</span>
-                    </button>
-                </div>
+                    <div className="flex items-center gap-0.5 sm:gap-1 mt-1.5 px-1 flex-wrap">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-all touch-manipulation"
+                            >
+                                <Smile className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <span className="hidden xs:inline">React</span>
+                            </button>
 
-                {isReplying && (
-                    <div className="mt-3">
-                        <CommentForm
-                            postId={postId}
-                            parentId={comment.id}
-                            onCommentPosted={handleReplyPosted}
-                        />
+                            {showEmojiPicker && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-30"
+                                        onClick={() => setShowEmojiPicker(false)}
+                                    />
+                                    <div className="absolute bottom-full left-0 mb-2 z-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 max-w-[280px] sm:max-w-none">
+                                        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1">
+                                            {COMMENT_EMOJIS.map(emoji => (
+                                                <button
+                                                    key={emoji}
+                                                    onClick={() => handleReaction(emoji)}
+                                                    disabled={reactionLoading}
+                                                    className="text-xl sm:text-2xl p-2 sm:p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg active:scale-90 transition-all disabled:opacity-50 touch-manipulation"
+                                                >
+                                                    {emoji}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {!reachedMaxDepth && (
+                            <button
+                                onClick={() => setIsReplying(!isReplying)}
+                                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-all touch-manipulation"
+                            >
+                                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <span className="hidden xs:inline">Reply</span>
+                            </button>
+                        )}
+
+                        {hasReplies && (
+                            <button
+                                onClick={() => setShowReplies(!showReplies)}
+                                className="ml-auto flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95 transition-all touch-manipulation"
+                            >
+                                {showReplies ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                <span>{replies.length}</span>
+                            </button>
+                        )}
                     </div>
-                )}
 
-                {replies.length > 0 && (
-                    <div className="mt-4 space-y-4 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700">
-                        {replies.map(reply => (
-                            <Comment
-                                key={reply.id}
-                                comment={reply}
+                    {isReplying && (
+                        <div className="mt-2.5">
+                            <CommentForm
                                 postId={postId}
+                                parentId={comment.id}
+                                onCommentPosted={handleReplyPosted}
                             />
-                        ))}
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {hasReplies && showReplies && (
+                <div className="border-l-2 border-gray-200 dark:border-gray-700 pl-2 sm:pl-4 ml-3 sm:ml-6 mt-1 space-y-2">
+                    {replies.map(reply => (
+                        <Comment
+                            key={reply.id}
+                            comment={reply}
+                            postId={postId}
+                            depth={depth + 1}
+                        />
+                    ))}
+
+                    {reachedMaxDepth && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 italic px-2 py-1">
+                            💡 Reply to the parent comment to continue the thread
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
