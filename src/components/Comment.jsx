@@ -15,7 +15,7 @@ export default function Comment({ comment, postId }) {
     const [reactionLoading, setReactionLoading] = useState(false)
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
-    const [replies, setReplies] = useState(comment.children || [])
+    const [replies, setReplies] =useState(comment.children || [])
 
     const [internalComment, setInternalComment] = useState(comment)
 
@@ -66,10 +66,10 @@ export default function Comment({ comment, postId }) {
     }
 
     return (
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2.5 sm:gap-3">
             <AnonAvatar authorId={internalComment.author_id} size="sm" />
             <div className="flex-1 min-w-0">
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-2.5 sm:p-3 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-1">
                         <div className={`text-sm font-medium ${internalComment.author_name
                                 ? 'text-indigo-600 dark:text-indigo-400'
@@ -103,11 +103,11 @@ export default function Comment({ comment, postId }) {
                     )}
                 </div>
 
-                <div className="mt-2 flex items-center gap-4 pl-1">
+                <div className="mt-2 flex items-center gap-2 pl-1">
                     <div className="relative">
                         <button
                             onClick={() => setShowEmojiPicker(prev => !prev)}
-                            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600"
+                            className="flex items-center gap-1.5 rounded-md p-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                             title="React"
                         >
                             <Smile className="w-4 h-4" />
@@ -132,7 +132,7 @@ export default function Comment({ comment, postId }) {
 
                     <button
                         onClick={() => setIsReplying(prev => !prev)}
-                        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600"
+                        className="flex items-center gap-1.5 rounded-md p-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                         <MessageSquare className="w-4 h-4" />
                         <span>Reply</span>
@@ -150,7 +150,7 @@ export default function Comment({ comment, postId }) {
                 )}
 
                 {replies.length > 0 && (
-                    <div className="mt-4 space-y-4 pl-6 border-l-2 border-gray-200 dark:border-gray-700">
+                    <div className="mt-4 space-y-4 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700">
                         {replies.map(reply => (
                             <Comment
                                 key={reply.id}
