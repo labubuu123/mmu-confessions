@@ -343,7 +343,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                 className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                             >
                                 <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
-                                <span className="font-medium hidden sm:inline">React</span>
+                                <span className="font-medium">React</span>
                             </button>
                             <button
                                 onClick={(e) => {

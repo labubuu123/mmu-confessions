@@ -57,12 +57,6 @@ export default function ShareButton({ post }) {
         }
     }
 
-    /**
-     * MODIFICATION:
-     * This function now *always* opens the custom modal,
-     * ensuring the preview card and download button are
-     * available on both mobile and desktop.
-     */
     const handleOpenShareModal = (e) => {
         e.stopPropagation()
         setShowModal(true)
@@ -92,12 +86,12 @@ export default function ShareButton({ post }) {
     return (
         <>
             <button
-                onClick={handleOpenShareModal} // Use the modified handler here
+                onClick={handleOpenShareModal}
                 className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
                 title="Share"
             >
                 <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs sm:text-sm font-medium hidden sm:inline">Share</span>
+                <span className="text-xs sm:text-sm font-medium">Share</span>
             </button>
 
             {showModal && (
@@ -109,7 +103,6 @@ export default function ShareButton({ post }) {
                             setShowModal(false)
                         }}
                     />
-                    {/* This layout is already responsive for mobile */}
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
                         <div
                             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full pointer-events-auto"
@@ -127,7 +120,6 @@ export default function ShareButton({ post }) {
                                 </button>
                             </div>
 
-                            {/* Preview Card */}
                             <div
                                 ref={cardRef}
                                 className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden"
@@ -187,7 +179,6 @@ export default function ShareButton({ post }) {
                                 </div>
                             </div>
 
-                            {/* Share Platforms */}
                             <div className="grid grid-cols-3 gap-3 mb-4">
                                 <SharePlatformButton
                                     icon={<Facebook className="w-5 h-5" />}
@@ -231,7 +222,6 @@ export default function ShareButton({ post }) {
                                 />
                             </div>
 
-                            {/* Download Button */}
                             <button
                                 onClick={handleDownloadImage}
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium bg-gray-600 hover:bg-gray-700 transition-all shadow-md hover:shadow-lg active:scale-95 mb-4"
