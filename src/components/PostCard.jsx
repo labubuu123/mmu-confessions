@@ -237,7 +237,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
 
                 <div className="px-3 sm:px-4 pb-3">
-                    <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
+                    <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words text-left">
                         {renderedText}
                     </p>
                 </div>
