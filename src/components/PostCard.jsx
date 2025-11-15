@@ -153,20 +153,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
         }
     }
 
-    async function handleCopyLink(e) {
-        e.stopPropagation()
-        const url = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
-
-        try {
-            await navigator.clipboard.writeText(url)
-            setLinkCopied(true)
-            setTimeout(() => setLinkCopied(false), 2000)
-        } catch (err) {
-            console.error('Failed to copy link:', err)
-            alert('Failed to copy link')
-        }
-    }
-
     function handleImageClick(e, url) {
         e.stopPropagation()
         setZoomedImage(url)
@@ -372,20 +358,6 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             <ShareButton post={post} />
                         </div>
                         <div className="flex items-center gap-1">
-                            <button
-                                onClick={handleCopyLink}
-                                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all ${linkCopied
-                                    ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
-                                    }`}
-                                title="Copy Link"
-                            >
-                                {linkCopied ? (
-                                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                                ) : (
-                                    <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                )}
-                            </button>
                             <button
                                 onClick={handleReport}
                                 disabled={isReported}

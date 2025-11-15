@@ -135,19 +135,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         }
     }
 
-    async function handleCopyLink() {
-        const url = `${window.location.origin}${window.location.pathname}#/post/${internalPost.id}`
-
-        try {
-            await navigator.clipboard.writeText(url)
-            setLinkCopied(true)
-            setTimeout(() => setLinkCopied(false), 2000)
-        } catch (err) {
-            console.error('Failed to copy link:', err)
-            alert('Failed to copy link')
-        }
-    }
-
     function handleImageClick(url) {
         setZoomedImage(url)
     }
@@ -228,14 +215,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                                 <ShareButton post={internalPost} />
-                                <button
-                                    onClick={handleCopyLink}
-                                    className={`p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition ${linkCopied ? 'text-green-500' : ''
-                                        }`}
-                                    title="Copy Link"
-                                >
-                                    {linkCopied ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
-                                </button>
                                 <button
                                     onClick={handleReport}
                                     disabled={reportLoading || internalPost.reported}
