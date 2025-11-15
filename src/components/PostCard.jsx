@@ -5,6 +5,7 @@ import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
 import ReactionTooltip from './ReactionToolTip'
+import ShareButton from './ShareButton'
 import { MoodBadge } from './MoodSelector'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
@@ -368,6 +369,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                 <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                                 <span className="font-medium">{post.comments_count || 0}</span>
                             </button>
+                            <ShareButton post={post} />
                         </div>
                         <div className="flex items-center gap-1">
                             <button

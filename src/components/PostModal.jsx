@@ -6,6 +6,7 @@ import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
+import ShareButton from './ShareButton'
 import { supabase } from '../lib/supabaseClient'
 import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -226,6 +227,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                <ShareButton post={internalPost} />
                                 <button
                                     onClick={handleCopyLink}
                                     className={`p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition ${linkCopied ? 'text-green-500' : ''
