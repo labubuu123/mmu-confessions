@@ -13,23 +13,39 @@ import {
 import { toPng } from 'html-to-image'
 import { QRCodeCanvas } from 'qrcode.react'
 
+/**
+ * Truncates text at a word boundary ("word-aware")
+ * @param {string} text
+ * @param {number} limit
+ * @returns {string}
+ */
+
+function getTruncatedText(text, limit) {
+    if (text.length <= limit) {
+        return text
+    }
+
+    const lastSpace = text.lastIndexOf(' ', limit)
+
+    if (lastSpace === -1) {
+        return text.slice(0, limit) + '...'
+    } else {
+        return text.slice(0, lastSpace) + '...'
+    }
+}
+
+
 export default function ShareButton({ post }) {
     const [showModal, setShowModal] = useState(false)
     const [copied, setCopied] = useState(false)
+    const [downloaded, setDownloaded] = useState(false)
     const cardRef = useRef(null)
 
     const shareUrl = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
     const shareText = `Check out this confession on MMU Confessions: ${post.text.slice(0, 100)}${post.text.length > 100 ? '...' : ''}`
 
-    // --- NEW LOGIC ---
-    // We truncate text in JavaScript because html-to-image does not support CSS 'line-clamp'.
-    // This guarantees the '...' is part of the text string and will be downloaded.
-    // Adjust the '190' character limit to what best fits ~3 lines in your design.
-    const CARD_TEXT_LIMIT = 190 
-    const cardText = post.text.length > CARD_TEXT_LIMIT
-        ? post.text.slice(0, CARD_TEXT_LIMIT) + '...'
-        : post.text
-    // --- END NEW LOGIC ---
+    const CARD_TEXT_LIMIT = 100
+    const cardText = getTruncatedText(post.text, CARD_TEXT_LIMIT)
 
     const handleCopyLink = async () => {
         try {
@@ -69,16 +85,15 @@ export default function ShareButton({ post }) {
 
     const handleOpenShareModal = (e) => {
         e.stopPropagation()
+        setDownloaded(false)
         setShowModal(true)
     }
 
     const handleDownloadImage = async () => {
-        if (!cardRef.current) {
-            console.error('Preview card ref is not available')
+        if (!cardRef.current || downloaded) {
             return
         }
 
-        // We no longer need the 'isDownloadingImage' state from the previous attempt.
         try {
             const dataUrl = await toPng(cardRef.current, {
                 cacheBust: true,
@@ -89,6 +104,10 @@ export default function ShareButton({ post }) {
             link.download = `MMU-Confession-${post.id}.png`
             link.href = dataUrl
             link.click()
+
+            setDownloaded(true)
+            setTimeout(() => setDownloaded(false), 3000)
+
         } catch (err) {
             console.error('Failed to download image:', err)
         }
@@ -159,8 +178,6 @@ export default function ShareButton({ post }) {
                                     </div>
 
                                     <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
-                                        {/* --- MODIFIED LINE --- */}
-                                        {/* We remove 'line-clamp-3' and use our pre-truncated 'cardText' variable */}
                                         <p>
                                             {cardText}
                                         </p>
@@ -237,10 +254,21 @@ export default function ShareButton({ post }) {
 
                             <button
                                 onClick={handleDownloadImage}
-                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium bg-gray-600 hover:bg-gray-700 transition-all shadow-md hover:shadow-lg active:scale-95 mb-4"
+                                disabled={downloaded}
+                                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium transition-all shadow-md hover:shadow-lg active:scale-95 mb-4
+                                ${downloaded
+                                        ? 'bg-green-600'
+                                        : 'bg-gray-600 hover:bg-gray-700'
+                                    }`}
                             >
-                                <Download className="w-5 h-5" />
-                                <span>Download as Image</span>
+                                {downloaded ? (
+                                    <Check className="w-5 h-5" />
+                                ) : (
+                                    <Download className="w-5 h-5" />
+                                )}
+                                <span>
+                                    {downloaded ? 'Downloaded!' : 'Download as Image'}
+                                </span>
                             </button>
 
                             <p className="text-xs text-center text-gray-500 dark:text-gray-400">
