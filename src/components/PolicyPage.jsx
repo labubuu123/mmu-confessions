@@ -23,60 +23,60 @@ export default function PolicyPage() {
                     <Section icon={<Check />} title="General Conduct" titleCN="行为准则">
                         <Rule
                             en="Members must treat each other with respect and courtesy. No profanity, malicious slander, or personal attacks."
-                            cn="1. 会员必须互相尊重，有礼貌交流，不污言秽语，不恶意中伤其他会员。"
+                            cn="会员必须互相尊重，有礼貌交流，不污言秽语，不恶意中伤其他会员。"
                         />
                         <Rule
                             en="Supportive interaction and constructive discussion are encouraged."
-                            cn="2. 我们鼓励会员之间互相支持，并进行建设性的讨论。"
+                            cn="我们鼓励会员之间互相支持，并进行建设性的讨论。"
                         />
                     </Section>
 
                     <Section icon={<AlertTriangle />} title="Strictly Prohibited" titleCN="严格禁止">
                         <Rule
                             en="No Bullying or Harassment: Do not attack, bully, or harass any individual or group."
-                            cn="1. 禁止霸凌或骚扰：请勿攻击、霸凌或骚扰任何个人或团体。"
+                            cn="禁止霸凌或骚扰：请勿攻击、霸凌或骚扰任何个人或团体。"
                         />
                         <Rule
                             en="No Hate Speech, Discrimination, or Politics: Content that promotes hatred, discrimination (based on race, ethnicity, religion, gender, etc.) or involves sensitive political topics is strictly forbidden."
-                            cn="2. 禁止仇恨言论、歧视或政治：严禁止任何牵涉到歧视，政治或人身攻击的发言。"
+                            cn="禁止仇恨言论、歧视或政治：严禁止任何牵涉到歧视，政治或人身攻击的发言。"
                         />
                         <Rule
                             en="No Personal Information (PII): Do not post any personally identifiable information about yourself or others. This includes full names, phone numbers, addresses, social media profiles, or student IDs."
-                            cn="3. 禁止个人信息：请勿发布任何关于您自己或他人的个人身份信息。这包括但不限于全名、电话号码、地址、社交媒体资料或学生证号。"
+                            cn="禁止个人信息：请勿发布任何关于您自己或他人的个人身份信息。这包括但不限于全名、电话号码、地址、社交媒体资料或学生证号。"
                         />
                         <Rule
                             en="No Advertising or Spam: Do not post advertisements, promotions, sales, rental listings, or any commercial solicitation unless explicitly approved by a moderator."
-                            cn="4. 禁止广告或垃圾信息：除非版主同意/推荐，会员不能发广告、招商。拒绝一切宣传，卖东西，租房等等一切贴子。"
+                            cn="禁止广告或垃圾信息：除非版主同意/推荐，会员不能发广告、招商。拒绝一切宣传，卖东西，租房等等一切贴子。"
                         />
                         <Rule
                             en="No NSFW or Graphic Content: Do not post sexually explicit, pornographic, or excessively violent/gory content."
-                            cn="5. 禁止色情或暴力内容：请勿发布任何色情、或过度暴力/血腥的内容。"
+                            cn="禁止色情或暴力内容：请勿发布任何色情、或过度暴力/血腥的内容。"
                         />
                     </Section>
 
                     <Section icon={<Info />} title="Content & Liability" titleCN="内容与责任">
                         <Rule
                             en="You are Responsible for Your Content: Per the Malaysian Constitution, every citizen is equal under the law. You are solely responsible for the content and comments you post."
-                            cn="1. 为您的内容负责：根据马来西亚宪法，每一位公民在法律面前都受到平等对待。因此，每一位会员都必须对自己所发表的留言负责。"
+                            cn="为您的内容负责：根据马来西亚宪法，每一位公民在法律面前都受到平等对待。因此，每一位会员都必须对自己所发表的留言负责。"
                         />
                         <Rule
                             en="Verify Your Information: Please verify the accuracy of your information before posting. Do not blindly accept information you read."
-                            cn="2. 核实您的信息：请在发布前查证其资讯的正确性，勿盲目採用。"
+                            cn="核实您的信息：请在发布前查证其资讯的正确性，勿盲目採用。"
                         />
                         <Rule
                             en="Personal Opinions: All statements and comments represent only the opinion of the individual speaker and not the platform."
-                            cn="3. 个人意见：群里的发言僅代表发言者的个人意見与建议。"
+                            cn="个人意见：群里的发言僅代表发言者的个人意見与建议。"
                         />
                     </Section>
 
                     <Section icon={<Shield />} title="Moderation & Reporting" titleCN="版主权限与举报">
                         <Rule
                             en="Moderator's Rights: Moderators have the absolute right to process, delete, or hide any post/reply, without prior notice or reason."
-                            cn="1. 版主权力：版主有绝对权力，在不需要给任何通知/警告/理由的情况下，处理或删除任何帖/回覆。"
+                            cn="版主权力：版主有绝对权力，在不需要给任何通知/警告/理由的情况下，处理或删除任何帖/回覆。"
                         />
                         <Rule
                             en="Reporting Content: You can report any post by clicking the flag icon (🚩) in the top-right corner."
-                            cn="2. 举报内容：您可以通过点击帖子右上角的旗帜图标 (🚩) 来举报任何帖子。"
+                            cn="举报内容：您可以通过点击帖子右上角的旗帜图标 (🚩) 来举报任何帖子。"
                         />
                     </Section>
 
