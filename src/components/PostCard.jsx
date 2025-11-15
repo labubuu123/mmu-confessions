@@ -200,7 +200,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                     )}
 
                     {poll && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
+                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowreact">
                             <BarChart3 className="w-3 h-3" />
                             POLL
                         </div>
@@ -237,7 +237,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 </div>
 
                 <div className="px-3 sm:px-4 pb-3">
-                    <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words text-left">
+                    <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words text-justify">
                         {renderedText}
                     </p>
                 </div>

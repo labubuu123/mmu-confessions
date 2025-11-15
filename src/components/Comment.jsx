@@ -96,7 +96,7 @@ export default function Comment({ comment, postId, depth = 0 }) {
                             </span>
                         </div>
 
-                        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed text-left">
+                        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed text-justify">
                             {internalComment.text}
                         </p>
 
