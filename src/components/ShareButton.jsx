@@ -178,7 +178,7 @@ export default function ShareButton({ post }) {
 
                                     <div className="flex items-end justify-between text-xs">
                                         <div>
-                                            <span className="opacity-70 block">Post #{post.id}</span>
+                                            <span className="opacity-80 block">Post #{post.id}</span>
                                             <span className="bg-white text-indigo-700 px-2 py-1 rounded-full mt-1 inline-block font-medium">
                                                 🔒 Anonymous
                                             </span>
