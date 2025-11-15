@@ -44,8 +44,12 @@ export default function ShareButton({ post }) {
         }
     }
 
-    const handleNativeShare = async () => {
-        if (navigator.share) {
+    const handleNativeShare = async (e) => {
+        e.stopPropagation()
+
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+        if (isMobile && navigator.share) {
             try {
                 await navigator.share({
                     title: 'MMU Confession',
@@ -55,6 +59,7 @@ export default function ShareButton({ post }) {
             } catch (err) {
                 if (err.name !== 'AbortError') {
                     console.error('Share failed:', err)
+                    setShowModal(true)
                 }
             }
         } else {
@@ -65,10 +70,7 @@ export default function ShareButton({ post }) {
     return (
         <>
             <button
-                onClick={(e) => {
-                    e.stopPropagation()
-                    handleNativeShare()
-                }}
+                onClick={handleNativeShare}
                 className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
                 title="Share"
             >
@@ -102,13 +104,37 @@ export default function ShareButton({ post }) {
                                 </button>
                             </div>
 
-                            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2">
-                                    {post.text}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {shareUrl}
-                                </p>
+                            <div className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden">
+                                <div className="absolute inset-0 opacity-10">
+                                    {[...Array(20)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="absolute w-1 h-1 bg-white rounded-full"
+                                            style={{
+                                                left: `${Math.random() * 100}%`,
+                                                top: `${Math.random() * 100}%`
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="relative">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                            💬
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm">MMU Confessions</p>
+                                            <p className="text-xs opacity-80">Share Anonymously</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm line-clamp-3 mb-3 bg-white/10 p-3 rounded-lg backdrop-blur">
+                                        {post.text}
+                                    </p>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="opacity-70">Post #{post.id}</span>
+                                        <span className="bg-white/20 px-2 py-1 rounded-full">🔒 Anonymous</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -154,7 +180,7 @@ export default function ShareButton({ post }) {
                                 />
                             </div>
 
-                            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
                                 Share this confession while keeping everyone anonymous 🔒
                             </p>
                         </div>
