@@ -1,9 +1,22 @@
-import React, { useState } from 'react'
-import { Share2, X, Copy, Check, Facebook, Twitter, MessageCircle, Mail } from 'lucide-react'
+import React, { useState, useRef } from 'react'
+import {
+    Share2,
+    X,
+    Copy,
+    Check,
+    Facebook,
+    Twitter,
+    MessageCircle,
+    Mail,
+    Download
+} from 'lucide-react'
+import { toPng } from 'html-to-image'
+import { QRCodeCanvas } from 'qrcode.react'
 
 export default function ShareButton({ post }) {
     const [showModal, setShowModal] = useState(false)
     const [copied, setCopied] = useState(false)
+    const cardRef = useRef(null)
 
     const shareUrl = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
     const shareText = `Check out this confession on MMU Confessions: ${post.text.slice(0, 100)}${post.text.length > 100 ? '...' : ''}`
@@ -67,6 +80,27 @@ export default function ShareButton({ post }) {
         }
     }
 
+    const handleDownloadImage = async () => {
+        if (!cardRef.current) {
+            console.error('Preview card ref is not available')
+            return
+        }
+
+        try {
+            const dataUrl = await toPng(cardRef.current, {
+                cacheBust: true,
+                pixelRatio: 2
+            })
+
+            const link = document.createElement('a')
+            link.download = `MMU-Confession-${post.id}.png`
+            link.href = dataUrl
+            link.click()
+        } catch (err) {
+            console.error('Failed to download image:', err)
+        }
+    }
+
     return (
         <>
             <button
@@ -104,7 +138,10 @@ export default function ShareButton({ post }) {
                                 </button>
                             </div>
 
-                            <div className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden">
+                            <div
+                                ref={cardRef}
+                                className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden"
+                            >
                                 <div className="absolute inset-0 opacity-10">
                                     {[...Array(20)].map((_, i) => (
                                         <div
@@ -127,12 +164,35 @@ export default function ShareButton({ post }) {
                                             <p className="text-xs opacity-80">Share Anonymously</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm line-clamp-3 mb-3 bg-white/10 p-3 rounded-lg backdrop-blur">
-                                        {post.text}
-                                    </p>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="opacity-70">Post #{post.id}</span>
-                                        <span className="bg-white/20 px-2 py-1 rounded-full">🔒 Anonymous</span>
+
+                                    <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
+                                        <p className="line-clamp-3">
+                                            {post.text}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-end justify-between text-xs">
+                                        <div>
+                                            <span className="opacity-70 block">Post #{post.id}</span>
+                                            <span className="bg-white text-indigo-700 px-2 py-1 rounded-full mt-1 inline-block font-medium">
+                                                🔒 Anonymous
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <div className="bg-white p-1 rounded-md">
+                                                <QRCodeCanvas
+                                                    value={shareUrl}
+                                                    size={60}
+                                                    bgColor={"#ffffff"}
+                                                    fgColor={"#000000"}
+                                                    level={"L"}
+                                                    includeMargin={false}
+                                                />
+                                            </div>
+                                            <span className="text-gray-800 opacity-80 mt-1 text-[10px]">
+                                                Scan to share
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -174,13 +234,21 @@ export default function ShareButton({ post }) {
                                 />
                                 <SharePlatformButton
                                     icon={copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                                    label={copied ? "Copied!" : "Copy Link"}
-                                    color={copied ? "bg-green-600" : "bg-indigo-600 hover:bg-indigo-700"}
+                                    label={copied ? 'Copied!' : 'Copy Link'}
+                                    color={copied ? 'bg-green-600' : 'bg-indigo-600 hover:bg-indigo-700'}
                                     onClick={handleCopyLink}
                                 />
                             </div>
 
-                            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
+                            <button
+                                onClick={handleDownloadImage}
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium bg-gray-600 hover:bg-gray-700 transition-all shadow-md hover:shadow-lg active:scale-95 mb-4"
+                            >
+                                <Download className="w-5 h-5" />
+                                <span>Download as Image</span>
+                            </button>
+
+                            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
                                 Share this confession while keeping everyone anonymous 🔒
                             </p>
                         </div>
