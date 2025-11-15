@@ -16,6 +16,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 export default function ShareButton({ post }) {
     const [showModal, setShowModal] = useState(false)
     const [copied, setCopied] = useState(false)
+    const [isDownloadingImage, setIsDownloadingImage] = useState(false)
     const cardRef = useRef(null)
 
     const shareUrl = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
@@ -68,19 +69,26 @@ export default function ShareButton({ post }) {
             return
         }
 
-        try {
-            const dataUrl = await toPng(cardRef.current, {
-                cacheBust: true,
-                pixelRatio: 2
-            })
+        setIsDownloadingImage(true);
 
-            const link = document.createElement('a')
-            link.download = `MMU-Confession-${post.id}.png`
-            link.href = dataUrl
-            link.click()
-        } catch (err) {
-            console.error('Failed to download image:', err)
-        }
+        setTimeout(async () => {
+            try {
+                const dataUrl = await toPng(cardRef.current, {
+                    cacheBust: true,
+                    pixelRatio: 2,
+                    quality: 1.0,
+                })
+
+                const link = document.createElement('a')
+                link.download = `MMU-Confession-${post.id}.png`
+                link.href = dataUrl
+                link.click()
+            } catch (err) {
+                console.error('Failed to download image:', err)
+            } finally {
+                setIsDownloadingImage(false);
+            }
+        }, 50);
     }
 
     return (
@@ -148,7 +156,7 @@ export default function ShareButton({ post }) {
                                     </div>
 
                                     <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
-                                        <p className="line-clamp-3">
+                                        <p className={isDownloadingImage ? "" : "line-clamp-3"}>
                                             {post.text}
                                         </p>
                                     </div>
