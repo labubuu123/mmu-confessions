@@ -128,7 +128,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     </div>
                 </div>
 
-                <nav className="lg:hidden grid grid-cols-3 sm:grid-cols-6 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
+                <nav className="lg:hidden grid grid-cols-6 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
                     <Link
                         to="/"
                         className={`flex flex-col items-center gap-0.5 sm:gap-1 py-1.5 sm:py-2 rounded-lg transition ${isActive('/')
