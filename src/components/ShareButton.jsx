@@ -57,34 +57,15 @@ export default function ShareButton({ post }) {
         }
     }
 
-    const handleNativeShare = async (e) => {
+    /**
+     * MODIFICATION:
+     * This function now *always* opens the custom modal,
+     * ensuring the preview card and download button are
+     * available on both mobile and desktop.
+     */
+    const handleOpenShareModal = (e) => {
         e.stopPropagation()
-
-        // Optimized logic: Rely on feature detection (navigator.share) directly.
-        // This is the standard way to implement mobile sharing and is more robust
-        // than checking the user-agent string.
-        if (navigator.share) {
-            try {
-                // If successful, the native share UI will appear.
-                await navigator.share({
-                    title: 'MMU Confession',
-                    text: shareText,
-                    url: shareUrl
-                })
-            } catch (err) {
-                // If the user cancels the share (AbortError), we do nothing.
-                // For other errors, we log it and can fall back to the modal.
-                if (err.name !== 'AbortError') {
-                    console.error('Share failed:', err)
-                    // Fallback to modal if native share fails unexpectedly
-                    setShowModal(true)
-                }
-            }
-        } else {
-            // If navigator.share is not supported (e.g., desktop browser),
-            // show the custom modal as a fallback.
-            setShowModal(true)
-        }
+        setShowModal(true)
     }
 
     const handleDownloadImage = async () => {
@@ -111,7 +92,7 @@ export default function ShareButton({ post }) {
     return (
         <>
             <button
-                onClick={handleNativeShare}
+                onClick={handleOpenShareModal} // Use the modified handler here
                 className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
                 title="Share"
             >
@@ -128,8 +109,8 @@ export default function ShareButton({ post }) {
                             setShowModal(false)
                         }}
                     />
+                    {/* This layout is already responsive for mobile */}
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                        {/* The modal layout is already responsive with `max-w-md w-full` */}
                         <div
                             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full pointer-events-auto"
                             onClick={(e) => e.stopPropagation()}
@@ -146,6 +127,7 @@ export default function ShareButton({ post }) {
                                 </button>
                             </div>
 
+                            {/* Preview Card */}
                             <div
                                 ref={cardRef}
                                 className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden"
@@ -174,7 +156,6 @@ export default function ShareButton({ post }) {
                                     </div>
 
                                     <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
-                                        {/* line-clamp-3 is good for mobile */}
                                         <p className="line-clamp-3">
                                             {post.text}
                                         </p>
@@ -206,7 +187,7 @@ export default function ShareButton({ post }) {
                                 </div>
                             </div>
 
-                            {/* This 3-col grid is already fine for mobile-sized modals */}
+                            {/* Share Platforms */}
                             <div className="grid grid-cols-3 gap-3 mb-4">
                                 <SharePlatformButton
                                     icon={<Facebook className="w-5 h-5" />}
@@ -250,6 +231,7 @@ export default function ShareButton({ post }) {
                                 />
                             </div>
 
+                            {/* Download Button */}
                             <button
                                 onClick={handleDownloadImage}
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium bg-gray-600 hover:bg-gray-700 transition-all shadow-md hover:shadow-lg active:scale-95 mb-4"
