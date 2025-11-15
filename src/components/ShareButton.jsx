@@ -60,22 +60,29 @@ export default function ShareButton({ post }) {
     const handleNativeShare = async (e) => {
         e.stopPropagation()
 
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-
-        if (isMobile && navigator.share) {
+        // Optimized logic: Rely on feature detection (navigator.share) directly.
+        // This is the standard way to implement mobile sharing and is more robust
+        // than checking the user-agent string.
+        if (navigator.share) {
             try {
+                // If successful, the native share UI will appear.
                 await navigator.share({
                     title: 'MMU Confession',
                     text: shareText,
                     url: shareUrl
                 })
             } catch (err) {
+                // If the user cancels the share (AbortError), we do nothing.
+                // For other errors, we log it and can fall back to the modal.
                 if (err.name !== 'AbortError') {
                     console.error('Share failed:', err)
+                    // Fallback to modal if native share fails unexpectedly
                     setShowModal(true)
                 }
             }
         } else {
+            // If navigator.share is not supported (e.g., desktop browser),
+            // show the custom modal as a fallback.
             setShowModal(true)
         }
     }
@@ -122,6 +129,7 @@ export default function ShareButton({ post }) {
                         }}
                     />
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                        {/* The modal layout is already responsive with `max-w-md w-full` */}
                         <div
                             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full pointer-events-auto"
                             onClick={(e) => e.stopPropagation()}
@@ -166,6 +174,7 @@ export default function ShareButton({ post }) {
                                     </div>
 
                                     <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
+                                        {/* line-clamp-3 is good for mobile */}
                                         <p className="line-clamp-3">
                                             {post.text}
                                         </p>
@@ -197,6 +206,7 @@ export default function ShareButton({ post }) {
                                 </div>
                             </div>
 
+                            {/* This 3-col grid is already fine for mobile-sized modals */}
                             <div className="grid grid-cols-3 gap-3 mb-4">
                                 <SharePlatformButton
                                     icon={<Facebook className="w-5 h-5" />}
