@@ -77,7 +77,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                         <Link
                             to="/policy"
                             className={`flex items-center gap-2 px-3 xl:px-4 py-2 rounded-lg transition text-sm ${isActive('/policy')
-                                ? 'bg-indigo-100 dark:bg-indigo-900/3a0 text-indigo-600 dark:text-indigo-400'
+                                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}
                         >
@@ -128,7 +128,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     </div>
                 </div>
 
-                <nav className="lg:hidden grid grid-cols-5 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
+                <nav className="lg:hidden grid grid-cols-3 sm:grid-cols-6 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
                     <Link
                         to="/"
                         className={`flex flex-col items-center gap-0.5 sm:gap-1 py-1.5 sm:py-2 rounded-lg transition ${isActive('/')
@@ -170,7 +170,18 @@ export default function Header({ theme, setTheme, onlineCount }) {
                             }`}
                     >
                         <BarChart3 className="w-5 h-5" />
-                        <span className="text-[10px] sm:text-xs font-menu">Stats</span>
+                        <span className="text-[10px] sm:text-xs font-medium">Stats</span>
+                    </Link>
+
+                    <Link
+                        to="/policy"
+                        className={`flex flex-col items-center gap-0.5 sm:gap-1 py-1.5 sm:py-2 rounded-lg transition ${isActive('/policy')
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'text-gray-700 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                            }`}
+                    >
+                        <FileText className="w-5 h-5" />
+                        <span className="text-[10px] sm:text-xs font-medium">Policy</span>
                     </Link>
 
                     <Link
