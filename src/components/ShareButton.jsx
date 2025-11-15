@@ -16,11 +16,20 @@ import { QRCodeCanvas } from 'qrcode.react'
 export default function ShareButton({ post }) {
     const [showModal, setShowModal] = useState(false)
     const [copied, setCopied] = useState(false)
-    const [isDownloadingImage, setIsDownloadingImage] = useState(false)
     const cardRef = useRef(null)
 
     const shareUrl = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
     const shareText = `Check out this confession on MMU Confessions: ${post.text.slice(0, 100)}${post.text.length > 100 ? '...' : ''}`
+
+    // --- NEW LOGIC ---
+    // We truncate text in JavaScript because html-to-image does not support CSS 'line-clamp'.
+    // This guarantees the '...' is part of the text string and will be downloaded.
+    // Adjust the '190' character limit to what best fits ~3 lines in your design.
+    const CARD_TEXT_LIMIT = 190 
+    const cardText = post.text.length > CARD_TEXT_LIMIT
+        ? post.text.slice(0, CARD_TEXT_LIMIT) + '...'
+        : post.text
+    // --- END NEW LOGIC ---
 
     const handleCopyLink = async () => {
         try {
@@ -69,26 +78,20 @@ export default function ShareButton({ post }) {
             return
         }
 
-        setIsDownloadingImage(true);
+        // We no longer need the 'isDownloadingImage' state from the previous attempt.
+        try {
+            const dataUrl = await toPng(cardRef.current, {
+                cacheBust: true,
+                pixelRatio: 2
+            })
 
-        setTimeout(async () => {
-            try {
-                const dataUrl = await toPng(cardRef.current, {
-                    cacheBust: true,
-                    pixelRatio: 2,
-                    quality: 1.0,
-                })
-
-                const link = document.createElement('a')
-                link.download = `MMU-Confession-${post.id}.png`
-                link.href = dataUrl
-                link.click()
-            } catch (err) {
-                console.error('Failed to download image:', err)
-            } finally {
-                setIsDownloadingImage(false);
-            }
-        }, 50);
+            const link = document.createElement('a')
+            link.download = `MMU-Confession-${post.id}.png`
+            link.href = dataUrl
+            link.click()
+        } catch (err) {
+            console.error('Failed to download image:', err)
+        }
     }
 
     return (
@@ -156,8 +159,10 @@ export default function ShareButton({ post }) {
                                     </div>
 
                                     <div className="text-sm mb-3 bg-white/10 p-3 rounded-lg backdrop-blur overflow-hidden">
-                                        <p className={isDownloadingImage ? "" : "line-clamp-3"}>
-                                            {post.text}
+                                        {/* --- MODIFIED LINE --- */}
+                                        {/* We remove 'line-clamp-3' and use our pre-truncated 'cardText' variable */}
+                                        <p>
+                                            {cardText}
                                         </p>
                                     </div>
 
