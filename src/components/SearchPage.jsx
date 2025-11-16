@@ -218,100 +218,83 @@ export default function SearchPage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8">
-            <div className="mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl shadow-lg">
-                        <Search className="w-6 h-6 text-white" />
+        <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
+            <div className="mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                    <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl shadow-lg">
+                        <Search className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                             Search Confessions
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                             Find confessions by keywords or tags
                         </p>
                     </div>
                 </div>
 
-                <div className="relative mb-4">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+                <div className="relative mb-3 sm:mb-4">
+                    <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 z-10" />
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => {
-                            setQuery(e.target.value)
-                            setSelectedTag(null)
+                            setQuery(e.target.value);
+                            setSelectedTag(null);
                         }}
-                        placeholder="Search confessions... (try: study, food, help, stress)"
-                        className="w-full pl-12 pr-12 py-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-gray-900 dark:text-gray-100 shadow-sm"
+                        placeholder="Search confessions..."
+                        className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base text-gray-900 dark:text-gray-100 shadow-sm"
                     />
                     {(query || selectedTag) && (
                         <button
                             onClick={clearSearch}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition z-10"
+                            className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition z-10"
                         >
-                            <X className="w-5 h-5 text-gray-400" />
+                            <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                         </button>
                     )}
                 </div>
 
-                {!query && !selectedTag && searchSuggestions.length > 0 && (
-                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Sparkles className="w-4 h-4 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Recent Searches</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {searchSuggestions.map((suggestion, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setQuery(suggestion)}
-                                    className="text-xs px-3 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition border border-gray-200 dark:border-gray-700"
-                                >
-                                    {suggestion}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition ${
-                            showFilters || filterBy !== 'all'
-                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
-                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
+                        className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border transition flex-shrink-0 text-sm ${showFilters || filterBy !== 'all'
+                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
                     >
                         <Filter className="w-4 h-4" />
-                        <span className="text-sm font-medium">Filters</span>
+                        <span className="hidden sm:inline font-medium">Filters</span>
                         {filterBy !== 'all' && (
                             <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
                         )}
                     </button>
 
-                    <div className="flex gap-2">
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                        >
-                            {query && !selectedTag && <option value="relevance">Most Relevant</option>}
-                            <option value="recent">Most Recent</option>
-                            <option value="popular">Most Liked</option>
-                            <option value="discussed">Most Discussed</option>
-                        </select>
-                    </div>
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                    >
+                        {query && !selectedTag && <option value="relevance">Most Relevant</option>}
+                        <option value="recent">Most Recent</option>
+                        <option value="popular">Most Liked</option>
+                        <option value="discussed">Most Discussed</option>
+                    </select>
                 </div>
 
                 {showFilters && (
-                    <div className="mb-4 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
-                        <div className="flex items-center gap-2 mb-3">
+                    <div className="mb-4 p-3 sm:p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                        <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show only:</span>
+                            <button
+                                onClick={() => setShowFilters(false)}
+                                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded sm:hidden"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                             {[
                                 { value: 'all', label: 'All Posts', icon: 'All' },
                                 { value: 'popular', label: 'Popular', icon: '🔥', desc: '10+ likes' },
@@ -321,16 +304,13 @@ export default function SearchPage() {
                                 <button
                                     key={filter.value}
                                     onClick={() => setFilterBy(filter.value)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filterBy === filter.value
-                                            ? 'bg-indigo-600 text-white shadow-md'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition ${filterBy === filter.value
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                         }`}
                                 >
                                     <span className="mr-1">{filter.icon}</span>
-                                    {filter.label}
-                                    {filter.desc && filterBy === filter.value && (
-                                        <span className="ml-1 text-xs opacity-80">({filter.desc})</span>
-                                    )}
+                                    <span>{filter.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -349,9 +329,9 @@ export default function SearchPage() {
                             <button
                                 key={tag}
                                 onClick={() => handleTagClick(tag)}
-                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTag === tag
-                                        ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                                        : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 hover:scale-105'
+                                className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${selectedTag === tag
+                                    ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                                    : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 hover:scale-105'
                                     }`}
                             >
                                 <Hash className="w-3 h-3" />
@@ -361,65 +341,6 @@ export default function SearchPage() {
                     </div>
                 </div>
             </div>
-
-            {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Searching...</p>
-                </div>
-            ) : results.length > 0 ? (
-                <div>
-                    <div className="flex items-center justify-between mb-4 px-1">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            <span className="font-semibold text-gray-900 dark:text-gray-100">{results.length}</span> {results.length === 1 ? 'confession' : 'confessions'} found
-                        </p>
-                        {selectedTag && (
-                            <span className="flex items-center gap-1 text-xs px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
-                                <Hash className="w-3 h-3" />
-                                {selectedTag}
-                            </span>
-                        )}
-                    </div>
-                    <div className="space-y-4">
-                        {results.map(post => (
-                            <PostCard key={post.id} post={post} onOpen={handleOpenModal} />
-                        ))}
-                    </div>
-                </div>
-            ) : (query || selectedTag) ? (
-                <div className="text-center py-16">
-                    <div className="text-7xl mb-4">😢</div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                        No confessions found
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">
-                        Try different keywords or tags
-                    </p>
-                    <button
-                        onClick={clearSearch}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-                    >
-                        Clear Search
-                    </button>
-                </div>
-            ) : (
-                <div className="text-center py-16">
-                    <div className="text-7xl mb-4">🧐</div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                        Start searching
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        Type keywords or click a trending tag to discover confessions
-                    </p>
-                </div>
-            )}
-
-            {modalPostId && (
-                <PostModal
-                    postId={modalPostId}
-                    onClose={handleCloseModal}
-                />
-            )}
         </div>
-    )
+    );
 }

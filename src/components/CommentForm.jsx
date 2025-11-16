@@ -47,6 +47,9 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
 
             if (onCommentPosted && data) {
                 onCommentPosted(data[0])
+                window.dispatchEvent(new CustomEvent('challengeProgress', {
+                    detail: { action: { type: 'comment' } }
+                }));
             }
             setText('')
             setIsFocused(false)

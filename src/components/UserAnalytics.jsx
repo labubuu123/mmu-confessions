@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { TrendingUp, MessageSquare, Heart, Calendar, Award, Target, Zap } from 'lucide-react'
+import { BADGE_DEFINITIONS, calculateUserBadges } from '../utils/badges'
 
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
@@ -117,38 +118,7 @@ export default function UserAnalytics() {
         )
     }
 
-    const achievements = [
-        {
-            name: 'First Post',
-            earned: stats.totalPosts > 0,
-            icon: '🎉',
-            description: 'Posted your first confession'
-        },
-        {
-            name: 'Prolific Writer',
-            earned: stats.totalPosts >= 10,
-            icon: '✍️',
-            description: 'Posted 10 confessions'
-        },
-        {
-            name: 'Conversation Starter',
-            earned: stats.totalComments >= 20,
-            icon: '💬',
-            description: 'Made 20 comments'
-        },
-        {
-            name: 'Popular',
-            earned: stats.totalLikes >= 50,
-            icon: '⭐',
-            description: 'Received 50 likes'
-        },
-        {
-            name: 'On Fire',
-            earned: stats.streak >= 7,
-            icon: '🔥',
-            description: 'Posted for 7 days straight'
-        }
-    ]
+    const earnedBadges = calculateUserBadges(stats);
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -219,27 +189,30 @@ export default function UserAnalytics() {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <Award className="w-5 h-5 text-yellow-500" />
-                    Achievements
+            <div className="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    All Badges ({earnedBadges.length}/{BADGE_DEFINITIONS.length})
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {achievements.map(achievement => (
-                        <div
-                            key={achievement.name}
-                            className={`text-center p-4 rounded-xl border-2 transition ${achievement.earned
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+                    {BADGE_DEFINITIONS.map((badge) => {
+                        const earned = earnedBadges.some(b => b.id === badge.id);
+                        return (
+                            <div
+                                key={badge.id}
+                                className={`text-center p-2 sm:p-3 rounded-lg border-2 transition ${earned
                                     ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20'
-                                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-50'
-                                }`}
-                            title={achievement.description}
-                        >
-                            <div className="text-3xl mb-2">{achievement.icon}</div>
-                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                                {achievement.name}
-                            </p>
-                        </div>
-                    ))}
+                                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-40'
+                                    }`}
+                                title={badge.description}
+                            >
+                                <div className="text-xl sm:text-2xl mb-1">{badge.icon}</div>
+                                <p className="text-[10px] sm:text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                                    {badge.name}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

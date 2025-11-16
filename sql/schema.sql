@@ -122,9 +122,23 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.user_challenges (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    challenge_id TEXT NOT NULL,
+    completed BOOLEAN DEFAULT FALSE,
+    progress INTEGER DEFAULT 0,
+    points_earned INTEGER DEFAULT 0,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    challenge_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, challenge_id, challenge_date)
+);
+
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_challenges ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Enable insert for all users"
 ON public.confessions
@@ -268,6 +282,22 @@ CREATE POLICY "Enable delete for authenticated users (admin)"
 ON public.events
 FOR DELETE
 USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable read for all users"
+ON public.user_challenges
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable insert for all users"
+ON public.user_challenges
+FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable update for all users"
+ON public.user_challenges
+FOR UPDATE
+USING (true)
+WITH CHECK (true);
 
 CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
 RETURNS void
@@ -859,6 +889,9 @@ CREATE INDEX IF NOT EXISTS idx_poll_votes_poll_id ON public.poll_votes(poll_id);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_voter_id ON public.poll_votes(voter_id);
 CREATE INDEX IF NOT EXISTS idx_events_confession_id ON public.events(confession_id);
 CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_confessions_series ON public.confessions(series_id);
+CREATE INDEX IF NOT EXISTS idx_user_challenges_user_date ON public.user_challenges(user_id, challenge_date);
+CREATE INDEX IF NOT EXISTS idx_user_challenges_date ON public.user_challenges(challenge_date);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
@@ -882,6 +915,8 @@ GRANT ALL ON FUNCTION public.handle_post_reaction() TO anon, authenticated;
 GRANT ALL ON FUNCTION public.handle_comment_reaction() TO anon, authenticated;
 GRANT ALL ON public.events TO anon, authenticated;
 GRANT ALL ON SEQUENCE events_id_seq TO anon, authenticated;
+GRANT ALL ON public.user_challenges TO anon, authenticated;
+GRANT ALL ON SEQUENCE user_challenges_id_seq TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_confessions_with_reputation(INT, INT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_comments_with_reputation(BIGINT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authenticated;

@@ -12,6 +12,7 @@ import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as Link
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
+import SeriesIndicator from './SeriesIndicator';
 
 dayjs.extend(relativeTime)
 
@@ -310,7 +311,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             )}
 
                             {poll && !event && (
-                                <div className="mt-4">
+                                <div className="px-3 sm:px-4 pb-3" onClick={(e) => e.stopPropagation()}>
                                     <PollDisplay poll={poll} confessionId={internalPost.id} />
                                 </div>
                             )}
@@ -325,6 +326,12 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                             #{tag}
                                         </span>
                                     ))}
+                                </div>
+                            )}
+
+                            {internalPost.series_id && (
+                                <div className="px-3 sm:px-4">
+                                    <SeriesIndicator post={internalPost} />
                                 </div>
                             )}
 

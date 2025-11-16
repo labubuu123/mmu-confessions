@@ -21,8 +21,8 @@ export default function CategoryFilter({ selectedCategory, onSelectCategory }) {
                         key={id}
                         onClick={() => onSelectCategory(id)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all ${selectedCategory === id
-                                ? `bg-${color}-600 text-white shadow-lg scale-105`
-                                : `bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-${color}-50 dark:hover:bg-${color}-900/20 border border-gray-200 dark:border-gray-700`
+                            ? `bg-${color}-600 text-white shadow-lg scale-105`
+                            : `bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-${color}-50 dark:hover:bg-${color}-900/20 border border-gray-200 dark:border-gray-700`
                             }`}
                     >
                         <Icon className="w-4 h-4" />

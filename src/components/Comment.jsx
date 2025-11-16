@@ -85,8 +85,8 @@ export default function Comment({ comment, postId, depth = 0 }) {
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className={`text-sm sm:text-base font-semibold truncate ${internalComment.author_name
-                                        ? 'text-indigo-600 dark:text-indigo-400'
-                                        : 'text-gray-900 dark:text-gray-100'
+                                    ? 'text-indigo-600 dark:text-indigo-400'
+                                    : 'text-gray-900 dark:text-gray-100'
                                     }`}>
                                     {internalComment.author_name || 'Anonymous'}
                                 </span>

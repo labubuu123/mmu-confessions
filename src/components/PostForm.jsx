@@ -1,158 +1,170 @@
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import imageCompression from 'browser-image-compression'
-import { extractTags, extractHashtagsForPreview } from '../utils/hashtags'
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import PollCreator from '../components/PollCreator'
-import EventCreator from '../components/EventCreator'
-import MoodSelector from './MoodSelector'
-import { useNotifications } from './NotificationSystem'
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import imageCompression from 'browser-image-compression';
+import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import PollCreator from './PollCreator';
+import EventCreator from './EventCreator';
+import SeriesCreator from './SeriesCreator';
+import MoodSelector from './MoodSelector';
+import { useNotifications } from './NotificationSystem';
+import { useChallengeTracking } from '../hooks/useChallengeTracking';
 
-const MAX_VIDEO_SIZE_MB = 25
-const MAX_IMAGES = 3
-const MAX_AUDIO_SIZE_MB = 10
-const MAX_TEXT_LENGTH = 5000
+const MAX_VIDEO_SIZE_MB = 25;
+const MAX_IMAGES = 3;
+const MAX_AUDIO_SIZE_MB = 10;
+const MAX_TEXT_LENGTH = 5000;
 
 function getAnonId() {
-    let anonId = localStorage.getItem('anonId')
+    let anonId = localStorage.getItem('anonId');
     if (!anonId) {
-        anonId = crypto.randomUUID()
-        localStorage.setItem('anonId', anonId)
+        anonId = crypto.randomUUID();
+        localStorage.setItem('anonId', anonId);
     }
-    return anonId
+    return anonId;
 }
 
 export default function PostForm({ onPosted }) {
-    const [text, setText] = useState('')
-    const [images, setImages] = useState([])
-    const [video, setVideo] = useState(null)
-    const [audio, setAudio] = useState(null)
-    const [previews, setPreviews] = useState([])
-    const [videoPreview, setVideoPreview] = useState(null)
-    const [loading, setLoading] = useState(false)
-    const [uploadProgress, setUploadProgress] = useState(0)
-    const [policyAccepted, setPolicyAccepted] = useState(false)
+    const [text, setText] = useState('');
+    const [images, setImages] = useState([]);
+    const [video, setVideo] = useState(null);
+    const [audio, setAudio] = useState(null);
+    const [previews, setPreviews] = useState([]);
+    const [videoPreview, setVideoPreview] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [policyAccepted, setPolicyAccepted] = useState(false);
     const detectedTags = extractHashtagsForPreview(text);
-    const [showPollCreator, setShowPollCreator] = useState(false)
-    const [pollData, setPollData] = useState(null)
-    const [showEventCreator, setShowEventCreator] = useState(false)
-    const [eventData, setEventData] = useState(null)
-    const {success, error, warning, info } = useNotifications()
-    const [selectedMood, setSelectedMood] = useState(null)
+    const [showPollCreator, setShowPollCreator] = useState(false);
+    const [pollData, setPollData] = useState(null);
+    const [showEventCreator, setShowEventCreator] = useState(false);
+    const [eventData, setEventData] = useState(null);
+    const [showSeriesCreator, setShowSeriesCreator] = useState(false);
+    const [seriesData, setSeriesData] = useState(null);
+    const { success, error, warning, info } = useNotifications();
+    const [selectedMood, setSelectedMood] = useState(null);
+
+    useChallengeTracking();
 
     async function handleSubmit(e) {
-        e.preventDefault()
+        e.preventDefault();
 
         if (showEventCreator && (!eventData || !eventData.event_name || !eventData.start_time)) {
-            error('Please fill in all required event fields (Event Name and Start Time).')
-            return
+            error('Please fill in all required event fields (Event Name and Start Time).');
+            return;
+        }
+
+        if (showSeriesCreator && (!seriesData || !seriesData.series_name)) {
+            error('Please provide a series name.');
+            return;
         }
 
         if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
-            warning('Write something or attach media')
-            return
+            warning('Write something or attach media');
+            return;
         }
 
         if (text.length > MAX_TEXT_LENGTH) {
-            error(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`)
-            return
+            error(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`);
+            return;
         }
 
         if (!policyAccepted) {
-            warning('You must accept the policy to post.')
-            return
+            warning('You must accept the policy to post.');
+            return;
         }
 
-        setLoading(true)
-        setUploadProgress(0)
-        const { data: { session } } = await supabase.auth.getSession()
-        const anonId = getAnonId()
+        setLoading(true);
+        setUploadProgress(0);
+        const { data: { session } } = await supabase.auth.getSession();
+        const anonId = getAnonId();
 
         try {
-            info('Checking cooldown...')
+            info('Checking cooldown...');
             const { error: cooldownError } = await supabase.rpc('check_post_cooldown', {
                 author_id_in: anonId
-            })
+            });
 
             if (cooldownError) {
-                throw new Error(cooldownError.message)
+                throw new Error(cooldownError.message);
             }
-            let media_urls = []
-            let media_type = null
-            let single_media_url = null
+
+            let media_urls = [];
+            let media_type = null;
+            let single_media_url = null;
 
             if (images.length > 0) {
-                info('Uploading images...')
+                info('Uploading images...');
                 for (let i = 0; i < images.length; i++) {
-                    const img = images[i]
+                    const img = images[i];
                     const compressed = await imageCompression(img, {
                         maxSizeMB: 1,
                         maxWidthOrHeight: 1600
-                    })
+                    });
 
-                    const ext = (compressed.name || 'image.jpg').split('.').pop()
-                    const path = `public/${Date.now()}-${anonId.substring(0, 8)}-${i}.${ext}`
+                    const ext = (compressed.name || 'image.jpg').split('.').pop();
+                    const path = `public/${Date.now()}-${anonId.substring(0, 8)}-${i}.${ext}`;
 
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('confessions')
-                        .upload(path, compressed)
+                        .upload(path, compressed);
 
-                    if (uploadError) throw uploadError
+                    if (uploadError) throw uploadError;
 
                     const { data: publicUrlData } = supabase.storage
                         .from('confessions')
-                        .getPublicUrl(uploadData.path)
+                        .getPublicUrl(uploadData.path);
 
-                    media_urls.push(publicUrlData.publicUrl)
-                    setUploadProgress(((i + 1) / images.length) * 100)
+                    media_urls.push(publicUrlData.publicUrl);
+                    setUploadProgress(((i + 1) / images.length) * 100);
                 }
-                media_type = 'images'
-                single_media_url = media_urls[0]
+                media_type = 'images';
+                single_media_url = media_urls[0];
             }
 
             if (video) {
-                info('Uploading video...')
-                const ext = (video.name || 'video.mp4').split('.').pop()
-                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
+                info('Uploading video...');
+                const ext = (video.name || 'video.mp4').split('.').pop();
+                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`;
 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('confessions')
-                    .upload(path, video)
+                    .upload(path, video);
 
-                if (uploadError) throw uploadError
+                if (uploadError) throw uploadError;
 
                 const { data: publicUrlData } = supabase.storage
                     .from('confessions')
-                    .getPublicUrl(uploadData.path)
+                    .getPublicUrl(uploadData.path);
 
-                media_urls = [publicUrlData.publicUrl]
-                single_media_url = publicUrlData.publicUrl
-                media_type = 'video'
+                media_urls = [publicUrlData.publicUrl];
+                single_media_url = publicUrlData.publicUrl;
+                media_type = 'video';
             }
 
             if (audio) {
-                info('Uploading audio...')
-                const ext = (audio.name || 'audio.mp3').split('.').pop()
-                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`
+                info('Uploading audio...');
+                const ext = (audio.name || 'audio.mp3').split('.').pop();
+                const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`;
 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('confessions')
-                    .upload(path, audio)
+                    .upload(path, audio);
 
-                if (uploadError) throw uploadError
+                if (uploadError) throw uploadError;
 
                 const { data: publicUrlData } = supabase.storage
                     .from('confessions')
-                    .getPublicUrl(uploadData.path)
+                    .getPublicUrl(uploadData.path);
 
-                media_urls = [publicUrlData.publicUrl]
-                single_media_url = publicUrlData.publicUrl
-                media_type = 'audio'
+                media_urls = [publicUrlData.publicUrl];
+                single_media_url = publicUrlData.publicUrl;
+                media_type = 'audio';
             }
 
-            info('Posting...')
-            const tags = extractTags(text)
+            info('Posting...');
+            const tags = extractTags(text);
 
             const { data, error: insertError } = await supabase.from('confessions')
                 .insert([{
@@ -167,23 +179,28 @@ export default function PostForm({ onPosted }) {
                     likes_count: 0,
                     comments_count: 0,
                     reported: false,
-                    mood: selectedMood ? JSON.stringify(selectedMood) : null
+                    mood: selectedMood ? JSON.stringify(selectedMood) : null,
+                    series_id: seriesData?.series_id || null,
+                    series_name: seriesData?.series_name || null,
+                    series_description: seriesData?.series_description || null,
+                    series_part: seriesData?.series_part || null,
+                    series_total: seriesData?.series_total || null,
                 }])
-                .select()
+                .select();
 
             if (insertError) {
-                console.error('Insert error:', insertError)
-                throw insertError
+                console.error('Insert error:', insertError);
+                throw insertError;
             }
 
-            const postId = data[0].id
+            const postId = data[0].id;
 
             if (pollData && pollData.question && pollData.options.length >= 2) {
-                info('Creating poll...')
+                info('Creating poll...');
 
                 const endsAt = pollData.duration > 0
                     ? new Date(Date.now() + pollData.duration * 24 * 60 * 60 * 1000).toISOString()
-                    : null
+                    : null;
 
                 const { error: pollError } = await supabase
                     .from('polls')
@@ -193,15 +210,15 @@ export default function PostForm({ onPosted }) {
                         options: pollData.options,
                         ends_at: endsAt,
                         total_votes: 0
-                    }])
+                    }]);
 
                 if (pollError) {
-                    console.error('Poll creation error:', pollError)
+                    console.error('Poll creation error:', pollError);
                 }
             }
 
             if (eventData && eventData.event_name && eventData.start_time) {
-                info('Creating event...')
+                info('Creating event...');
 
                 const { error: eventError } = await supabase
                     .from('events')
@@ -212,126 +229,138 @@ export default function PostForm({ onPosted }) {
                         start_time: eventData.start_time,
                         end_time: eventData.end_time || null,
                         location: eventData.location || null
-                    }])
+                    }]);
 
                 if (eventError) {
-                    console.error('Event creation error:', eventError)
-                    error('Post created, but event failed to save: ' + eventError.message)
+                    console.error('Event creation error:', eventError);
+                    error('Post created, but event failed to save: ' + eventError.message);
                 }
             }
 
             if (onPosted && data && data.length > 0) {
-                onPosted(data[0])
+                onPosted(data[0]);
+
+                window.dispatchEvent(new CustomEvent('challengeProgress', {
+                    detail: { action: { type: 'post' } }
+                }));
+
+                if (pollData) {
+                    window.dispatchEvent(new CustomEvent('challengeProgress', {
+                        detail: { action: { type: 'poll' } }
+                    }));
+                }
             }
 
-            setText('')
-            setImages([])
-            setVideo(null)
-            setAudio(null)
-            setPreviews([])
-            setVideoPreview(null)
-            setPolicyAccepted(false)
-            setPollData(null)
-            setShowPollCreator(false)
-            setEventData(null)
-            setShowEventCreator(false)
-            setSelectedMood(null)
-            setUploadProgress(0)
-            success('Posted successfully!')
+            setText('');
+            setImages([]);
+            setVideo(null);
+            setAudio(null);
+            setPreviews([]);
+            setVideoPreview(null);
+            setPolicyAccepted(false);
+            setPollData(null);
+            setShowPollCreator(false);
+            setEventData(null);
+            setShowEventCreator(false);
+            setSeriesData(null);
+            setShowSeriesCreator(false);
+            setSelectedMood(null);
+            setUploadProgress(0);
+            success('Posted successfully!');
 
         } catch (err) {
-            console.error('Post error:', err)
-            error('Failed to post: ' + (err.message || err))
+            console.error('Post error:', err);
+            error('Failed to post: ' + (err.message || err));
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
     function handleImageChange(e) {
-        const files = Array.from(e.target.files || [])
-        if (files.length === 0) return
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
         if (files.length > MAX_IMAGES) {
-            warning(`Maximum ${MAX_IMAGES} images allowed`)
-            return
+            warning(`Maximum ${MAX_IMAGES} images allowed`);
+            return;
         }
 
-        setVideo(null)
-        setVideoPreview(null)
-        setAudio(null)
+        setVideo(null);
+        setVideoPreview(null);
+        setAudio(null);
 
-        setImages(files)
+        setImages(files);
 
-        const newPreviews = []
+        const newPreviews = [];
         files.forEach(file => {
-            const reader = new FileReader()
+            const reader = new FileReader();
             reader.onloadend = () => {
-                newPreviews.push(reader.result)
+                newPreviews.push(reader.result);
                 if (newPreviews.length === files.length) {
-                    setPreviews(newPreviews)
+                    setPreviews(newPreviews);
                 }
-            }
-            reader.readAsDataURL(file)
-        })
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     function handleVideoChange(e) {
-        const file = e.target.files[0]
-        if (!file) return
+        const file = e.target.files[0];
+        if (!file) return;
 
         if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
-            error(`Video must be under ${MAX_VIDEO_SIZE_MB}MB`)
-            e.target.value = null
-            return
+            error(`Video must be under ${MAX_VIDEO_SIZE_MB}MB`);
+            e.target.value = null;
+            return;
         }
 
-        setImages([])
-        setPreviews([])
-        setAudio(null)
+        setImages([]);
+        setPreviews([]);
+        setAudio(null);
 
-        setVideo(file)
+        setVideo(file);
 
-        const reader = new FileReader()
+        const reader = new FileReader();
         reader.onloadend = () => {
-            setVideoPreview(reader.result)
-        }
-        reader.readAsDataURL(file)
+            setVideoPreview(reader.result);
+        };
+        reader.readAsDataURL(file);
     }
 
     function handleAudioChange(e) {
-        const file = e.target.files[0]
-        if (!file) return
+        const file = e.target.files[0];
+        if (!file) return;
 
         if (file.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
-            error(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`)
-            e.target.value = null
-            return
+            error(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`);
+            e.target.value = null;
+            return;
         }
 
-        setImages([])
-        setPreviews([])
-        setVideo(null)
-        setVideoPreview(null)
+        setImages([]);
+        setPreviews([]);
+        setVideo(null);
+        setVideoPreview(null);
 
-        setAudio(file)
+        setAudio(file);
     }
 
     function removeImage(index) {
-        setImages(prev => prev.filter((_, i) => i !== index))
-        setPreviews(prev => prev.filter((_, i) => i !== index))
+        setImages(prev => prev.filter((_, i) => i !== index));
+        setPreviews(prev => prev.filter((_, i) => i !== index));
     }
 
     function removeVideo() {
-        setVideo(null)
-        setVideoPreview(null)
+        setVideo(null);
+        setVideoPreview(null);
     }
 
     function removeAudio() {
-        setAudio(null)
+        setAudio(null);
     }
 
-    const charCount = text.length
-    const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9
+    const charCount = text.length;
+    const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9;
 
     return (
         <>
@@ -444,8 +473,8 @@ export default function PostForm({ onPosted }) {
                             <PollCreator
                                 onPollData={setPollData}
                                 onRemovePoll={() => {
-                                    setShowPollCreator(false)
-                                    setPollData(null)
+                                    setShowPollCreator(false);
+                                    setPollData(null);
                                 }}
                             />
                         </div>
@@ -456,8 +485,20 @@ export default function PostForm({ onPosted }) {
                             <EventCreator
                                 onEventData={setEventData}
                                 onRemoveEvent={() => {
-                                    setShowEventCreator(false)
-                                    setEventData(null)
+                                    setShowEventCreator(false);
+                                    setEventData(null);
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {showSeriesCreator && (
+                        <div className="my-3 sm:my-4">
+                            <SeriesCreator
+                                onSeriesData={setSeriesData}
+                                onRemoveSeries={() => {
+                                    setShowSeriesCreator(false);
+                                    setSeriesData(null);
                                 }}
                             />
                         </div>
@@ -550,14 +591,15 @@ export default function PostForm({ onPosted }) {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setShowPollCreator(!showPollCreator)
-                                    setShowEventCreator(false)
+                                    setShowPollCreator(!showPollCreator);
+                                    setShowEventCreator(false);
+                                    setShowSeriesCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showEventCreator}
+                                disabled={loading || showEventCreator || showSeriesCreator}
                             >
                                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -568,18 +610,38 @@ export default function PostForm({ onPosted }) {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setShowEventCreator(!showEventCreator)
-                                    setShowPollCreator(false)
+                                    setShowEventCreator(!showEventCreator);
+                                    setShowPollCreator(false);
+                                    setShowSeriesCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator}
+                                disabled={loading || showPollCreator || showSeriesCreator}
                             >
                                 <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Event
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowSeriesCreator(!showSeriesCreator);
+                                    setShowPollCreator(false);
+                                    setShowEventCreator(false);
+                                }}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesCreator
+                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading || showPollCreator || showEventCreator}
+                            >
+                                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Series
                                 </span>
                             </button>
 
@@ -610,5 +672,5 @@ export default function PostForm({ onPosted }) {
                 </form>
             </div>
         </>
-    )
+    );
 }

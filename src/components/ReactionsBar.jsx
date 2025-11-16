@@ -72,6 +72,10 @@ export default function ReactionsBar({ postId }) {
             setTimeout(() => setAnimating(null), 300)
             setTimeout(() => fetchReactions(), 1000)
 
+            window.dispatchEvent(new CustomEvent('challengeProgress', {
+                detail: { action: { type: 'reaction' } }
+            }));
+
         } catch (err) {
             console.error('Failed to react:', err)
             alert('Failed to add reaction. Please try again.')

@@ -497,45 +497,45 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
     const allPostsSelected = posts.length > 0 && selectedPosts.size === posts.length;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                        <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+        <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
+            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-2 sm:p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                        <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                             Admin Moderation
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Manage confessions ({posts.length} total) • {user.email}
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                            {posts.length} total • {user.email}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                     <button
                         onClick={() => fetchPosts(true)}
                         disabled={loading || bulkLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 text-sm"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
-                        Refresh
+                        <span className="hidden sm:inline">Refresh</span>
                     </button>
 
                     <button
                         onClick={signOut}
                         disabled={loading || bulkLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition disabled:opacity-50"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition disabled:opacity-50 text-sm"
                     >
                         <LogOut className="w-4 h-4" />
-                        Sign Out
+                        <span className="hidden sm:inline">Sign Out</span>
                     </button>
                 </div>
             </div>
 
             {posts.length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
+                <div className="mb-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={toggleSelectAll}
@@ -547,7 +547,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             ) : (
                                 <Square className="w-5 h-5" />
                             )}
-                            {allPostsSelected ? 'Deselect All' : 'Select All'}
+                            <span className="hidden sm:inline">{allPostsSelected ? 'Deselect All' : 'Select All'}</span>
                         </button>
                         <span className="text-sm text-gray-600 dark:text-gray-300">
                             {selectedPosts.size} selected
@@ -557,7 +557,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     <button
                         onClick={handleBulkDelete}
                         disabled={selectedPosts.size === 0 || bulkLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition text-sm w-full sm:w-auto"
                     >
                         {bulkLoading ? (
                             <>

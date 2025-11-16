@@ -11,6 +11,8 @@ import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
+import SeriesIndicator from './SeriesIndicator';
+import { BADGE_DEFINITIONS, calculateUserBadges } from '../utils/badges';
 
 dayjs.extend(relativeTime)
 
@@ -217,7 +219,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                 <div className="p-3 sm:p-4 flex items-start gap-2 sm:gap-3 relative">
-                    <AnonAvatar authorId={post.author_id} />
+                    <AnonAvatar authorId={post.author_id} size="md" />
                     <div className="flex-1 min-w-0 pr-20 sm:pr-24">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
@@ -305,6 +307,12 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                 </audio>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {post.series_id && (
+                    <div className="px-3 sm:px-4">
+                        <SeriesIndicator post={post} />
                     </div>
                 )}
 
