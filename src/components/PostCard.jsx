@@ -12,7 +12,6 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
 import SeriesIndicator from './SeriesIndicator';
-import { BADGE_DEFINITIONS, calculateUserBadges } from '../utils/badges';
 
 dayjs.extend(relativeTime)
 
