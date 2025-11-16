@@ -12,7 +12,6 @@ import {
     Users,
     BarChart3,
     Target,
-    Trophy,
     ChevronDown
 } from 'lucide-react'
 
@@ -22,7 +21,6 @@ const navLinks = [
     { to: '/search', label: 'Search', icon: Search },
     { to: '/analytics', label: 'Stats', icon: BarChart3, desktopLabel: 'My Stats' },
     { to: '/challenges', label: 'Challenges', icon: Target },
-    { to: '/leaderboard', label: 'Leader', icon: Trophy, desktopLabel: 'Leaderboard' },
     { to: '/policy', label: 'Policy', icon: FileText },
     { to: '/admin', label: 'Admin', icon: Shield },
 ];

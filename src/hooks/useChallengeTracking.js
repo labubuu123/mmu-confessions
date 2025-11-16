@@ -3,7 +3,9 @@ import { useEffect } from "react";
 export function useChallengeTracking() {
     useEffect(() => {
     function handleChallengeProgress(event) {
-        const { action } = event.detail;
+        const action = event.detail;
+        if (!action || !action.type) return;
+
         const today = new Date().toDateString();
         const savedDate = localStorage.getItem("challengeDate");
 

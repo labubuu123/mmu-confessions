@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Target, CheckCircle, Calendar, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNotifications } from './NotificationSystem';
 
 const DAILY_CHALLENGES = [
     {
@@ -78,86 +79,114 @@ export default function DailyChallenges() {
     const [completedToday, setCompletedToday] = useState([]);
     const [progress, setProgress] = useState({});
     const [totalPoints, setTotalPoints] = useState(0);
+    const { success } = useNotifications();
 
-    useEffect(() => {
-        initializeChallenges();
-        loadProgress();
-    }, []);
+    const completeChallenge = useCallback((challengeId) => {
+        setCompletedToday(prevCompleted => {
+            if (prevCompleted.includes(challengeId)) {
+                return prevCompleted;
+            }
+
+            const fullChallenge = DAILY_CHALLENGES.find(c => c.id === challengeId);
+            if (!fullChallenge) return prevCompleted;
+
+            success(`🎉 ${fullChallenge.name} Completed! +${fullChallenge.points} points`);
+
+            setTotalPoints(prevTotal => {
+                const newTotal = prevTotal + fullChallenge.points;
+                localStorage.setItem('totalChallengePoints', newTotal.toString());
+                return newTotal;
+            });
+
+            const newCompleted = [...prevCompleted, challengeId];
+            localStorage.setItem('completedChallenges', JSON.stringify(newCompleted));
+            return newCompleted;
+        });
+    }, [success]);
 
     function initializeChallenges() {
         const today = new Date().toDateString();
         const savedDate = localStorage.getItem('challengeDate');
 
+        let activeChallenges = [];
         if (savedDate !== today) {
             localStorage.setItem('challengeDate', today);
             localStorage.removeItem('completedChallenges');
             localStorage.removeItem('challengeProgress');
 
             const shuffled = [...DAILY_CHALLENGES].sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, 3);
-            localStorage.setItem('todayChallenges', JSON.stringify(selected));
-            setChallenges(selected);
+            activeChallenges = shuffled.slice(0, 3);
+            localStorage.setItem('todayChallenges', JSON.stringify(activeChallenges));
+
+            setChallenges(activeChallenges);
             setCompletedToday([]);
             setProgress({});
         } else {
             const saved = localStorage.getItem('todayChallenges');
             if (saved) {
-                setChallenges(JSON.parse(saved));
+                activeChallenges = JSON.parse(saved);
+                setChallenges(activeChallenges);
             }
-
             const completed = localStorage.getItem('completedChallenges');
             if (completed) {
                 setCompletedToday(JSON.parse(completed));
             }
         }
+        return activeChallenges;
     }
 
-    function loadProgress() {
+    const loadProgress = useCallback(() => {
         const saved = localStorage.getItem('challengeProgress');
         if (saved) {
             setProgress(JSON.parse(saved));
         }
-
         const points = localStorage.getItem('totalChallengePoints');
         if (points) {
             setTotalPoints(parseInt(points));
         }
-    }
+    }, []);
 
-    function updateProgress(challengeId, increment = 1) {
-        const challenge = challenges.find(c => c.id === challengeId);
-        if (!challenge) return;
+    useEffect(() => {
+        initializeChallenges();
+        loadProgress();
+    }, [loadProgress]);
 
-        const newProgress = { ...progress };
-        newProgress[challengeId] = (newProgress[challengeId] || 0) + increment;
+    useEffect(() => {
+        function handleUpdate() {
+            loadProgress();
+        }
+        window.addEventListener('challengeUpdate', handleUpdate);
+        return () => {
+            window.removeEventListener('challengeUpdate', handleUpdate);
+        };
+    }, [loadProgress]);
 
-        if (challenge.target) {
-            if (newProgress[challengeId] >= challenge.target) {
-                completeChallenge(challengeId);
+    useEffect(() => {
+        if (challenges.length === 0) return;
+
+        function checkCompletions() {
+            for (const challenge of challenges) {
+                if (completedToday.includes(challenge.id)) {
+                    continue;
+                }
+
+                const fullChallenge = DAILY_CHALLENGES.find(c => c.id === challenge.id);
+                if (!fullChallenge) continue;
+
+                const currentProgress = progress[challenge.id] || 0;
+                const target = fullChallenge.target || 1;
+
+                if (currentProgress >= target) {
+                    completeChallenge(challenge.id);
+                }
             }
         }
+        checkCompletions();
+    }, [challenges, progress, completedToday, completeChallenge]);
 
-        setProgress(newProgress);
-        localStorage.setItem('challengeProgress', JSON.stringify(newProgress));
-    }
-
-    function completeChallenge(challengeId) {
-        if (completedToday.includes(challengeId)) return;
-
-        const challenge = challenges.find(c => c.id === challengeId);
-        const newCompleted = [...completedToday, challengeId];
-        setCompletedToday(newCompleted);
-        localStorage.setItem('completedChallenges', JSON.stringify(newCompleted));
-
-        const newTotal = totalPoints + challenge.points;
-        setTotalPoints(newTotal);
-        localStorage.setItem('totalChallengePoints', newTotal.toString());
-
-        alert(`🎉 Challenge Completed! +${challenge.points} points`);
-    }
 
     return (
-        <div className="max-w-3xl mx-auto px-4 py-4 sm:py-12">
+        <div className="max-w-2xl mx-auto px-4 py-8">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl sm:rounded-2xl shadow-xl border border-purple-200 dark:border-purple-800 p-4 sm:p-8">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -179,8 +208,12 @@ export default function DailyChallenges() {
                     {challenges.map((challenge) => {
                         const isCompleted = completedToday.includes(challenge.id);
                         const currentProgress = progress[challenge.id] || 0;
-                        const progressPercent = challenge.target
-                            ? Math.min((currentProgress / challenge.target) * 100, 100)
+
+                        const fullChallenge = DAILY_CHALLENGES.find(c => c.id === challenge.id) || {};
+                        const target = fullChallenge.target;
+
+                        const progressPercent = target
+                            ? Math.min((currentProgress / target) * 100, 100)
                             : 0;
 
                         return (
@@ -204,11 +237,11 @@ export default function DailyChallenges() {
                                             {challenge.description}
                                         </p>
 
-                                        {challenge.target && !isCompleted && (
+                                        {target && !isCompleted && (
                                             <div className="mb-2">
                                                 <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                                                     <span>Progress</span>
-                                                    <span>{currentProgress}/{challenge.target}</span>
+                                                    <span>{currentProgress}/{target}</span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                                     <div

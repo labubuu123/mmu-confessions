@@ -9,7 +9,6 @@ import EventCreator from './EventCreator';
 import SeriesCreator from './SeriesCreator';
 import MoodSelector from './MoodSelector';
 import { useNotifications } from './NotificationSystem';
-import { useChallengeTracking } from '../hooks/useChallengeTracking';
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
@@ -44,8 +43,6 @@ export default function PostForm({ onPosted }) {
     const [seriesData, setSeriesData] = useState(null);
     const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
-
-    useChallengeTracking();
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -241,12 +238,12 @@ export default function PostForm({ onPosted }) {
                 onPosted(data[0]);
 
                 window.dispatchEvent(new CustomEvent('challengeProgress', {
-                    detail: { action: { type: 'post' } }
+                    detail: { type: 'post' }
                 }));
 
                 if (pollData) {
                     window.dispatchEvent(new CustomEvent('challengeProgress', {
-                        detail: { action: { type: 'poll' } }
+                        detail: { type: 'poll' }
                     }));
                 }
             }
