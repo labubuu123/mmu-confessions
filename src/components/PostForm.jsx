@@ -38,7 +38,7 @@ export default function PostForm({ onPosted }) {
     const [pollData, setPollData] = useState(null)
     const [showEventCreator, setShowEventCreator] = useState(false)
     const [eventData, setEventData] = useState(null)
-    const { success, error, warning, info } = useNotifications()
+    const {success, error, warning, info } = useNotifications()
     const [selectedMood, setSelectedMood] = useState(null)
 
     async function handleSubmit(e) {
@@ -591,7 +591,7 @@ export default function PostForm({ onPosted }) {
 
                         <button
                             type="submit"
-                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (
