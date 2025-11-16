@@ -3,114 +3,17 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3, Calendar, User, Clock, Heart, MinusCircle // 1. Added MinusCircle here
+    ShieldOff, BarChart3, Calendar, User, Clock, Heart
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
-import { useNotifications } from './NotificationSystem' // 2. Added useNotifications import
 
 dayjs.extend(relativeTime)
 
 const POSTS_PER_PAGE = 10
-
-function UserPointsManager() {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const { success, error: notifyError } = useNotifications(); // This line will now work
-
-    const fetchUserPoints = useCallback(async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('user_points')
-            .select('user_id, total_points')
-            .order('total_points', { ascending: false });
-
-        if (error) {
-            console.error('Error fetching user points:', error);
-            setError(error.message);
-            notifyError('Could not load user points');
-        } else {
-            setUsers(data);
-        }
-        setLoading(false);
-    }, [notifyError]);
-
-    useEffect(() => {
-        fetchUserPoints();
-    }, [fetchUserPoints]);
-
-    const handleDeductPoints = async (userId) => {
-        const amountStr = prompt('How many points do you want to deduct?', '10');
-        if (!amountStr) return;
-
-        const amount = parseInt(amountStr, 10);
-        if (isNaN(amount) || amount <= 0) {
-            notifyError('Please enter a valid positive number.');
-            return;
-        }
-
-        const { error } = await supabase.rpc('admin_deduct_points', {
-            p_user_id: userId,
-            p_amount: amount
-        });
-
-        if (error) {
-            notifyError(`Failed to deduct points: ${error.message}`);
-        } else {
-            success(`Deducted ${amount} points from user.`);
-            fetchUserPoints();
-        }
-    };
-
-    if (loading) {
-        return <div className="text-center p-8">Loading user points...</div>;
-    }
-
-    if (error) {
-        return <div className="text-red-500 p-8">Error: {error}</div>;
-    }
-
-    return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <User /> User Points Management
-            </h3>
-            <div className="space-y-3">
-                {users.length === 0 ? (
-                    <p className="text-gray-500 dark:text-gray-400">No users with points found.</p>
-                ) : (
-                    users.map(user => (
-                        <div key={user.user_id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                            <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    User ID: <span className="text-xs text-gray-600 dark:text-gray-400">{user.user_id}</span>
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <span className="flex items-center gap-1 font-bold text-yellow-500">
-                                    <Zap className="w-4 h-4" />
-                                    {user.total_points}
-                                </span>
-                                <button
-                                    onClick={() => handleDeductPoints(user.user_id)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg"
-                                    title="Deduct points"
-                                >
-                                    <MinusCircle className="w-4 h-4" />
-                                    Deduct
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-}
 
 export default function AdminPanel() {
     const [user, setUser] = useState(null)
@@ -594,49 +497,45 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
     const allPostsSelected = posts.length > 0 && selectedPosts.size === posts.length;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-2 sm:p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                        <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400" />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                        <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                             Admin Moderation
                         </h1>
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                            {posts.length} total • {user.email}
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Manage confessions ({posts.length} total) • {user.email}
                         </p>
                     </div>
                 </div>
 
-                <div className="mb-8">
-                    <UserPointsManager />
-                </div>
-
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2">
                     <button
                         onClick={() => fetchPosts(true)}
                         disabled={loading || bulkLoading}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">Refresh</span>
+                        Refresh
                     </button>
 
                     <button
                         onClick={signOut}
                         disabled={loading || bulkLoading}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition disabled:opacity-50 text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition disabled:opacity-50"
                     >
                         <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:inline">Sign Out</span>
+                        Sign Out
                     </button>
                 </div>
             </div>
 
             {posts.length > 0 && (
-                <div className="mb-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={toggleSelectAll}
@@ -648,7 +547,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             ) : (
                                 <Square className="w-5 h-5" />
                             )}
-                            <span className="hidden sm:inline">{allPostsSelected ? 'Deselect All' : 'Select All'}</span>
+                            {allPostsSelected ? 'Deselect All' : 'Select All'}
                         </button>
                         <span className="text-sm text-gray-600 dark:text-gray-300">
                             {selectedPosts.size} selected
@@ -658,7 +557,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     <button
                         onClick={handleBulkDelete}
                         disabled={selectedPosts.size === 0 || bulkLoading}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition text-sm w-full sm:w-auto"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                         {bulkLoading ? (
                             <>

@@ -8,13 +8,10 @@ import PostModal from "./components/PostModal";
 import PolicyPage from "./components/PolicyPage";
 import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
-import DailyChallenges from "./components/DailyChallenges";
 import { NotificationProvider } from "./components/NotificationSystem";
 import { supabase } from "./lib/supabaseClient";
-import { useChallengeTracking } from "./hooks/useChallengeTracking";
 
 function App() {
-  useChallengeTracking();
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) return savedTheme;
@@ -72,7 +69,6 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/policy" element={<PolicyPage />} />
           <Route path="/analytics" element={<UserAnalytics />} />
-          <Route path="/challenges" element={<DailyChallenges />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
         </Routes>
 

@@ -11,8 +11,6 @@ import {
     Search,
     Users,
     BarChart3,
-    Target,
-    ChevronDown
 } from 'lucide-react'
 
 const navLinks = [
@@ -20,40 +18,17 @@ const navLinks = [
     { to: '/top', label: 'Top', icon: TrendingUp },
     { to: '/search', label: 'Search', icon: Search },
     { to: '/analytics', label: 'Stats', icon: BarChart3, desktopLabel: 'My Stats' },
-    { to: '/challenges', label: 'Challenges', icon: Target },
     { to: '/policy', label: 'Policy', icon: FileText },
     { to: '/admin', label: 'Admin', icon: Shield },
 ];
 
-const mainLinks = navLinks.slice(0, 4);
-const dropdownLinks = navLinks.slice(4);
-
 export default function Header({ theme, setTheme, onlineCount }) {
     const location = useLocation()
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-    const dropdownRef = useRef(null)
-
     const isActive = (path) => {
         if (path === '/' && location.pathname === '/') return true
         if (path !== '/' && location.pathname.startsWith(path)) return true
         return false
     }
-
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsDropdownOpen(false)
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside)
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside)
-        };
-    }, [dropdownRef])
-
-    useEffect(() => {
-        setIsDropdownOpen(false)
-    }, [location.pathname])
 
     return (
         <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-lg bg-opacity-95 dark:bg-opacity-95">
@@ -74,7 +49,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     </Link>
 
                     <nav className="hidden lg:flex items-center gap-1">
-                        {mainLinks.map(link => (
+                        {navLinks.map(link => (
                             <Link
                                 key={link.to}
                                 to={link.to}
@@ -87,37 +62,6 @@ export default function Header({ theme, setTheme, onlineCount }) {
                                 <span className="font-medium">{link.desktopLabel || link.label}</span>
                             </Link>
                         ))}
-
-                        <div className="relative" ref={dropdownRef}>
-                            <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className={`flex items-center gap-2 px-3 xl:px-4 py-2 rounded-lg transition text-sm ${isDropdownOpen
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                <span className="font-medium">More</span>
-                                <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                            </button>
-
-                            {isDropdownOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-40">
-                                    {dropdownLinks.map(link => (
-                                        <Link
-                                            key={link.to}
-                                            to={link.to}
-                                            className={`flex items-center gap-3 px-4 py-2.5 transition text-sm ${isActive(link.to)
-                                                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                                }`}
-                                        >
-                                            <link.icon className="w-4 h-4" />
-                                            <span className="font-medium">{link.desktopLabel || link.label}</span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
                     </nav>
 
                     <div className="flex items-center gap-2 sm:gap-2">

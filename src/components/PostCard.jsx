@@ -311,7 +311,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                 )}
 
                 {post.series_id && (
-                    <div className="px-3 sm:px-4">
+                    <div className="px-3 sm:px-4 pb-3">
                         <SeriesIndicator post={post} />
                     </div>
                 )}
