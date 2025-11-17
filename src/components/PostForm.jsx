@@ -577,7 +577,7 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3">
                         <div className="flex flex-wrap gap-1 justify-center sm:justify-start">
                             <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
@@ -685,7 +685,7 @@ export default function PostForm({ onPosted }) {
                         <button
                             type="submit"
                             disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                            className="flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 w-full sm:w-auto"
+                            className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (
                                 <>
