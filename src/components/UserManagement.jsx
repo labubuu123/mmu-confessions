@@ -2,20 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import AnonAvatar from './AnonAvatar'
 import UserPostList from './UserPostList'
-import { Award, ChevronLeft, User, MessageSquare, Heart, Loader2 } from 'lucide-react'
-
-const formatBadge = (badge) => {
-    switch (badge) {
-        case 'ACTIVE_MEMBER':
-            return 'Active Member'
-        case 'HELPFUL_COMMENTER':
-            return 'Helpful Commenter'
-        case 'SUPPORTIVE_FRIEND':
-            return 'Supportive Friend'
-        default:
-            return badge.charAt(0).toUpperCase() + badge.slice(1).toLowerCase().replace(/_/g, ' ')
-    }
-}
+import { ChevronLeft, User, MessageSquare, Heart, Loader2 } from 'lucide-react'
 
 export default function UserManagement() {
     const [users, setUsers] = useState([])
@@ -118,27 +105,6 @@ export default function UserManagement() {
                                     <Heart className="w-4 h-4 text-pink-500" />
                                     <span className="font-medium">{user.comment_reactions_received_count}</span> Comment Reactions
                                 </span>
-                            </div>
-
-                            <div>
-                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Badges</h4>
-                                <div className="flex flex-wrap gap-2">
-                                    {user.badges && user.badges.length > 0 ? (
-                                        user.badges.map(badge => (
-                                            <span
-                                                key={badge}
-                                                className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium rounded-full"
-                                            >
-                                                <Award className="w-3.5 h-3.5" />
-                                                {formatBadge(badge)}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                                            No badges yet
-                                        </span>
-                                    )}
-                                </div>
                             </div>
                         </div>
 

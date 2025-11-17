@@ -1,32 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Award, Loader2, MessageSquare, User, Heart } from 'lucide-react'
-import { calculateUserBadges, getNextBadge, BADGE_DEFINITIONS } from '../utils/badges'
-import { useNotification } from './NotificationSystem'
+import { Loader2, MessageSquare, User, Heart } from 'lucide-react'
 
-function UserStatsWidget({ userId, fetchKey, onOpenBadges }) {
+function UserStatsWidget({ userId, fetchKey }) {
     const [stats, setStats] = useState(null)
-    const [badges, setBadges] = useState([])
-    const [nextBadge, setNextBadge] = useState(null)
     const [loading, setLoading] = useState(true)
-
-    const addNotification = useNotification(state => state.addNotification)
-    const isInitialLoad = useRef(true)
-    const previousBadgesRef = useRef([]);
-    useEffect(() => {
-        previousBadgesRef.current = badges;
-    }, [badges]);
-
 
     useEffect(() => {
         async function fetchStats() {
             if (!userId) {
                 setLoading(false)
                 setStats(null)
-                setBadges([])
-                setNextBadge(null)
-                isInitialLoad.current = true
-                previousBadgesRef.current = []
                 return
             }
 
@@ -47,7 +31,7 @@ function UserStatsWidget({ userId, fetchKey, onOpenBadges }) {
                             .insert({ author_id: userId })
                             .select()
                             .single()
-                        
+
                         if (insertError) throw insertError
                         statsData = newData
                     } else {
@@ -56,42 +40,19 @@ function UserStatsWidget({ userId, fetchKey, onOpenBadges }) {
                 } else {
                     statsData = data
                 }
-                
+
                 setStats(statsData)
-                
-                const newBadges = calculateUserBadges(statsData)
-
-                if (isInitialLoad.current) {
-                    isInitialLoad.current = false
-                } else {
-                    const oldBadgeIds = new Set(previousBadgesRef.current.map(b => b.id));
-                    const newlyEarned = newBadges.filter(b => !oldBadgeIds.has(b.id));
-
-                    newlyEarned.forEach(badge => {
-                        addNotification({
-                            id: `badge-${badge.id}`,
-                            icon: badge.icon,
-                            title: `New Badge Earned!`,
-                            message: `You've earned the "${badge.name}" badge.`,
-                        });
-                    });
-                }
-
-                setBadges(newBadges)
-                setNextBadge(getNextBadge(statsData))
 
             } catch (error) {
                 console.error("Error fetching user stats:", error)
                 setStats(null)
-                setBadges([])
-                setNextBadge(null)
             } finally {
                 setLoading(false)
             }
         }
 
         fetchStats()
-    }, [userId, fetchKey, addNotification])
+    }, [userId, fetchKey])
 
     if (loading) {
         return (
@@ -138,25 +99,6 @@ function UserStatsWidget({ userId, fetchKey, onOpenBadges }) {
                     </div>
                 </div>
             </div>
-
-            <button
-                onClick={onOpenBadges}
-                className="w-full text-left p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-            >
-                <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">My Badges</p>
-                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">View All</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {badges.length > 0 ? (
-                        badges.slice(0, 5).map(badge => (
-                            <span key={badge.id} title={badge.name} className="text-xl">{badge.icon}</span>
-                        ))
-                    ) : (
-                        <p className="text-sm text-gray-400 dark:text-gray-500">No badges earned yet.</p>
-                    )}
-                </div>
-            </button>
         </div>
     )
 }

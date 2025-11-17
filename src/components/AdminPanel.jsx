@@ -540,7 +540,6 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 </div>
             </div>
 
-            {/* START: Tab Navigation */}
             <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex -mb-px space-x-8">
                     <button

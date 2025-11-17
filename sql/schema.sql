@@ -93,7 +93,6 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
     comment_count INTEGER DEFAULT 0,
     post_reactions_received_count INTEGER DEFAULT 0,
     comment_reactions_received_count INTEGER DEFAULT 0,
-    badges TEXT[] DEFAULT ARRAY[]::TEXT[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -525,46 +524,6 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.recalculate_user_badges(author_id_in TEXT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-    rep_record RECORD;
-    new_badges TEXT[] := ARRAY[]::TEXT[];
-BEGIN
-    SELECT * INTO rep_record
-    FROM public.user_reputation
-    WHERE author_id = author_id_in;
-
-    IF NOT FOUND THEN
-        RETURN;
-    END IF;
-
-    IF rep_record.post_count >= 1 THEN
-        new_badges := array_append(new_badges, 'first_post');
-    END IF;
-
-    IF rep_record.post_count >= 10 THEN
-        new_badges := array_append(new_badges, 'prolific');
-    END IF;
-
-    IF rep_record.comment_count >= 20 THEN
-        new_badges := array_append(new_badges, 'supportive');
-    END IF;
-
-    IF (rep_record.post_reactions_received_count + rep_record.comment_reactions_received_count) >= 100 THEN
-        new_badges := array_append(new_badges, 'popular');
-    END IF;
-
-    UPDATE public.user_reputation
-    SET badges = new_badges
-    WHERE author_id = author_id_in;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION public.handle_new_confession()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -579,8 +538,6 @@ BEGIN
         DO UPDATE SET
             post_count = public.user_reputation.post_count + 1,
             updated_at = NOW();
-        
-        PERFORM public.recalculate_user_badges(NEW.author_id);
     END IF;
     RETURN NEW;
 END;
@@ -600,8 +557,6 @@ BEGIN
         DO UPDATE SET
             comment_count = public.user_reputation.comment_count + 1,
             updated_at = NOW();
-            
-        PERFORM public.recalculate_user_badges(NEW.author_id);
     END IF;
     RETURN NEW;
 END;
@@ -634,8 +589,6 @@ BEGIN
         DO UPDATE SET
             post_reactions_received_count = public.user_reputation.post_reactions_received_count + reaction_diff,
             updated_at = NOW();
-            
-        PERFORM public.recalculate_user_badges(post_author_id);
     END IF;
     RETURN NEW;
 END;
@@ -664,8 +617,6 @@ BEGIN
             DO UPDATE SET
                 comment_reactions_received_count = public.user_reputation.comment_reactions_received_count + reaction_diff,
                 updated_at = NOW();
-                
-            PERFORM public.recalculate_user_badges(NEW.author_id);
         END IF;
     END IF;
     RETURN NEW;
@@ -693,7 +644,6 @@ RETURNS TABLE (
     pinned BOOLEAN,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
-    author_reputation JSONB,
     event_name TEXT,
     description TEXT,
     start_time TIMESTAMP WITH TIME ZONE,
@@ -705,18 +655,27 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        c.*,
-        COALESCE(
-            jsonb_build_object('badges', ur.badges),
-            '{"badges": []}'::jsonb
-        ) AS author_reputation,
+        c.id,
+        c.text,
+        c.author_id,
+        c.approved,
+        c.reported,
+        c.likes_count,
+        c.comments_count,
+        c.media_url,
+        c.media_urls,
+        c.media_type,
+        c.tags,
+        c.author_name,
+        c.pinned,
+        c.created_at,
+        c.updated_at,
         e.event_name,
         e.description,
         e.start_time,
         e.end_time,
         e.location
     FROM public.confessions c
-    LEFT JOIN public.user_reputation ur ON c.author_id = ur.author_id
     LEFT JOIN public.events e ON c.id = e.confession_id
     WHERE c.approved = true
     ORDER BY c.pinned DESC, c.created_at DESC
@@ -725,6 +684,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.get_comments_with_reputation(BIGINT);
 CREATE OR REPLACE FUNCTION public.get_comments_with_reputation(
     post_id_in BIGINT
 )
@@ -737,21 +697,23 @@ RETURNS TABLE (
     author_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
-    reactions JSONB,
-    author_reputation JSONB
+    reactions JSONB
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        co.*,
-        COALESCE(
-            jsonb_build_object('badges', ur.badges),
-            '{"badges": []}'::jsonb
-        ) AS author_reputation
+        co.id,
+        co.post_id,
+        co.parent_id,
+        co.author_id,
+        co.text,
+        co.author_name,
+        co.created_at,
+        co.updated_at,
+        co.reactions
     FROM public.comments co
-    LEFT JOIN public.user_reputation ur ON co.author_id = ur.author_id
     WHERE co.post_id = post_id_in
     ORDER BY co.created_at DESC;
 END;
@@ -806,6 +768,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS public.get_users_with_reputation_and_counts();
 CREATE OR REPLACE FUNCTION public.get_users_with_reputation_and_counts()
 RETURNS TABLE (
     author_id TEXT,
@@ -813,7 +776,6 @@ RETURNS TABLE (
     comment_count INTEGER,
     post_reactions_received_count INTEGER,
     comment_reactions_received_count INTEGER,
-    badges TEXT[],
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE
 )
@@ -833,7 +795,6 @@ BEGIN
         ur.comment_count,
         ur.post_reactions_received_count,
         ur.comment_reactions_received_count,
-        ur.badges,
         ur.created_at,
         ur.updated_at
     FROM
@@ -906,7 +867,6 @@ GRANT ALL ON storage.objects TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_reaction(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_comment_count(BIGINT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_comment_reaction_total(JSONB) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.recalculate_user_badges(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_new_confession() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_new_comment() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_post_reaction() TO anon, authenticated;

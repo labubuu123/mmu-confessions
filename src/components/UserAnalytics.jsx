@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { TrendingUp, MessageSquare, Heart, Calendar, Award, Target, Zap } from 'lucide-react'
-import { BADGE_DEFINITIONS, calculateUserBadges } from '../utils/badges'
+import { TrendingUp, MessageSquare, Heart, Calendar, Target, Zap } from 'lucide-react'
 
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
@@ -110,15 +109,13 @@ export default function UserAnalytics() {
     if (!stats) {
         return (
             <div className="text-center py-12">
-                <Award className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                <MessageSquare className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
                 <p className="text-gray-500 dark:text-gray-400">
                     Start posting to see your stats!
                 </p>
             </div>
         )
     }
-
-    const earnedBadges = calculateUserBadges(stats);
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -186,33 +183,6 @@ export default function UserAnalytics() {
                             value={`${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
                         />
                     </div>
-                </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                    <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    All Badges ({earnedBadges.length}/{BADGE_DEFINITIONS.length})
-                </h3>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
-                    {BADGE_DEFINITIONS.map((badge) => {
-                        const earned = earnedBadges.some(b => b.id === badge.id);
-                        return (
-                            <div
-                                key={badge.id}
-                                className={`text-center p-2 sm:p-3 rounded-lg border-2 transition ${earned
-                                    ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20'
-                                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-40'
-                                    }`}
-                                title={badge.description}
-                            >
-                                <div className="text-xl sm:text-2xl mb-1">{badge.icon}</div>
-                                <p className="text-[10px] sm:text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
-                                    {badge.name}
-                                </p>
-                            </div>
-                        );
-                    })}
                 </div>
             </div>
         </div>
