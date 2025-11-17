@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -17,12 +17,9 @@ export default function Comment({ comment, postId, depth = 0 }) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
     const [showReplies, setShowReplies] = useState(true)
     const [showActions, setShowActions] = useState(false)
-    const [emojiPickerPosition, setEmojiPickerPosition] = useState('top')
 
     const [replies, setReplies] = useState(comment.children || [])
     const [internalComment, setInternalComment] = useState(comment)
-
-    const emojiButtonRef = useRef(null)
 
     const isNested = depth > 0
     const hasReplies = replies.length > 0
@@ -43,20 +40,6 @@ export default function Comment({ comment, postId, depth = 0 }) {
 
         return () => supabase.removeChannel(channel)
     }, [comment.id])
-
-    useEffect(() => {
-        if (showEmojiPicker && emojiButtonRef.current) {
-            const buttonRect = emojiButtonRef.current.getBoundingClientRect()
-            const spaceAbove = buttonRect.top
-            const spaceBelow = window.innerHeight - buttonRect.bottom
-
-            if (spaceBelow > spaceAbove || spaceAbove < 250) {
-                setEmojiPickerPosition('bottom')
-            } else {
-                setEmojiPickerPosition('top')
-            }
-        }
-    }, [showEmojiPicker])
 
     async function handleReaction(emoji) {
         if (reactionLoading) return
@@ -118,7 +101,7 @@ export default function Comment({ comment, postId, depth = 0 }) {
                         </p>
 
                         {totalReactions > 0 && (
-                            <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-2.5">
+                            <div className="flex flex-col gap-1 sm:gap-1.5 mt-2.5">
                                 {Object.entries(internalComment.reactions)
                                     .filter(([_, count]) => count > 0)
                                     .sort((a, b) => b[1] - a[1])
@@ -146,7 +129,6 @@ export default function Comment({ comment, postId, depth = 0 }) {
                     <div className="flex items-center gap-0.5 sm:gap-1 mt-1.5 px-1 flex-wrap">
                         <div className="relative">
                             <button
-                                ref={emojiButtonRef}
                                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                 className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-all touch-manipulation"
                             >
@@ -160,19 +142,14 @@ export default function Comment({ comment, postId, depth = 0 }) {
                                         className="fixed inset-0 z-30"
                                         onClick={() => setShowEmojiPicker(false)}
                                     />
-                                    <div
-                                        className={`absolute ${emojiPickerPosition === 'top'
-                                                ? 'bottom-full mb-2'
-                                                : 'top-full mt-2'
-                                            } left-0 z-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 max-w-[280px] sm:max-w-none`}
-                                    >
-                                        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1">
+                                    <div className="absolute top-0 left-full ml-2 z-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 w-fit">
+                                        <div className="flex flex-nowrap gap-1">
                                             {COMMENT_EMOJIS.map(emoji => (
                                                 <button
                                                     key={emoji}
                                                     onClick={() => handleReaction(emoji)}
                                                     disabled={reactionLoading}
-                                                    className="text-xl sm:text-2xl p-2 sm:p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg active:scale-90 transition-all disabled:opacity-50 touch-manipulation"
+                                                    className="text-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg active:scale-90 transition-all disabled:opacity-50 touch-manipulation"
                                                 >
                                                     {emoji}
                                                 </button>
