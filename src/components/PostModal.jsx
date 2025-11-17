@@ -12,6 +12,7 @@ import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as Link
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
+import { Helmet } from 'react-helmet-async'
 import SeriesIndicator from './SeriesIndicator';
 
 dayjs.extend(relativeTime)
@@ -175,6 +176,10 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
     const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
+    const metaDescription = `MMU Confession #${internalPost.id}: ${internalPost.text.slice(0, 150)}...`;
+    const metaTitle = `MMU Confession #${internalPost.id} | MMU Confessions`;
+    const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
+    const metaImage = internalPost.media_url || 'https://mmuconfessions.fun/default-og-image.png';
 
     return ReactDOM.createPortal(
         <>
