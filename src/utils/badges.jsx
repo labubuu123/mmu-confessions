@@ -96,20 +96,39 @@ export const BADGE_DEFINITIONS = [
     },
 ];
 
+/**
+ * Calculate which badges a user has earned based on their stats
+ * @param {Object} userStats - User statistics object
+ * @returns {Array} - Array of earned badge objects
+ */
 export function calculateUserBadges(userStats) {
     const earnedBadges = [];
 
-    BADGE_DEFINITIONS.forEach((badge) => {
-        let earned = true;
+    if (!userStats) return earnedBadges;
 
-        if (badge.requirement) {
+    BADGE_DEFINITIONS.forEach((badge) => {
+        let earned = false;
+
+        if (!badge.requirement) {
+            if (badge.id === "first_post") {
+                earned = userStats.posts >= 1;
+            }
+        } else {
+            earned = true;
             Object.entries(badge.requirement).forEach(([key, value]) => {
-                if (!userStats[key] || userStats[key] < value) {
+                const userValue = userStats[key];
+
+                if (userValue === undefined || userValue === null) {
                     earned = false;
+                    return;
+                }
+
+                if (typeof value === 'boolean') {
+                    if (userValue !== value) earned = false;
+                } else if (typeof value === 'number') {
+                    if (userValue < value) earned = false;
                 }
             });
-        } else if (badge.id === "first_post") {
-            earned = userStats.posts >= 1;
         }
 
         if (earned) {
@@ -118,4 +137,70 @@ export function calculateUserBadges(userStats) {
     });
 
     return earnedBadges;
+}
+
+/**
+ * Get progress towards a specific badge
+ * @param {string} badgeId - Badge identifier
+ * @param {Object} userStats - User statistics
+ * @returns {Object} - Progress information {current, required, percentage, earned}
+ */
+export function getBadgeProgress(badgeId, userStats) {
+    const badge = BADGE_DEFINITIONS.find(b => b.id === badgeId);
+
+    if (!badge) return null;
+
+    if (!badge.requirement) {
+        return {
+            earned: userStats.posts >= 1,
+            percentage: userStats.posts >= 1 ? 100 : 0
+        };
+    }
+
+    let totalProgress = 0;
+    let requirementCount = 0;
+    let allRequirementsMet = true;
+
+    Object.entries(badge.requirement).forEach(([key, required]) => {
+        requirementCount++;
+        const current = userStats[key] || 0;
+
+        if (typeof required === 'number') {
+            const progress = Math.min((current / required) * 100, 100);
+            totalProgress += progress;
+            if (current < required) allRequirementsMet = false;
+        } else if (typeof required === 'boolean') {
+            if (current === required) {
+                totalProgress += 100;
+            } else {
+                allRequirementsMet = false;
+            }
+        }
+    });
+
+    return {
+        earned: allRequirementsMet,
+        percentage: requirementCount > 0 ? totalProgress / requirementCount : 0,
+        requirements: badge.requirement
+    };
+}
+
+/**
+ * Get next badge user should aim for
+ * @param {Object} userStats - User statistics
+ * @returns {Object} - Next badge and progress info
+ */
+export function getNextBadge(userStats) {
+    const earnedBadges = calculateUserBadges(userStats);
+    const earnedIds = new Set(earnedBadges.map(b => b.id));
+
+    const unearnedWithProgress = BADGE_DEFINITIONS
+        .filter(badge => !earnedIds.has(badge.id))
+        .map(badge => ({
+            ...badge,
+            progress: getBadgeProgress(badge.id, userStats)
+        }))
+        .sort((a, b) => b.progress.percentage - a.progress.percentage);
+
+    return unearnedWithProgress[0] || null;
 }

@@ -40,6 +40,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                 table: 'polls',
                 filter: `id=eq.${poll.id}`
             }, (payload) => {
+                console.log('Poll updated:', payload.new);
                 setPoll(payload.new);
                 fetchVoters();
             })
@@ -49,23 +50,48 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                 table: 'poll_votes',
                 filter: `poll_id=eq.${poll.id}`
             }, () => {
+                console.log('Poll votes changed');
                 fetchVoters();
+                refetchPoll();
             })
             .subscribe();
 
         return () => supabase.removeChannel(channel);
     }, [poll?.id]);
 
+    async function refetchPoll() {
+        if (!poll?.id) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('polls')
+                .select('*')
+                .eq('id', poll.id)
+                .single();
+
+            if (!error && data) {
+                setPoll(data);
+            }
+        } catch (err) {
+            console.error('Error refetching poll:', err);
+        }
+    }
+
     async function checkUserVote() {
         if (isAdminReview) return;
         const anonId = getAnonId();
-        const { data, error } = await supabase.rpc('get_user_poll_vote', {
-            poll_id_in: poll.id,
-            voter_id_in: anonId
-        });
 
-        if (!error && data !== null) {
-            setUserVote(data);
+        try {
+            const { data, error } = await supabase.rpc('get_user_poll_vote', {
+                poll_id_in: poll.id,
+                voter_id_in: anonId
+            });
+
+            if (!error && data !== null) {
+                setUserVote(data);
+            }
+        } catch (err) {
+            console.error('Error checking user vote:', err);
         }
     }
 
@@ -113,13 +139,19 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
 
             if (error) throw error;
 
+            console.log('Vote response:', data);
+
             setPoll(prev => ({
                 ...prev,
                 options: data.options,
                 total_votes: data.total_votes
             }));
+
             setUserVote(optionIndex);
+
             await fetchVoters();
+            await refetchPoll();
+
         } catch (err) {
             console.error('Vote error:', err);
             alert('Failed to vote: ' + err.message);
@@ -163,7 +195,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                             <button
                                 onClick={() => handleVote(index)}
                                 disabled={voting || isEnded || isAdminReview}
-                                className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${isEnded
+                                className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${isEnded || isAdminReview
                                     ? 'cursor-default'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50 cursor-pointer'
                                     } ${isSelected && !isAdminReview

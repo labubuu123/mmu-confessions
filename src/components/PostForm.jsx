@@ -6,7 +6,7 @@ import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3,
 import { Link } from 'react-router-dom';
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
-import SeriesCreator from './SeriesCreator';
+import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
 import { useNotifications } from './NotificationSystem';
 
@@ -39,10 +39,12 @@ export default function PostForm({ onPosted }) {
     const [pollData, setPollData] = useState(null);
     const [showEventCreator, setShowEventCreator] = useState(false);
     const [eventData, setEventData] = useState(null);
-    const [showSeriesCreator, setShowSeriesCreator] = useState(false);
+    const [showSeriesManager, setShowSeriesManager] = useState(false);
     const [seriesData, setSeriesData] = useState(null);
     const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
+    const [existingSeries, setExistingSeries] = useState([]);
+    const [loadingSeries, setLoadingSeries] = useState(false);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -52,7 +54,7 @@ export default function PostForm({ onPosted }) {
             return;
         }
 
-        if (showSeriesCreator && (!seriesData || !seriesData.series_name)) {
+        if (showSeriesManager && (!seriesData || !seriesData.series_name)) {
             error('Please provide a series name.');
             return;
         }
@@ -179,7 +181,6 @@ export default function PostForm({ onPosted }) {
                     mood: selectedMood ? JSON.stringify(selectedMood) : null,
                     series_id: seriesData?.series_id || null,
                     series_name: seriesData?.series_name || null,
-                    series_description: seriesData?.series_description || null,
                     series_part: seriesData?.series_part || null,
                     series_total: seriesData?.series_total || null,
                 }])
@@ -260,7 +261,7 @@ export default function PostForm({ onPosted }) {
             setEventData(null);
             setShowEventCreator(false);
             setSeriesData(null);
-            setShowSeriesCreator(false);
+            setShowSeriesManager(false);
             setSelectedMood(null);
             setUploadProgress(0);
             success('Posted successfully!');
@@ -354,6 +355,39 @@ export default function PostForm({ onPosted }) {
 
     function removeAudio() {
         setAudio(null);
+    }
+
+    async function fetchExistingSeries() {
+        setLoadingSeries(true);
+        const anonId = getAnonId();
+        const { data, error: rpcError } = await supabase.rpc('get_my_series', {
+            author_id_in: anonId
+        });
+
+        if (data) {
+            setExistingSeries(data);
+        } else if (rpcError) {
+            console.error("Error fetching series:", rpcError);
+            error('Could not load your existing series.');
+        }
+        setLoadingSeries(false);
+    }
+
+    async function handleToggleSeries() {
+        if (!showSeriesManager) {
+            info('Loading your series...');
+            await fetchExistingSeries();
+            setShowSeriesManager(true);
+        } else {
+            setShowSeriesManager(false);
+        }
+
+        setShowPollCreator(false);
+        setShowEventCreator(false);
+
+        if (showSeriesManager) {
+            setSeriesData(null);
+        }
     }
 
     const charCount = text.length;
@@ -489,17 +523,20 @@ export default function PostForm({ onPosted }) {
                         </div>
                     )}
 
-                    {showSeriesCreator && (
+                    {showSeriesManager && (
                         <div className="my-3 sm:my-4">
-                            <SeriesCreator
+                            <SeriesManager
+                                existingSeries={existingSeries}
+                                loadingSeries={loadingSeries}
                                 onSeriesData={setSeriesData}
                                 onRemoveSeries={() => {
-                                    setShowSeriesCreator(false);
+                                    setShowSeriesManager(false);
                                     setSeriesData(null);
                                 }}
                             />
                         </div>
                     )}
+
 
                     {loading && uploadProgress > 0 && uploadProgress < 100 && (
                         <div className="my-3 sm:my-4">
@@ -590,13 +627,13 @@ export default function PostForm({ onPosted }) {
                                 onClick={() => {
                                     setShowPollCreator(!showPollCreator);
                                     setShowEventCreator(false);
-                                    setShowSeriesCreator(false);
+                                    setShowSeriesManager(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showEventCreator || showSeriesCreator}
+                                disabled={loading || showEventCreator || showSeriesManager}
                             >
                                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -609,13 +646,13 @@ export default function PostForm({ onPosted }) {
                                 onClick={() => {
                                     setShowEventCreator(!showEventCreator);
                                     setShowPollCreator(false);
-                                    setShowSeriesCreator(false);
+                                    setShowSeriesManager(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showSeriesCreator}
+                                disabled={loading || showPollCreator || showSeriesManager}
                             >
                                 <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -625,12 +662,8 @@ export default function PostForm({ onPosted }) {
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setShowSeriesCreator(!showSeriesCreator);
-                                    setShowPollCreator(false);
-                                    setShowEventCreator(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesCreator
+                                onClick={handleToggleSeries}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
                                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
@@ -642,6 +675,7 @@ export default function PostForm({ onPosted }) {
                                 </span>
                             </button>
 
+
                             <MoodSelector
                                 selectedMood={selectedMood}
                                 onSelectMood={setSelectedMood}
@@ -650,7 +684,7 @@ export default function PostForm({ onPosted }) {
 
                         <button
                             type="submit"
-                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (

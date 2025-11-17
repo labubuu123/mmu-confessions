@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import PostCard from './PostCard'
-import PostModal from './PostModal'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Search, X, Hash, TrendingUp, Filter, Calendar, Sparkles } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import PostCard from './PostCard';
+import PostModal from './PostModal';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Search, X, Hash, TrendingUp, Filter, Calendar, Sparkles } from 'lucide-react';
 
 export default function SearchPage() {
-    const [query, setQuery] = useState('')
-    const [results, setResults] = useState([])
-    const [loading, setLoading] = useState(false)
-    const [trendingTags, setTrendingTags] = useState([])
-    const [selectedTag, setSelectedTag] = useState(null)
-    const [sortBy, setSortBy] = useState('recent')
-    const [filterBy, setFilterBy] = useState('all')
-    const [showFilters, setShowFilters] = useState(false)
-    const [searchSuggestions, setSearchSuggestions] = useState([])
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [trendingTags, setTrendingTags] = useState([]);
+    const [selectedTag, setSelectedTag] = useState(null);
+    const [sortBy, setSortBy] = useState('recent');
+    const [filterBy, setFilterBy] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
+    const [searchSuggestions, setSearchSuggestions] = useState([]);
 
-    const navigate = useNavigate()
-    const { id: modalPostId } = useParams()
-    const [searchParams, setSearchParams] = useSearchParams()
+    const navigate = useNavigate();
+    const { id: modalPostId } = useParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     useEffect(() => {
         const tagFromUrl = searchParams.get('tag');
@@ -29,9 +29,9 @@ export default function SearchPage() {
     }, [searchParams]);
 
     useEffect(() => {
-        fetchTrendingTags()
-        loadSearchHistory()
-    }, [])
+        fetchTrendingTags();
+        loadSearchHistory();
+    }, []);
 
     useEffect(() => {
         if (selectedTag) {
@@ -42,165 +42,164 @@ export default function SearchPage() {
 
         if (query.length > 1 || selectedTag) {
             const timer = setTimeout(() => {
-                search()
+                search();
                 if (query) saveSearchHistory(query);
-            }, 300)
-            return () => clearTimeout(timer)
+            }, 300);
+            return () => clearTimeout(timer);
         } else if (query.length === 0 && !selectedTag) {
-            setResults([])
+            setResults([]);
         }
-    }, [query, selectedTag, sortBy, filterBy])
+    }, [query, selectedTag, sortBy, filterBy]);
 
     async function fetchTrendingTags() {
         const { data } = await supabase
             .from('confessions')
             .select('tags')
             .eq('approved', true)
-            .limit(200)
+            .limit(200);
 
         if (data) {
-            const tagCount = {}
+            const tagCount = {};
             data.forEach(post => {
                 if (post.tags) {
                     post.tags.forEach(tag => {
-                        tagCount[tag] = (tagCount[tag] || 0) + 1
-                    })
+                        tagCount[tag] = (tagCount[tag] || 0) + 1;
+                    });
                 }
-            })
+            });
 
             const sorted = Object.entries(tagCount)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 15)
-                .map(([tag]) => tag)
+                .map(([tag]) => tag);
 
-            setTrendingTags(sorted)
+            setTrendingTags(sorted);
         }
     }
 
     function loadSearchHistory() {
         try {
-            const history = JSON.parse(localStorage.getItem('searchHistory') || '[]')
-            setSearchSuggestions(history.slice(0, 5))
+            const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+            setSearchSuggestions(history.slice(0, 5));
         } catch (e) {
-            setSearchSuggestions([])
+            setSearchSuggestions([]);
         }
     }
 
     function saveSearchHistory(searchQuery) {
-        if (!searchQuery || searchQuery.length < 2) return
+        if (!searchQuery || searchQuery.length < 2) return;
 
         try {
-            let history = JSON.parse(localStorage.getItem('searchHistory') || '[]')
-            history = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10)
-            localStorage.setItem('searchHistory', JSON.stringify(history))
-            setSearchSuggestions(history.slice(0, 5))
+            let history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+            history = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10);
+            localStorage.setItem('searchHistory', JSON.stringify(history));
+            setSearchSuggestions(history.slice(0, 5));
         } catch (e) {
-            console.error('Failed to save search history:', e)
+            console.error('Failed to save search history:', e);
         }
     }
 
     async function search() {
-        setLoading(true)
+        setLoading(true);
 
         try {
             let query_builder = supabase
                 .from('confessions')
                 .select('*')
-                .eq('approved', true)
+                .eq('approved', true);
 
             if (selectedTag) {
-                query_builder = query_builder.contains('tags', [selectedTag])
-            }
-            else if (query) {
-                const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0)
+                query_builder = query_builder.contains('tags', [selectedTag]);
+            } else if (query) {
+                const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
 
                 if (searchTerms.length === 1) {
-                    const term = searchTerms[0]
+                    const term = searchTerms[0];
                     query_builder = query_builder.or(
                         `text.ilike.%${term}%,tags.cs.{${term}}`
-                    )
+                    );
                 } else {
                     const conditions = searchTerms.map(term =>
                         `text.ilike.%${term}%`
-                    ).join(',')
-                    query_builder = query_builder.or(conditions)
+                    ).join(',');
+                    query_builder = query_builder.or(conditions);
                 }
             }
 
             if (filterBy === 'popular') {
-                query_builder = query_builder.gte('likes_count', 10)
+                query_builder = query_builder.gte('likes_count', 10);
             } else if (filterBy === 'discussed') {
-                query_builder = query_builder.gte('comments_count', 5)
+                query_builder = query_builder.gte('comments_count', 5);
             } else if (filterBy === 'new') {
-                const threeDaysAgo = new Date()
-                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-                query_builder = query_builder.gte('created_at', threeDaysAgo.toISOString())
+                const threeDaysAgo = new Date();
+                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                query_builder = query_builder.gte('created_at', threeDaysAgo.toISOString());
             }
 
             if (sortBy === 'recent') {
-                query_builder = query_builder.order('created_at', { ascending: false })
+                query_builder = query_builder.order('created_at', { ascending: false });
             } else if (sortBy === 'popular') {
-                query_builder = query_builder.order('likes_count', { ascending: false })
+                query_builder = query_builder.order('likes_count', { ascending: false });
             } else if (sortBy === 'discussed') {
-                query_builder = query_builder.order('comments_count', { ascending: false })
+                query_builder = query_builder.order('comments_count', { ascending: false });
             } else if (sortBy === 'relevance' && query && !selectedTag) {
-                query_builder = query_builder.order('created_at', { ascending: false })
+                query_builder = query_builder.order('created_at', { ascending: false });
             }
 
-            query_builder = query_builder.limit(100)
+            query_builder = query_builder.limit(100);
 
-            const { data, error } = await query_builder
+            const { data, error } = await query_builder;
 
-            if (error) throw error
+            if (error) throw error;
 
-            let processedResults = data || []
+            let processedResults = data || [];
 
             if (sortBy === 'relevance' && query && !selectedTag && processedResults.length > 0) {
-                const searchTerms = query.toLowerCase().trim().split(/\s+/)
+                const searchTerms = query.toLowerCase().trim().split(/\s+/);
 
                 processedResults = processedResults.map(post => {
-                    let score = 0
-                    const postText = post.text.toLowerCase()
-                    const postTags = (post.tags || []).join(' ').toLowerCase()
+                    let score = 0;
+                    const postText = post.text.toLowerCase();
+                    const postTags = (post.tags || []).join(' ').toLowerCase();
 
                     searchTerms.forEach(term => {
-                        const wordRegex = new RegExp(`\\b${term}\\b`, 'i')
-                        if (wordRegex.test(postText)) score += 20
-                        else if (postText.includes(term)) score += 10
+                        const wordRegex = new RegExp(`\\b${term}\\b`, 'i');
+                        if (wordRegex.test(postText)) score += 20;
+                        else if (postText.includes(term)) score += 10;
 
-                        if (postTags.includes(term)) score += 30
+                        if (postTags.includes(term)) score += 30;
 
-                        if (postText.startsWith(term)) score += 15
-                    })
+                        if (postText.startsWith(term)) score += 15;
+                    });
 
                     const matchCount = searchTerms.filter(term =>
                         postText.includes(term) || postTags.includes(term)
-                    ).length
-                    score += matchCount * 5
+                    ).length;
+                    score += matchCount * 5;
 
-                    const ageInDays = (Date.now() - new Date(post.created_at)) / (1000 * 60 * 60 * 24)
-                    if (ageInDays < 7) score += 5
-                    score += Math.min(post.likes_count || 0, 20) * 0.5
+                    const ageInDays = (Date.now() - new Date(post.created_at)) / (1000 * 60 * 60 * 24);
+                    if (ageInDays < 7) score += 5;
+                    score += Math.min(post.likes_count || 0, 20) * 0.5;
 
-                    return { ...post, searchScore: score }
-                })
+                    return { ...post, searchScore: score };
+                });
 
-                processedResults.sort((a, b) => b.searchScore - a.searchScore)
+                processedResults.sort((a, b) => b.searchScore - a.searchScore);
             }
 
-            setResults(processedResults)
+            setResults(processedResults);
         } catch (err) {
-            console.error('Search error:', err)
-            setResults([])
+            console.error('Search error:', err);
+            setResults([]);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
     const handleTagClick = (tag) => {
-        setSelectedTag(tag === selectedTag ? null : tag)
-        setQuery('')
-    }
+        setSelectedTag(tag === selectedTag ? null : tag);
+        setQuery('');
+    };
 
     function handleOpenModal(post) {
         navigate(`/post/${post.id}`, { state: { backgroundLocation: `/search?${searchParams.toString()}` } });
@@ -211,11 +210,11 @@ export default function SearchPage() {
     }
 
     const clearSearch = () => {
-        setQuery('')
-        setSelectedTag(null)
-        setResults([])
-        setSearchParams({})
-    }
+        setQuery('');
+        setSelectedTag(null);
+        setResults([]);
+        setSearchParams({});
+    };
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
@@ -296,10 +295,10 @@ export default function SearchPage() {
                         </div>
                         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                             {[
-                                { value: 'all', label: 'All Posts', icon: 'All' },
+                                { value: 'all', label: 'All Posts', icon: '✨' },
                                 { value: 'popular', label: 'Popular', icon: '🔥', desc: '10+ likes' },
                                 { value: 'discussed', label: 'Discussed', icon: '💬', desc: '5+ comments' },
-                                { value: 'new', label: 'New', icon: '✨', desc: 'Last 3 days' }
+                                { value: 'new', label: 'New', icon: '⚡', desc: 'Last 3 days' }
                             ].map(filter => (
                                 <button
                                     key={filter.value}
@@ -341,6 +340,42 @@ export default function SearchPage() {
                     </div>
                 </div>
             </div>
+
+            {loading && (
+                <div className="flex justify-center py-12">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+            )}
+
+            {!loading && results.length === 0 && (query || selectedTag) && (
+                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                    <Search className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        No results found
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Try different keywords or tags
+                    </p>
+                </div>
+            )}
+
+            {!loading && results.length > 0 && (
+                <div className="space-y-6">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Found {results.length} {results.length === 1 ? 'result' : 'results'}
+                    </div>
+                    {results.map(post => (
+                        <PostCard key={post.id} post={post} onOpen={handleOpenModal} />
+                    ))}
+                </div>
+            )}
+
+            {modalPostId && (
+                <PostModal
+                    postId={modalPostId}
+                    onClose={handleCloseModal}
+                />
+            )}
         </div>
     );
 }

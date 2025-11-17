@@ -1,25 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, X, Plus } from 'lucide-react';
 
 export default function SeriesCreator({ onSeriesData, onRemoveSeries }) {
     const [seriesName, setSeriesName] = useState('');
-    const [seriesDescription, setSeriesDescription] = useState('');
     const [totalParts, setTotalParts] = useState(2);
     const [currentPart, setCurrentPart] = useState(1);
+    const [generatedId] = useState(() => `series_${Date.now()}`);
 
     React.useEffect(() => {
         if (seriesName.trim()) {
             onSeriesData({
                 series_name: seriesName.trim(),
-                series_description: seriesDescription.trim(),
                 series_part: currentPart,
                 series_total: totalParts,
-                series_id: `series_${Date.now()}`
+                series_id: generatedId
             });
         } else {
             onSeriesData(null);
         }
-    }, [seriesName, seriesDescription, currentPart, totalParts]);
+    }, [seriesName, currentPart, totalParts, onSeriesData, generatedId]);
 
     return (
         <div className="border-2 border-purple-200 dark:border-purple-800 rounded-xl p-4 bg-purple-50/50 dark:bg-purple-900/10 relative">
@@ -48,20 +47,6 @@ export default function SeriesCreator({ onSeriesData, onRemoveSeries }) {
                         placeholder="e.g., My University Journey"
                         className="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 outline-none"
                         maxLength={100}
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Series Description (Optional)
-                    </label>
-                    <textarea
-                        value={seriesDescription}
-                        onChange={(e) => setSeriesDescription(e.target.value)}
-                        placeholder="Brief description of this series..."
-                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-                        rows="2"
-                        maxLength={200}
                     />
                 </div>
 
