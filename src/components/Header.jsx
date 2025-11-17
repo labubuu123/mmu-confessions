@@ -95,7 +95,7 @@ export default function Header({ theme, setTheme, onlineCount }) {
                     </div>
                 </div>
 
-                <nav className="lg:hidden grid grid-cols-4 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
+                <nav className="lg:hidden grid grid-cols-6 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 gap-1">
                     {navLinks.map(link => (
                         <Link
                             key={link.to}
