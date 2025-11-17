@@ -14,7 +14,6 @@ export const moods = [
     { emoji: '🎉', label: 'Celebrating' },
     { emoji: '😔', label: 'Lonely' },
     { emoji: '🤯', label: 'Mind-blown' },
-    { emoji: ' venting', label: 'Venting' },
     { emoji: '🌟', label: 'Inspired' },
     { emoji: '🔥', label: 'Motivated' },
     { emoji: '😌', label: 'Relaxed' },
