@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Send, X } from 'lucide-react'
+import { Send } from 'lucide-react'
 
 function getAnonId() {
     let anonId = localStorage.getItem('anonId')
@@ -15,6 +15,14 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
     const [text, setText] = useState('')
     const [loading, setLoading] = useState(false)
     const [isFocused, setIsFocused] = useState(false)
+    const textareaRef = useRef(null)
+
+    const autoResizeTextarea = (element) => {
+        if (element) {
+            element.style.height = 'auto'
+            element.style.height = `${element.scrollHeight}px`
+        }
+    }
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -53,6 +61,9 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
             }
             setText('')
             setIsFocused(false)
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto'
+            }
         } catch (err) {
             console.error('Comment error:', err)
             alert('Failed to post comment: ' + err.message)
@@ -61,25 +72,40 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
         }
     }
 
+    const handleChange = (e) => {
+        setText(e.target.value)
+        autoResizeTextarea(e.target)
+    }
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            handleSubmit(e)
+        }
+    }
+
     const charCount = text.length
     const isNearLimit = charCount > 450
 
     return (
         <form onSubmit={handleSubmit} className="relative">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-start">
                 <div className="flex-1 relative">
                     <textarea
+                        ref={textareaRef}
                         value={text}
-                        onChange={e => setText(e.target.value)}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
                         onFocus={() => setIsFocused(true)}
-                        onBlur={() => setTimeout(() => setIsFocused(false), 100)}
+                        onBlur={() => setTimeout(() => setIsFocused(false), 150)}
                         placeholder={parentId ? "Write a reply..." : "Write a comment..."}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base resize-none"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base resize-none min-h-[44px]"
                         maxLength={500}
-                        rows={isFocused ? 3 : 1}
-                        style={{ minHeight: isFocused ? '80px' : '44px' }}
+                        rows={1}
+                        style={{ overflowY: 'hidden' }}
+                        aria-label={parentId ? "Write a reply" : "Write a comment"}
                     />
-                    {isFocused && (
+                    {(isFocused || text.length > 0) && (
                         <div className={`absolute bottom-2 right-2 text-xs ${isNearLimit ? 'text-red-500' : 'text-gray-400'}`}>
                             {charCount}/500
                         </div>
@@ -89,6 +115,7 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                     type="submit"
                     disabled={loading || !text.trim()}
                     className="px-3 sm:px-4 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 min-w-[44px] touch-manipulation"
+                    aria-label="Send comment"
                 >
                     {loading ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

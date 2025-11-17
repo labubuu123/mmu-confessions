@@ -259,7 +259,9 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                     loading="lazy"
                                     src={url}
                                     alt={`media ${idx + 1}`}
-                                    className={`w-full object-cover transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-96' : 'h-40 sm:h-48'
+                                    className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1
+                                            ? 'max-h-[75vh]'
+                                            : 'object-cover h-40 sm:h-48'
                                         }`}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
@@ -370,7 +372,7 @@ export default function PostCard({ post: initialPost, onOpen }) {
                                 disabled={isReported}
                                 className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all ${isReported
                                     ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/2Z0'
                                     }`}
                                 title={isReported ? 'Reported' : 'Report Post'}
                             >
