@@ -577,8 +577,8 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3">
-                        <div className="flex flex-wrap gap-1 justify-center sm:justify-start">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1">
                             <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -670,7 +670,7 @@ export default function PostForm({ onPosted }) {
                                 disabled={loading || showPollCreator || showEventCreator}
                             >
                                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <span className="text-xs sm:text-sm font-manual text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Series
                                 </span>
                             </button>
