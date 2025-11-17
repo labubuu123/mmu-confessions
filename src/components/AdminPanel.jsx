@@ -3,13 +3,14 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3, Calendar, User, Clock, Heart
+    ShieldOff, BarChart3, Calendar, User, Clock, Heart, Users
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
+import UserManagement from './UserManagement'
 
 dayjs.extend(relativeTime)
 
@@ -35,6 +36,8 @@ export default function AdminPanel() {
     const [bulkLoading, setBulkLoading] = useState(false)
     const [polls, setPolls] = useState({})
 
+    const [activeTab, setActiveTab] = useState('moderation')
+
     useEffect(() => {
         checkSession()
 
@@ -50,6 +53,7 @@ export default function AdminPanel() {
                     setPolls({})
                     setPage(0)
                     setHasMore(true)
+                    setActiveTab('moderation')
                 } else if (event === 'SIGNED_IN') {
                     setUser(session.user)
                     fetchPosts(true)
@@ -88,8 +92,10 @@ export default function AdminPanel() {
             }
         }
 
-        fetchPollsForPosts()
-    }, [posts])
+        if (activeTab === 'moderation') {
+            fetchPollsForPosts()
+        }
+    }, [posts, activeTab])
 
     async function checkSession() {
         const { data } = await supabase.auth.getSession()
@@ -505,10 +511,10 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            Admin Moderation
+                            Admin Panel
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Manage confessions ({posts.length} total) • {user.email}
+                            {user.email}
                         </p>
                     </div>
                 </div>
@@ -520,7 +526,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
-                        Refresh
+                        Refresh Posts
                     </button>
 
                     <button
@@ -534,396 +540,441 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 </div>
             </div>
 
-            {posts.length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={toggleSelectAll}
-                            className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
-                            disabled={bulkLoading}
-                        >
-                            {allPostsSelected ? (
-                                <CheckSquare className="w-5 h-5" />
-                            ) : (
-                                <Square className="w-5 h-5" />
-                            )}
-                            {allPostsSelected ? 'Deselect All' : 'Select All'}
-                        </button>
-                        <span className="text-sm text-gray-600 dark:text-gray-300">
-                            {selectedPosts.size} selected
-                        </span>
-                    </div>
-
+            {/* START: Tab Navigation */}
+            <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+                <nav className="flex -mb-px space-x-8">
                     <button
-                        onClick={handleBulkDelete}
-                        disabled={selectedPosts.size === 0 || bulkLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        onClick={() => setActiveTab('moderation')}
+                        className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'moderation'
+                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
                     >
-                        {bulkLoading ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                Deleting...
-                            </>
-                        ) : (
-                            <>
-                                <Trash2 className="w-4 h-4" />
-                                Delete Selected ({selectedPosts.size})
-                            </>
-                        )}
+                        <Shield className="w-4 h-4" />
+                        Post Moderation
                     </button>
-                </div>
-            )}
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'users'
+                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
+                    >
+                        <Users className="w-4 h-4" />
+                        User Management
+                    </button>
+                </nav>
+            </div>
 
-            {loading && posts.length === 0 ? (
-                <div className="flex justify-center items-center py-20">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {posts.map(p => {
-                        const isSelected = selectedPosts.has(p.id);
-                        const poll = polls[p.id];
-                        const hasEvent = p.events && p.events.length > 0;
-                        const event = hasEvent ? p.events[0] : null;
+            {activeTab === 'moderation' && (
+                <>
+                    {posts.length > 0 && (
+                        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={toggleSelectAll}
+                                    className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
+                                    disabled={bulkLoading}
+                                >
+                                    {allPostsSelected ? (
+                                        <CheckSquare className="w-5 h-5" />
+                                    ) : (
+                                        <Square className="w-5 h-5" />
+                                    )}
+                                    {allPostsSelected ? 'Deselect All' : 'Select All'}
+                                </button>
+                                <span className="text-sm text-gray-600 dark:text-gray-300">
+                                    {selectedPosts.size} selected
+                                </span>
+                            </div>
 
-                        return (
-                            <div
-                                key={p.id}
-                                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${isSelected
-                                    ? 'border-indigo-500 ring-2 ring-indigo-500/50'
-                                    : 'border-gray-200 dark:border-gray-700'
-                                    } p-5`}
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={selectedPosts.size === 0 || bulkLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
                             >
-                                <div className="flex items-start gap-4">
-                                    <div className="pt-1">
-                                        <input
-                                            type="checkbox"
-                                            className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                            checked={isSelected}
-                                            onChange={() => togglePostSelection(p.id)}
-                                            disabled={bulkLoading}
-                                        />
-                                    </div>
+                                {bulkLoading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete Selected ({selectedPosts.size})
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
 
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                {new Date(p.created_at).toLocaleString()} • ID: {p.id}
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
-                                                {poll && (
-                                                    <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded flex items-center gap-1">
-                                                        <BarChart3 className="w-3 h-3" />
-                                                        Poll
-                                                    </span>
-                                                )}
-                                                {hasEvent && (
-                                                    <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs rounded flex items-center gap-1">
-                                                        <Calendar className="w-3 h-3" />
-                                                        Event
-                                                    </span>
-                                                )}
-                                                {p.pinned && (
-                                                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded flex items-center gap-1">
-                                                        📌 Pinned
-                                                    </span>
-                                                )}
-                                                {p.approved ? (
-                                                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded flex items-center gap-1">
-                                                        <CheckCircle className="w-3 h-3" />
-                                                        Approved
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
-                                                        <AlertTriangle className="w-3 h-3" />
-                                                        Pending
-                                                    </span>
-                                                )}
-                                                {p.reported ? (
-                                                    <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs rounded flex items-center gap-1">
-                                                        <AlertTriangle className="w-3 h-3" />
-                                                        Reported ({p.report_count || 0})
-                                                    </span>
-                                                ) : p.report_count > 0 ? (
-                                                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
-                                                        <AlertTriangle className="w-3 h-3" />
-                                                        {p.report_count} {p.report_count === 1 ? 'Report' : 'Reports'}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                        </div>
+                    {loading && posts.length === 0 ? (
+                        <div className="flex justify-center items-center py-20">
+                            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {posts.map(p => {
+                                const isSelected = selectedPosts.has(p.id);
+                                const poll = polls[p.id];
+                                const hasEvent = p.events && p.events.length > 0;
+                                const event = hasEvent ? p.events[0] : null;
 
-                                        <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mb-3">
-                                            {p.text}
-                                        </p>
-
-                                        {poll && (
-                                            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
-                                                <PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} />
-                                            </div>
-                                        )}
-
-                                        {event && (
-                                            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
-                                                <EventDisplay
-                                                    eventName={event.event_name}
-                                                    description={event.description}
-                                                    startTime={event.start_time}
-                                                    endTime={event.end_time}
-                                                    location={event.location}
+                                return (
+                                    <div
+                                        key={p.id}
+                                        className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md border ${isSelected
+                                            ? 'border-indigo-500 ring-2 ring-indigo-500/50'
+                                            : 'border-gray-200 dark:border-gray-700'
+                                            } p-5`}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="pt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                                    checked={isSelected}
+                                                    onChange={() => togglePostSelection(p.id)}
+                                                    disabled={bulkLoading}
                                                 />
                                             </div>
-                                        )}
 
-                                        {p.media_url && (
-                                            <div className="mb-3">
-                                                {p.media_type === 'images' ? (
-                                                    <img
-                                                        src={p.media_url}
-                                                        className="max-h-48 rounded-lg"
-                                                        alt="media"
-                                                    />
-                                                ) : p.media_type === 'video' ? (
-                                                    <video controls className="max-h-48 w-full rounded-lg">
-                                                        <source src={p.media_url} />
-                                                    </video>
-                                                ) : p.media_type === 'audio' ? (
-                                                    <audio controls className="w-full">
-                                                        <source src={p.media_url} />
-                                                    </audio>
-                                                ) : null}
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <button
-                                                onClick={() => handleTogglePin(p.id, p.pinned)}
-                                                disabled={actionLoading[p.id] || bulkLoading}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${p.pinned
-                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
-                                                    }`}
-                                            >
-                                                {actionLoading[p.id] === 'pin' ? (
-                                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                ) : p.pinned ? (
-                                                    <PinOff className="w-4 h-4" />
-                                                ) : (
-                                                    <Pin className="w-4 h-4" />
-                                                )}
-                                                {p.pinned ? 'Unpin' : 'Pin'}
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleDelete(p.id)}
-                                                disabled={actionLoading[p.id] || bulkLoading}
-                                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                            >
-                                                {actionLoading[p.id] === 'delete-post' ? (
-                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="w-4 h-4" />
-                                                )}
-                                                Delete Post
-                                            </button>
-
-                                            {!p.approved && (
-                                                <button
-                                                    onClick={() => handleApprove(p.id)}
-                                                    disabled={actionLoading[p.id] || bulkLoading}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                                >
-                                                    {actionLoading[p.id] === 'approve' ? (
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <CheckCircle className="w-4 h-4" />
-                                                    )}
-                                                    Approve
-                                                </button>
-                                            )}
-
-                                            {!p.reported && p.report_count > 0 && (
-                                                <button
-                                                    onClick={() => handleMarkReview(p.id)}
-                                                    disabled={actionLoading[p.id] || bulkLoading}
-                                                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                                >
-                                                    {actionLoading[p.id] === 'review' ? (
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        'Mark for Review'
-                                                    )}
-                                                </button>
-                                            )}
-
-                                            {p.reported && (
-                                                <button
-                                                    onClick={() => handleClearReport(p.id)}
-                                                    disabled={actionLoading[p.id] || bulkLoading}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                                >
-                                                    {actionLoading[p.id] === 'clear-report' ? (
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <ShieldOff className="w-4 h-4" />
-                                                    )}
-                                                    Clear Report
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                            <button
-                                                onClick={() => toggleComments(p.id)}
-                                                className="flex items-center justify-between w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <MessageCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                                                    <div className="text-left">
-                                                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                            Comments ({p.comments_count || 0})
-                                                        </div>
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                            {visibleComments[p.id] ? 'Click to hide' : 'Click to view all comments'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {p.comments_count > 0 && (
-                                                        <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-full">
-                                                            {p.comments_count}
-                                                        </span>
-                                                    )}
-                                                    {visibleComments[p.id] ?
-                                                        <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" /> :
-                                                        <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                                                    }
-                                                </div>
-                                            </button>
-
-                                            {visibleComments[p.id] && (
-                                                <div className="mt-4 space-y-3">
-                                                    {commentsLoading[p.id] && (
-                                                        <div className="flex justify-center py-8">
-                                                            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                                        </div>
-                                                    )}
-
-                                                    {!commentsLoading[p.id] && comments[p.id]?.length === 0 && (
-                                                        <div className="text-center py-8 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                                                            <MessageCircle className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet</p>
-                                                        </div>
-                                                    )}
-
-                                                    {!commentsLoading[p.id] && comments[p.id]?.map(c => (
-                                                        <div
-                                                            key={c.id}
-                                                            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition"
-                                                        >
-                                                            <div className="flex items-start gap-2 sm:gap-3">
-                                                                <AnonAvatar authorId={c.author_id} size="sm" />
-
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-start sm:items-center gap-x-2 gap-y-1 mb-2 flex-wrap">
-                                                                        <span className={`text-sm font-semibold ${c.author_name
-                                                                            ? 'text-indigo-600 dark:text-indigo-400'
-                                                                            : 'text-gray-800 dark:text-gray-200'
-                                                                            }`}>
-                                                                            {c.author_name || 'Anonymous'}
-                                                                        </span>
-                                                                        <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">•</span>
-                                                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                            <Clock className="w-3 h-3" />
-                                                                            {dayjs(c.created_at).fromNow()}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 whitespace-pre-wrap break-words leading-relaxed">
-                                                                        {c.text}
-                                                                    </p>
-
-                                                                    {c.reactions && Object.keys(c.reactions).length > 0 && (
-                                                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                                                            {Object.entries(c.reactions)
-                                                                                .filter(([_, count]) => count > 0)
-                                                                                .map(([emoji, count]) => (
-                                                                                    <div
-                                                                                        key={emoji}
-                                                                                        className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full"
-                                                                                    >
-                                                                                        <span className="text-sm">{emoji}</span>
-                                                                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                                                                                            {count}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                ))
-                                                                            }
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="flex items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <User className="w-3 h-3" />
-                                                                            <span>ID: {c.id}</span>
-                                                                        </div>
-                                                                        {c.parent_id && (
-                                                                            <div className="flex items-center gap-1">
-                                                                                <MessageCircle className="w-3 h-3" />
-                                                                                <span>Reply to: {c.parent_id}</span>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                <button
-                                                                    onClick={() => handleDeleteComment(c.id, p.id)}
-                                                                    disabled={actionLoading[c.id] === 'delete-comment' || bulkLoading}
-                                                                    className="p-1.5 sm:p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 disabled:opacity-50 transition flex-shrink-0"
-                                                                    title="Delete Comment"
-                                                                >
-                                                                    {actionLoading[c.id] === 'delete-comment' ? (
-                                                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                                    ) : (
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    )}
-                                                                </button>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <AnonAvatar authorId={p.author_id} size="sm" />
+                                                        <div className="text-sm">
+                                                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                                                {p.author_name || 'Anonymous'}
+                                                            </span>
+                                                            <span className="text-gray-500 dark:text-gray-400 text-xs">
+                                                                {' (User ID: '}{p.author_id ? p.author_id.substring(0, 8) + '...' : 'N/A'}{')'}
+                                                            </span>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                                {new Date(p.created_at).toLocaleString()} • Post ID: {p.id}
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                                                        {poll && (
+                                                            <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded flex items-center gap-1">
+                                                                <BarChart3 className="w-3 h-3" />
+                                                                Poll
+                                                            </span>
+                                                        )}
+                                                        {hasEvent && (
+                                                            <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs rounded flex items-center gap-1">
+                                                                <Calendar className="w-3 h-3" />
+                                                                Event
+                                                            </span>
+                                                        )}
+                                                        {p.pinned && (
+                                                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded flex items-center gap-1">
+                                                                📌 Pinned
+                                                            </span>
+                                                        )}
+                                                        {p.approved ? (
+                                                            <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded flex items-center gap-1">
+                                                                <CheckCircle className="w-3 h-3" />
+                                                                Approved
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3" />
+                                                                Pending
+                                                            </span>
+                                                        )}
+                                                        {p.reported ? (
+                                                            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs rounded flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3" />
+                                                                Reported ({p.report_count || 0})
+                                                            </span>
+                                                        ) : p.report_count > 0 ? (
+                                                            <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3" />
+                                                                {p.report_count} {p.report_count === 1 ? 'Report' : 'Reports'}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                 </div>
-                                            )}
+
+                                                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mb-3">
+                                                    {p.text}
+                                                </p>
+
+                                                {poll && (
+                                                    <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                                                        <PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} />
+                                                    </div>
+                                                )}
+
+                                                {event && (
+                                                    <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                                                        <EventDisplay
+                                                            eventName={event.event_name}
+                                                            description={event.description}
+                                                            startTime={event.start_time}
+                                                            endTime={event.end_time}
+                                                            location={event.location}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {p.media_url && (
+                                                    <div className="mb-3">
+                                                        {p.media_type === 'images' ? (
+                                                            <img
+                                                                src={p.media_url}
+                                                                className="max-h-48 rounded-lg"
+                                                                alt="media"
+                                                            />
+                                                        ) : p.media_type === 'video' ? (
+                                                            <video controls className="max-h-48 w-full rounded-lg">
+                                                                <source src={p.media_url} />
+                                                            </video>
+                                                        ) : p.media_type === 'audio' ? (
+                                                            <audio controls className="w-full">
+                                                                <source src={p.media_url} />
+                                                            </audio>
+                                                        ) : null}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <button
+                                                        onClick={() => handleTogglePin(p.id, p.pinned)}
+                                                        disabled={actionLoading[p.id] || bulkLoading}
+                                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition ${p.pinned
+                                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200'
+                                                            }`}
+                                                    >
+                                                        {actionLoading[p.id] === 'pin' ? (
+                                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                        ) : p.pinned ? (
+                                                            <PinOff className="w-4 h-4" />
+                                                        ) : (
+                                                            <Pin className="w-4 h-4" />
+                                                        )}
+                                                        {p.pinned ? 'Unpin' : 'Pin'}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDelete(p.id)}
+                                                        disabled={actionLoading[p.id] || bulkLoading}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                                    >
+                                                        {actionLoading[p.id] === 'delete-post' ? (
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="w-4 h-4" />
+                                                        )}
+                                                        Delete Post
+                                                    </button>
+
+                                                    {!p.approved && (
+                                                        <button
+                                                            onClick={() => handleApprove(p.id)}
+                                                            disabled={actionLoading[p.id] || bulkLoading}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                                        >
+                                                            {actionLoading[p.id] === 'approve' ? (
+                                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            ) : (
+                                                                <CheckCircle className="w-4 h-4" />
+                                                            )}
+                                                            Approve
+                                                        </button>
+                                                    )}
+
+                                                    {!p.reported && p.report_count > 0 && (
+                                                        <button
+                                                            onClick={() => handleMarkReview(p.id)}
+                                                            disabled={actionLoading[p.id] || bulkLoading}
+                                                            className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                                        >
+                                                            {actionLoading[p.id] === 'review' ? (
+                                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            ) : (
+                                                                'Mark for Review'
+                                                            )}
+                                                        </button>
+                                                    )}
+
+                                                    {p.reported && (
+                                                        <button
+                                                            onClick={() => handleClearReport(p.id)}
+                                                            disabled={actionLoading[p.id] || bulkLoading}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                                        >
+                                                            {actionLoading[p.id] === 'clear-report' ? (
+                                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            ) : (
+                                                                <ShieldOff className="w-4 h-4" />
+                                                            )}
+                                                            Clear Report
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                                    <button
+                                                        onClick={() => toggleComments(p.id)}
+                                                        className="flex items-center justify-between w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <MessageCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                                            <div className="text-left">
+                                                                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                                    Comments ({p.comments_count || 0})
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    {visibleComments[p.id] ? 'Click to hide' : 'Click to view all comments'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {p.comments_count > 0 && (
+                                                                <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-full">
+                                                                    {p.comments_count}
+                                                                </span>
+                                                            )}
+                                                            {visibleComments[p.id] ?
+                                                                <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" /> :
+                                                                <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
+                                                            }
+                                                        </div>
+                                                    </button>
+
+                                                    {visibleComments[p.id] && (
+                                                        <div className="mt-4 space-y-3">
+                                                            {commentsLoading[p.id] && (
+                                                                <div className="flex justify-center py-8">
+                                                                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                                                </div>
+                                                            )}
+
+                                                            {!commentsLoading[p.id] && comments[p.id]?.length === 0 && (
+                                                                <div className="text-center py-8 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                                    <MessageCircle className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                                                                    <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet</p>
+                                                                </div>
+                                                            )}
+
+                                                            {!commentsLoading[p.id] && comments[p.id]?.map(c => (
+                                                                <div
+                                                                    key={c.id}
+                                                                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition"
+                                                                >
+                                                                    <div className="flex items-start gap-2 sm:gap-3">
+                                                                        <AnonAvatar authorId={c.author_id} size="sm" />
+
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-start sm:items-center gap-x-2 gap-y-1 mb-2 flex-wrap">
+                                                                                <span className={`text-sm font-semibold ${c.author_name
+                                                                                    ? 'text-indigo-600 dark:text-indigo-400'
+                                                                                    : 'text-gray-800 dark:text-gray-200'
+                                                                                    }`}>
+                                                                                    {c.author_name || 'Anonymous'}
+                                                                                </span>
+                                                                                <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">•</span>
+                                                                                <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                                                    <Clock className="w-3 h-3" />
+                                                                                    {dayjs(c.created_at).fromNow()}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 whitespace-pre-wrap break-words leading-relaxed">
+                                                                                {c.text}
+                                                                            </p>
+
+                                                                            {c.reactions && Object.keys(c.reactions).length > 0 && (
+                                                                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                                                    {Object.entries(c.reactions)
+                                                                                        .filter(([_, count]) => count > 0)
+                                                                                        .map(([emoji, count]) => (
+                                                                                            <div
+                                                                                                key={emoji}
+                                                                                                className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full"
+                                                                                            >
+                                                                                                <span className="text-sm">{emoji}</span>
+                                                                                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                                                                                    {count}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        ))
+                                                                                    }
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div className="flex items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <User className="w-3 h-3" />
+                                                                                    <span>ID: {c.id}</span>
+                                                                                </div>
+                                                                                {c.parent_id && (
+                                                                                    <div className="flex items-center gap-1">
+                                                                                        <MessageCircle className="w-3 h-3" />
+                                                                                        <span>Reply to: {c.parent_id}</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <button
+                                                                            onClick={() => handleDeleteComment(c.id, p.id)}
+                                                                            disabled={actionLoading[c.id] === 'delete-comment' || bulkLoading}
+                                                                            className="p-1.5 sm:p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 disabled:opacity-50 transition flex-shrink-0"
+                                                                            title="Delete Comment"
+                                                                        >
+                                                                            {actionLoading[c.id] === 'delete-comment' ? (
+                                                                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                                            ) : (
+                                                                                <Trash2 className="w-4 h-4" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
+                                )
+                            })}
+                        </div>
+                    )}
 
-            {loading && posts.length > 0 && (
-                <div className="flex justify-center items-center py-10">
-                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-            )}
+                    {loading && posts.length > 0 && (
+                        <div className="flex justify-center items-center py-10">
+                            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    )}
 
-            {!loading && hasMore && posts.length > 0 && (
-                <div className="flex justify-center mt-8">
-                    <button
-                        onClick={() => fetchPosts()}
-                        disabled={loading || bulkLoading}
-                        className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
-                    >
-                        Load More
-                    </button>
-                </div>
-            )}
+                    {!loading && hasMore && posts.length > 0 && (
+                        <div className="flex justify-center mt-8">
+                            <button
+                                onClick={() => fetchPosts()}
+                                disabled={loading || bulkLoading}
+                                className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+                            >
+                                Load More
+                            </button>
+                        </div>
+                    )}
 
-            {!loading && !hasMore && posts.length > 0 && (
-                <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
-                    You've reached the end.
-                </p>
+                    {!loading && !hasMore && posts.length > 0 && (
+                        <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                            You've reached the end of the moderation queue.
+                        </p>
+                    )}
+                </>
+            )}
+            {activeTab === 'users' && (
+                <UserManagement />
             )}
         </div>
     )

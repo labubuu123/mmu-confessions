@@ -543,16 +543,20 @@ BEGIN
         RETURN;
     END IF;
 
-    IF (rep_record.post_count + rep_record.comment_count) >= 10 THEN
-        new_badges := array_append(new_badges, 'ACTIVE_MEMBER');
-    END IF;
-    
-    IF rep_record.comment_count >= 5 THEN
-        new_badges := array_append(new_badges, 'HELPFUL_COMMENTER');
+    IF rep_record.post_count >= 1 THEN
+        new_badges := array_append(new_badges, 'first_post');
     END IF;
 
-    IF (rep_record.post_reactions_received_count + rep_record.comment_reactions_received_count) >= 20 THEN
-        new_badges := array_append(new_badges, 'SUPPORTIVE_FRIEND');
+    IF rep_record.post_count >= 10 THEN
+        new_badges := array_append(new_badges, 'prolific');
+    END IF;
+
+    IF rep_record.comment_count >= 20 THEN
+        new_badges := array_append(new_badges, 'supportive');
+    END IF;
+
+    IF (rep_record.post_reactions_received_count + rep_record.comment_reactions_received_count) >= 100 THEN
+        new_badges := array_append(new_badges, 'popular');
     END IF;
 
     UPDATE public.user_reputation
@@ -801,6 +805,43 @@ BEGIN
         rp.rn = 1;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.get_users_with_reputation_and_counts()
+RETURNS TABLE (
+    author_id TEXT,
+    post_count BIGINT,
+    comment_count INTEGER,
+    post_reactions_received_count INTEGER,
+    comment_reactions_received_count INTEGER,
+    badges TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF auth.role() <> 'authenticated' THEN
+        RAISE EXCEPTION 'Access denied: Must be an authenticated admin.';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        ur.author_id,
+        (SELECT COUNT(*) FROM public.confessions c WHERE c.author_id = ur.author_id) AS post_count,
+        ur.comment_count,
+        ur.post_reactions_received_count,
+        ur.comment_reactions_received_count,
+        ur.badges,
+        ur.created_at,
+        ur.updated_at
+    FROM
+        public.user_reputation ur
+    ORDER BY
+        ur.created_at DESC;
+END;
+$$;
 
 DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
 CREATE TRIGGER on_new_confession
