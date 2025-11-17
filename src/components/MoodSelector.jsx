@@ -107,7 +107,7 @@ export default function MoodSelector({ selectedMood, onSelectMood }) {
 
             {isOpen && (
                 <div
-                    className="absolute top-full mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 p-3 right-0 sm:left-0"
+                    className="absolute top-full mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 p-3 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0"
                 >
                     <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-1 mb-2 block">
                         How are you feeling?
