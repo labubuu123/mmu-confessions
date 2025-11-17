@@ -15,10 +15,7 @@ function App() {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) return savedTheme;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
+    return 'dark';
   });
 
   const [onlineCount, setOnlineCount] = useState(0);
