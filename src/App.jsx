@@ -14,14 +14,14 @@ import { supabase } from "./lib/supabaseClient";
 function MatchmakerButton() {
   const showMessage = () => {
     alert(
-      "传说中的「月老功能」即将上线,为你的缘分牵线搭桥! 准备好迎接命中注定的邂逅了吗? 敬请期待 ❤️\n\nThe legendary “Yue Lao Feature” is about to go live, ready to connect the threads of your destiny! Are you prepared for a fated encounter? Stay tuned ❤️"
+      "传说中的「月老功能」即将上线, 为你的缘分牵线搭桥! 准备好迎接命中注定的邂逅了吗? 敬请期待 ❤️\n\nThe legendary “Yue Lao Feature” is about to go live, ready to connect the threads of your destiny! Are you prepared for a fated encounter? Stay tuned ❤️"
     );
   };
 
   return (
     <button
       onClick={showMessage}
-      className="fixed bottom-8 right-8 z-50 p-4 bg-pink-600 text-white rounded-full shadow-lg hover:bg-pink-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+      className="fixed bottom-8 right-8 z-50 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       aria-label="查看月老功能预告"
     >
       ❤️
