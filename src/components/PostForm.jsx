@@ -577,111 +577,122 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-1">
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Photos
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                    disabled={loading || !!video || !!audio}
+                    {/* --- MODIFIED SECTION START --- */}
+                    {/* Main container aligns Post button to the top-right */}
+                    <div className="flex items-start justify-between gap-3">
+                        
+                        {/* Left container: Mobile = row, Desktop = column */}
+                        <div className="flex items-center sm:flex-col sm:items-start gap-1 sm:gap-2">
+
+                            {/* Row 1: Photos, Video, Audio, Poll, Event */}
+                            <div className="flex items-center gap-1">
+                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Photos
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleImageChange}
+                                        className="hidden"
+                                        disabled={loading || !!video || !!audio}
+                                    />
+                                </label>
+
+                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Video
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={handleVideoChange}
+                                        className="hidden"
+                                        disabled={loading || images.length > 0 || !!audio}
+                                    />
+                                </label>
+
+                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Audio
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="audio/*"
+                                        onChange={handleAudioChange}
+                                        className="hidden"
+                                        disabled={loading || images.length > 0 || !!video}
+                                    />
+                                </label>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowPollCreator(!showPollCreator);
+                                        setShowEventCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showEventCreator || showSeriesManager}
+                                >
+                                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Poll
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEventCreator(!showEventCreator);
+                                        setShowPollCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showSeriesManager}
+                                >
+                                    <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Event
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Row 2: Series, Mood */}
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handleToggleSeries}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showEventCreator}
+                                >
+                                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Series
+                                    </span>
+                                </button>
+
+                                <MoodSelector
+                                    selectedMood={selectedMood}
+                                    onSelectMood={setSelectedMood}
                                 />
-                            </label>
-
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Video
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="video/*"
-                                    onChange={handleVideoChange}
-                                    className="hidden"
-                                    disabled={loading || images.length > 0 || !!audio}
-                                />
-                            </label>
-
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Audio
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="audio/*"
-                                    onChange={handleAudioChange}
-                                    className="hidden"
-                                    disabled={loading || images.length > 0 || !!video}
-                                />
-                            </label>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowPollCreator(!showPollCreator);
-                                    setShowEventCreator(false);
-                                    setShowSeriesManager(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showEventCreator || showSeriesManager}
-                            >
-                                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Poll
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowEventCreator(!showEventCreator);
-                                    setShowPollCreator(false);
-                                    setShowSeriesManager(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showPollCreator || showSeriesManager}
-                            >
-                                <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Event
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleSeries}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
-                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showPollCreator || showEventCreator}
-                            >
-                                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-manual text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Series
-                                </span>
-                            </button>
-
-
-                            <MoodSelector
-                                selectedMood={selectedMood}
-                                onSelectMood={setSelectedMood}
-                            />
+                            </div>
                         </div>
 
+                        {/* Post Button (aligns to the right of the main container) */}
                         <button
                             type="submit"
                             disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
@@ -700,6 +711,8 @@ export default function PostForm({ onPosted }) {
                             )}
                         </button>
                     </div>
+                    {/* --- MODIFIED SECTION END --- */}
+
                 </form>
             </div>
         </>
