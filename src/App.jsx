@@ -21,7 +21,7 @@ function MatchmakerButton() {
   return (
     <button
       onClick={showMessage}
-      className="fixed bottom-8 right-8 z-50 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+      className="fixed bottom-4 right-4 z-50 w-14 h-14 flex items-center justify-center text-xl bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       aria-label="查看月老功能预告"
     >
       ❤️
