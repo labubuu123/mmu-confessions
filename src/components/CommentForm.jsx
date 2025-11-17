@@ -92,20 +92,17 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
             <div className="flex gap-2 items-start">
                 <div className="flex-1 relative">
                     <textarea
-                        ref={textareaRef}
                         value={text}
-                        onChange={handleChange}
-                        onKeyDown={handleKeyDown}
+                        onChange={e => setText(e.target.value)}
                         onFocus={() => setIsFocused(true)}
-                        onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+                        onBlur={() => setTimeout(() => setIsFocused(false), 100)}
                         placeholder={parentId ? "Write a reply..." : "Write a comment..."}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base resize-none min-h-[44px]"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base resize-none"
                         maxLength={500}
-                        rows={1}
-                        style={{ overflowY: 'hidden' }}
-                        aria-label={parentId ? "Write a reply" : "Write a comment"}
+                        rows={isFocused ? 3 : 1}
+                        style={{ minHeight: isFocused ? '80px' : '44px' }}
                     />
-                    {(isFocused || text.length > 0) && (
+                    {isFocused && (
                         <div className={`absolute bottom-2 right-2 text-xs ${isNearLimit ? 'text-red-500' : 'text-gray-400'}`}>
                             {charCount}/500
                         </div>
@@ -114,8 +111,7 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                 <button
                     type="submit"
                     disabled={loading || !text.trim()}
-                    className="px-3 sm:px-4 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 min-w-[44px] touch-manipulation"
-                    aria-label="Send comment"
+                    className="px-3 sm:px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 min-w-[44px] h-[44px] touch-manipulation"
                 >
                     {loading ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
