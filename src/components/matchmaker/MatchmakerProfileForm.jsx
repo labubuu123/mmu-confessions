@@ -263,7 +263,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                             <input
                                 type="text" name="nickname"
                                 value={formData.nickname} onChange={handleChange} required maxLength={20}
-                                placeholder="e.g. Jason (Use a unique alias, NOT your real name)"
+                                placeholder="e.g. Jason"
                                 className={inputStyle}
                             />
                         </div>
