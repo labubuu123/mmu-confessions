@@ -139,8 +139,6 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
 
             if (error) throw error;
 
-            console.log('Vote response:', data);
-
             setPoll(prev => ({
                 ...prev,
                 options: data.options,
@@ -168,22 +166,24 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
     const timeRemaining = poll.ends_at ? dayjs(poll.ends_at).fromNow() : null;
 
     return (
-        <div className="mt-4 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">Poll</h4>
+        <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
+                    <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">Poll</h4>
                 </div>
                 {isEnded && (
-                    <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full font-medium">
+                    <span className="px-2 py-0.5 sm:py-1 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs rounded-full font-medium">
                         Ended
                     </span>
                 )}
             </div>
 
-            <p className="text-gray-900 dark:text-gray-100 font-medium mb-4">{poll.question}</p>
+            <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-medium mb-3 sm:mb-4 leading-snug">
+                {poll.question}
+            </p>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
                 {options.map((option, index) => {
                     const votes = option.votes || 0;
                     const percentage = totalVotes > 0 ? ((votes / totalVotes) * 100).toFixed(1) : 0;
@@ -195,7 +195,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                             <button
                                 onClick={() => handleVote(index)}
                                 disabled={voting || isEnded || isAdminReview}
-                                className={`w-full text-left px-4 py-3 rounded-lg transition-all relative overflow-hidden ${isEnded || isAdminReview
+                                className={`w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg transition-all relative overflow-hidden group ${isEnded || isAdminReview
                                     ? 'cursor-default'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50 cursor-pointer'
                                     } ${isSelected && !isAdminReview
@@ -208,24 +208,28 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                                     style={{ width: `${percentage}%` }}
                                 />
 
-                                <div className="relative flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
+                                <div className="relative flex items-center justify-between gap-3 z-10">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
                                         {isSelected && !isAdminReview && (
-                                            <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                                         )}
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">{option.text}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                                            {votes} {votes === 1 ? 'vote' : 'votes'}
+                                        <span className="font-medium text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate sm:whitespace-normal">
+                                            {option.text}
                                         </span>
-                                        <span className="font-bold text-indigo-600 dark:text-indigo-400">{percentage}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                                            {votes} {votes === 1 ? <span className="hidden sm:inline">vote</span> : <span className="hidden sm:inline">votes</span>}
+                                        </span>
+                                        <span className="font-bold text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 min-w-[2.5rem] text-right">
+                                            {percentage}%
+                                        </span>
                                     </div>
                                 </div>
                             </button>
 
                             {optionVoters.length > 0 && (
-                                <div className="mt-2 ml-4 flex items-center gap-2">
+                                <div className="mt-1.5 ml-3 sm:mt-2 sm:ml-4 flex items-center gap-2">
                                     <div className="flex -space-x-2">
                                         {optionVoters.slice(0, 5).map((voterId, i) => (
                                             <div key={i} style={{ zIndex: 5 - i }}>
@@ -234,7 +238,7 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                                         ))}
                                     </div>
                                     {optionVoters.length > 5 && (
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                                             +{optionVoters.length - 5} more
                                         </span>
                                     )}
@@ -245,14 +249,14 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
                 })}
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+            <div className="mt-3 sm:mt-4 flex items-center justify-between text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
+                    <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}</span>
                 </div>
                 {timeRemaining && !isEnded && (
                     <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         <span>Ends {timeRemaining}</span>
                     </div>
                 )}
@@ -262,13 +266,13 @@ export default function PollDisplay({ confessionId, poll: initialPoll, isAdminRe
             </div>
 
             {userVote !== null && !isEnded && !isAdminReview && (
-                <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
-                    💡 You can change your vote anytime before the poll ends
+                <p className="mt-2 text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-400">
+                    💡 Change vote anytime
                 </p>
             )}
 
             {isAdminReview && (
-                <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-400">
                     (Admin read-only view)
                 </p>
             )}
