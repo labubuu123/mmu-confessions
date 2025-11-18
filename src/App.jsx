@@ -149,11 +149,11 @@ function MatchmakerButton() {
 
   return (
     <button
-      onClick={goToMatchmaker}
-      className="fixed bottom-4 right-4 z-50 w-14 h-14 flex items-center justify-center text-3xl bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-      aria-label="Find Love"
+      onClick={showMessage}
+      className="fixed bottom-4 right-4 z-50 w-14 h-14 flex items-center justify-center text-xl bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+      aria-label="查看月老功能预告"
     >
-      💑
+      ❤️
     </button>
   );
 }
