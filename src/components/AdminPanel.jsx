@@ -11,6 +11,8 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
 import UserManagement from './UserManagement'
+import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
+
 
 dayjs.extend(relativeTime)
 
@@ -541,7 +543,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             </div>
 
             <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-                <nav className="flex -mb-px space-x-8">
+                <nav className="flex -mb-px space-x-8 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('moderation')}
                         className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'moderation'
@@ -561,6 +563,16 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     >
                         <Users className="w-4 h-4" />
                         User Management
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('matchmaker')}
+                        className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'matchmaker'
+                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
+                    >
+                        <Heart className="w-4 h-4" />
+                        Matchmaker Admin
                     </button>
                 </nav>
             </div>
@@ -974,6 +986,9 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             )}
             {activeTab === 'users' && (
                 <UserManagement />
+            )}
+            {activeTab === 'matchmaker' && (
+                <MatchmakerAdmin />
             )}
         </div>
     )

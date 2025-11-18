@@ -565,10 +565,8 @@ export default function PostForm({ onPosted }) {
                                 I have read and agree to the{' '}
                                 <Link
                                     to="/policy"
-                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-indigo-600 dark:text-indigo-400 hover:underline"
-                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     Community Guidelines
                                 </Link>
@@ -577,14 +575,8 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    {/* --- MODIFIED SECTION START --- */}
-                    {/* Main container aligns Post button to the top-right */}
                     <div className="flex items-start justify-between gap-3">
-                        
-                        {/* Left container: Mobile = row, Desktop = column */}
                         <div className="flex items-center sm:flex-col sm:items-start gap-1 sm:gap-2">
-
-                            {/* Row 1: Photos, Video, Audio, Poll, Event */}
                             <div className="flex items-center gap-1">
                                 <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                     <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
@@ -668,7 +660,6 @@ export default function PostForm({ onPosted }) {
                                 </button>
                             </div>
 
-                            {/* Row 2: Series, Mood */}
                             <div className="flex items-center gap-1">
                                 <button
                                     type="button"
@@ -692,7 +683,6 @@ export default function PostForm({ onPosted }) {
                             </div>
                         </div>
 
-                        {/* Post Button (aligns to the right of the main container) */}
                         <button
                             type="submit"
                             disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
@@ -711,8 +701,6 @@ export default function PostForm({ onPosted }) {
                             )}
                         </button>
                     </div>
-                    {/* --- MODIFIED SECTION END --- */}
-
                 </form>
             </div>
         </>

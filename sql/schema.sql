@@ -97,6 +97,102 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
+    id BIGSERIAL PRIMARY KEY,
+    author_id TEXT NOT NULL UNIQUE,
+    nickname TEXT NOT NULL,
+    gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'undisclosed')),
+    age INTEGER,
+    age_range TEXT,
+    city TEXT,
+    interests TEXT[],
+    self_intro TEXT NOT NULL,
+    looking_for TEXT NOT NULL,
+    contact_info TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'hidden', 'banned')),
+    rejection_reason TEXT,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_likes (
+    id BIGSERIAL PRIMARY KEY,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(from_user_id, to_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_matches (
+    id BIGSERIAL PRIMARY KEY,
+    user1_id TEXT NOT NULL,
+    user2_id TEXT NOT NULL,
+    matched_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true,
+    contact_exchanged BOOLEAN DEFAULT false,
+    UNIQUE(user1_id, user2_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_messages (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT NOT NULL REFERENCES public.matchmaker_matches(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_contact_request BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_contact_requests (
+    id BIGSERIAL PRIMARY KEY,
+    match_id BIGINT NOT NULL REFERENCES public.matchmaker_matches(id) ON DELETE CASCADE,
+    requester_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    responded_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_blocks (
+    id BIGSERIAL PRIMARY KEY,
+    blocker_id TEXT NOT NULL,
+    blocked_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(blocker_id, blocked_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_reports (
+    id BIGSERIAL PRIMARY KEY,
+    reporter_id TEXT NOT NULL,
+    reported_id TEXT NOT NULL,
+    report_type TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'resolved', 'dismissed')),
+    admin_note TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_sensitive_words (
+    id BIGSERIAL PRIMARY KEY,
+    word TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_settings (
+    id BIGSERIAL PRIMARY KEY,
+    setting_key TEXT NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.matchmaker_user_actions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
@@ -105,6 +201,16 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_matches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_contact_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_sensitive_words ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_user_actions ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -136,6 +242,36 @@ BEGIN
     
     FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='events'
     LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.events', pol.policyname); END LOOP;
+
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_profiles'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_profiles', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_likes'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_likes', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_matches'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_matches', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_messages'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_messages', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_contact_requests'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_contact_requests', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_blocks'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_blocks', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_reports'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_reports', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_sensitive_words'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_sensitive_words', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_settings'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_settings', pol.policyname); END LOOP;
+    
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_user_actions'
+    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_user_actions', pol.policyname); END LOOP;
 END $$;
 
 CREATE POLICY "Enable insert for all users"
@@ -234,6 +370,94 @@ USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for authenticated users (admin)"
 ON storage.objects FOR DELETE
 USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
+
+CREATE POLICY "Enable read approved profiles"
+ON public.matchmaker_profiles FOR SELECT
+USING (status = 'approved' AND is_visible = true);
+
+CREATE POLICY "Enable read own profile"
+ON public.matchmaker_profiles FOR SELECT
+USING (author_id = current_setting('request.jwt.claims', true)::json->>'sub');
+
+CREATE POLICY "Enable insert own profile"
+ON public.matchmaker_profiles FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable update own profile"
+ON public.matchmaker_profiles FOR UPDATE
+USING (author_id = current_setting('request.jwt.claims', true)::json->>'sub' OR (SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable delete for admin"
+ON public.matchmaker_profiles FOR DELETE
+USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable insert likes"
+ON public.matchmaker_likes FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable read own likes"
+ON public.matchmaker_likes FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable read own matches"
+ON public.matchmaker_matches FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable insert matches"
+ON public.matchmaker_matches FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable read match messages"
+ON public.matchmaker_messages FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable insert messages"
+ON public.matchmaker_messages FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable all on contact requests"
+ON public.matchmaker_contact_requests FOR ALL
+USING (true);
+
+CREATE POLICY "Enable all on blocks"
+ON public.matchmaker_blocks FOR ALL
+USING (true);
+
+CREATE POLICY "Enable insert reports"
+ON public.matchmaker_reports FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable read reports for admin"
+ON public.matchmaker_reports FOR SELECT
+USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable all for admin on sensitive words"
+ON public.matchmaker_sensitive_words FOR ALL
+USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable read settings for everyone"
+ON public.matchmaker_settings FOR SELECT
+USING (true);
+
+CREATE POLICY "Enable inserts for admin"
+ON public.matchmaker_settings FOR INSERT
+WITH CHECK ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable updates for admin"
+ON public.matchmaker_settings FOR UPDATE
+USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable deletes for admin"
+ON public.matchmaker_settings FOR DELETE
+USING ((SELECT auth.role()) = 'authenticated');
+
+CREATE POLICY "Enable insert user actions"
+ON public.matchmaker_user_actions FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Enable read for admin"
+ON public.matchmaker_user_actions FOR SELECT
+USING ((SELECT auth.role()) = 'authenticated');
 
 CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
 RETURNS void
@@ -804,6 +1028,129 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION check_and_create_match(
+    user1_id_in TEXT,
+    user2_id_in TEXT
+)
+RETURNS BIGINT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    match_id BIGINT;
+    mutual_like BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM public.matchmaker_likes
+        WHERE from_user_id = user2_id_in AND to_user_id = user1_id_in
+    ) INTO mutual_like;
+    
+    IF mutual_like THEN
+        INSERT INTO public.matchmaker_matches (user1_id, user2_id)
+        VALUES (
+            LEAST(user1_id_in, user2_id_in),
+            GREATEST(user1_id_in, user2_id_in)
+        )
+        ON CONFLICT (user1_id, user2_id) DO UPDATE SET matched_at = NOW()
+        RETURNING id INTO match_id;
+        
+        RETURN match_id;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_sensitive_words(
+    text_in TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    word RECORD;
+BEGIN
+    FOR word IN SELECT word FROM public.matchmaker_sensitive_words
+    LOOP
+        IF text_in ILIKE '%' || word.word || '%' THEN
+            RETURN true;
+        END IF;
+    END LOOP;
+    
+    RETURN false;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_user_matches(user_id_in TEXT)
+RETURNS TABLE (
+    match_id BIGINT,
+    other_user_id TEXT,
+    nickname TEXT,
+    gender TEXT,
+    age INTEGER,
+    self_intro TEXT,
+    matched_at TIMESTAMP WITH TIME ZONE,
+    contact_exchanged BOOLEAN,
+    last_message TEXT,
+    last_message_time TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        m.id as match_id,
+        CASE
+            WHEN m.user1_id = user_id_in THEN m.user2_id
+            ELSE m.user1_id
+        END as other_user_id,
+        p.nickname,
+        p.gender,
+        p.age,
+        p.self_intro,
+        m.matched_at,
+        m.contact_exchanged,
+        (SELECT message FROM public.matchmaker_messages
+        WHERE match_id = m.id
+        ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT created_at FROM public.matchmaker_messages
+        WHERE match_id = m.id
+        ORDER BY created_at DESC LIMIT 1) as last_message_time
+    FROM public.matchmaker_matches m
+    JOIN public.matchmaker_profiles p ON (
+        CASE
+            WHEN m.user1_id = user_id_in THEN p.author_id = m.user2_id
+            ELSE p.author_id = m.user1_id
+        END
+    )
+    WHERE (m.user1_id = user_id_in OR m.user2_id = user_id_in)
+    AND m.is_active = true
+    ORDER BY COALESCE(last_message_time, m.matched_at) DESC;
+END;
+$$;
+
+INSERT INTO public.matchmaker_settings (setting_key, setting_value) VALUES
+('daily_like_limit', '20'),
+('allow_links_in_chat', 'false'),
+('allow_undisclosed_gender', 'true'),
+('new_user_cooldown_minutes', '5')
+ON CONFLICT (setting_key) DO NOTHING;
+
+INSERT INTO public.matchmaker_sensitive_words (word, category) VALUES
+('whatsapp', 'contact'),
+('telegram', 'contact'),
+('wechat', 'contact'),
+('line', 'contact'),
+('phone', 'contact'),
+('email', 'contact'),
+('instagram', 'contact'),
+('facebook', 'contact'),
+('twitter', 'contact'),
+('tiktok', 'contact')
+ON CONFLICT (word) DO NOTHING;
+
 DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
 CREATE TRIGGER on_new_confession
     AFTER INSERT ON public.confessions
@@ -840,12 +1187,22 @@ CREATE INDEX IF NOT EXISTS idx_poll_votes_poll_id ON public.poll_votes(poll_id);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_voter_id ON public.poll_votes(voter_id);
 CREATE INDEX IF NOT EXISTS idx_events_confession_id ON public.events(confession_id);
 CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_profiles_status ON public.matchmaker_profiles(status);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_profiles_author_id ON public.matchmaker_profiles(author_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_likes_from_user ON public.matchmaker_likes(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_likes_to_user ON public.matchmaker_likes(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_matches_users ON public.matchmaker_matches(user1_id, user2_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_messages_match ON public.matchmaker_messages(match_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_blocks_blocker ON public.matchmaker_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_matchmaker_blocks_blocked ON public.matchmaker_blocks(blocked_id);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
@@ -877,3 +1234,4 @@ GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authent
 GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
