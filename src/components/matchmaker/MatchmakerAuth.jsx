@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Mail, Phone } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 
 export default function MatchmakerAuth({ onAuthSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -29,7 +29,8 @@ export default function MatchmakerAuth({ onAuthSuccess }) {
             if (authError) throw authError;
 
             if (isSignUp) {
-                setMessage('Registration successful! Please check your email to verify your account.');
+                setMessage('Registration successful! Please log in to continue.');
+                setIsSignUp(false);
             } else {
             }
         } catch (error) {
@@ -42,18 +43,20 @@ export default function MatchmakerAuth({ onAuthSuccess }) {
     return (
         <div className="max-w-md mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700">
             <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-4">
-                Join the Matchmaker
+                {isSignUp ? 'Create Account' : 'Matchmaker Log In'}
             </h2>
             <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
-                Please {isSignUp ? 'sign up' : 'log in'} to continue. This feature uses a
-                separate, anonymous login.
+                {isSignUp
+                    ? 'Create a new anonymous account for the matchmaker.'
+                    : 'Log in to your matchmaker account.'
+                }
             </p>
 
             {message && <div className="mb-4 text-center text-green-600 dark:text-green-400">{message}</div>}
             {error && <div className="mb-4 text-center text-red-600 dark:text-red-400">{error}</div>}
 
-            <form onSubmit={handleAuth}>
-                <div className="mb-4">
+            <form onSubmit={handleAuth} className="space-y-4">
+                <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="email">
                         Email
                     </label>
@@ -72,19 +75,25 @@ export default function MatchmakerAuth({ onAuthSuccess }) {
                         />
                     </div>
                 </div>
-                <div className="mb-6">
+                <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="password">
                         Password
                     </label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="••••••••"
-                    />
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <Lock className="w-5 h-5 text-gray-400" />
+                        </span>
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            placeholder="••••••••"
+                        />
+                    </div>
                 </div>
                 <button
                     type="submit"
@@ -95,16 +104,30 @@ export default function MatchmakerAuth({ onAuthSuccess }) {
                 </button>
             </form>
 
-            <button
-                onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setError(null);
-                    setMessage(null);
-                }}
-                className="w-full mt-4 text-sm text-center text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-                {isSignUp ? 'Already have an account? Log In' : "Don't have an account? Sign Up"}
-            </button>
+            <div className="flex justify-between items-center mt-4">
+                <button
+                    onClick={() => {
+                        setError(null);
+                        setMessage(null);
+                        if (!isSignUp) {
+                            setError("Please contact an admin for password recovery.");
+                        }
+                    }}
+                    className={`text-sm text-indigo-600 dark:text-indigo-400 hover:underline ${isSignUp ? 'invisible' : 'visible'}`}
+                >
+                    Forgot Password?
+                </button>
+                <button
+                    onClick={() => {
+                        setIsSignUp(!isSignUp);
+                        setError(null);
+                        setMessage(null);
+                    }}
+                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                    {isSignUp ? 'Already have an account? Log In' : "Don't have an account? Sign Up"}
+                </button>
+            </div>
         </div>
     );
 }

@@ -37,15 +37,6 @@ CREATE TABLE IF NOT EXISTS public.comments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS public.reactions (
-    id BIGSERIAL PRIMARY KEY,
-    post_id BIGINT NOT NULL REFERENCES public.confessions(id) ON DELETE CASCADE,
-    emoji TEXT NOT NULL,
-    count INTEGER DEFAULT 1,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (post_id, emoji)
-);
-
 CREATE TABLE IF NOT EXISTS public.actions_log (
     id BIGSERIAL PRIMARY KEY,
     action_type TEXT NOT NULL,
@@ -97,6 +88,31 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.reactions (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES public.confessions(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    count INTEGER DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (post_id, emoji)
+);
+
+CREATE TABLE IF NOT EXISTS public.post_user_reactions (
+    post_id BIGINT NOT NULL REFERENCES public.confessions(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.comment_user_reactions (
+    comment_id BIGINT NOT NULL REFERENCES public.comments(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (comment_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
     id BIGSERIAL PRIMARY KEY,
     author_id TEXT NOT NULL UNIQUE,
@@ -109,6 +125,8 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
     self_intro TEXT NOT NULL,
     looking_for TEXT NOT NULL,
     contact_info TEXT,
+    student_id_url TEXT,
+    selfie_url TEXT,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'hidden', 'banned')),
     rejection_reason TEXT,
     is_visible BOOLEAN DEFAULT true,
@@ -193,9 +211,23 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_user_actions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('confessions', 'confessions', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('matchmaker_selfies', 'matchmaker_selfies', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('matchmaker_verification', 'matchmaker_verification', false)
+ON CONFLICT (id) DO NOTHING;
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_user_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.comment_user_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.actions_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
@@ -216,270 +248,234 @@ DO $$
 DECLARE
     pol RECORD;
 BEGIN
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='confessions'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.confessions', pol.policyname); END LOOP;
+    FOR pol IN
+        SELECT policyname, tablename
+        FROM pg_policies
+        WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol.policyname, pol.tablename); 
+    END LOOP;
     
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='comments'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.comments', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='reactions'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.reactions', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='actions_log'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.actions_log', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='polls'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.polls', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='poll_votes'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.poll_votes', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='user_reputation'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.user_reputation', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='storage' AND tablename='objects'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='events'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.events', pol.policyname); END LOOP;
-
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_profiles'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_profiles', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_likes'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_likes', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_matches'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_matches', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_messages'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_messages', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_contact_requests'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_contact_requests', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_blocks'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_blocks', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_reports'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_reports', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_sensitive_words'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_sensitive_words', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_settings'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_settings', pol.policyname); END LOOP;
-    
-    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='matchmaker_user_actions'
-    LOOP EXECUTE format('DROP POLICY IF EXISTS %I ON public.matchmaker_user_actions', pol.policyname); END LOOP;
+    FOR pol IN
+        SELECT policyname, tablename
+        FROM pg_policies
+        WHERE schemaname = 'storage' AND tablename = 'objects'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON storage.%I', pol.policyname, pol.tablename);
+    END LOOP;
 END $$;
 
-CREATE POLICY "Enable insert for all users"
-ON public.confessions FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Enable read own profile" ON public.matchmaker_profiles;
+DROP POLICY IF EXISTS "Enable update own profile" ON public.matchmaker_profiles;
 
-CREATE POLICY "Enable read for approved posts"
-ON public.confessions FOR SELECT USING (approved = true);
+CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
+CREATE POLICY "Enable update for admin" ON public.confessions FOR UPDATE USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.confessions FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable insert for all users" ON public.comments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read for all users" ON public.comments FOR SELECT USING (true);
+CREATE POLICY "Enable update for all users (for reactions)" ON public.comments FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable delete for admin" ON public.comments FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable read for all users" ON public.reactions FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all users" ON public.reactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.reactions FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable read for all users" ON public.post_user_reactions FOR SELECT USING (true);
+CREATE POLICY "Enable all for users" ON public.post_user_reactions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable read for all users" ON public.comment_user_reactions FOR SELECT USING (true);
+CREATE POLICY "Enable all for users" ON public.comment_user_reactions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable insert for service role" ON public.actions_log FOR INSERT WITH CHECK ((SELECT auth.role()) = 'service_role');
+CREATE POLICY "Enable read for service role" ON public.actions_log FOR SELECT USING ((SELECT auth.role()) = 'service_role');
+CREATE POLICY "Enable read for all users" ON public.polls FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all users" ON public.polls FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.polls FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Enable delete for admin" ON public.polls FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable read for all users" ON public.poll_votes FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all users" ON public.poll_votes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable delete for admin" ON public.poll_votes FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable read for all users" ON public.user_reputation FOR SELECT USING (true);
+CREATE POLICY "Enable read for all users" ON public.events FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all users" ON public.events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
+CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
+CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
+CREATE POLICY "Enable read for all users (matchmaker_selfies)" ON storage.objects FOR SELECT USING (bucket_id = 'matchmaker_selfies');
+CREATE POLICY "Enable insert for users (matchmaker_selfies)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'matchmaker_selfies' AND auth.role() = 'authenticated');
+CREATE POLICY "Enable insert for users (matchmaker_verification)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'matchmaker_verification' AND auth.role() = 'authenticated');
+CREATE POLICY "Enable read for admin (matchmaker_verification)" ON storage.objects FOR SELECT USING (bucket_id = 'matchmaker_verification' AND (SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin (matchmaker)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND (bucket_id = 'matchmaker_selfies' OR bucket_id = 'matchmaker_verification'));
+CREATE POLICY "Enable read approved profiles" ON public.matchmaker_profiles FOR SELECT USING (status = 'approved' AND is_visible = true);
+CREATE POLICY "Enable read own profile" ON public.matchmaker_profiles FOR SELECT USING (author_id = (SELECT current_setting('request.jwt.claims', true)::json->>'sub'));
+CREATE POLICY "Enable insert own profile" ON public.matchmaker_profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update own profile" ON public.matchmaker_profiles FOR UPDATE USING (author_id = (SELECT current_setting('request.jwt.claims', true)::json->>'sub') OR (SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.matchmaker_profiles FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete own pending profile" ON public.matchmaker_profiles FOR DELETE USING (author_id = (SELECT current_setting('request.jwt.claims', true)::json->>'sub') AND status IN ('pending', 'rejected'));
+CREATE POLICY "Enable delete own pending/rejected profile" ON public.matchmaker_profiles FOR DELETE USING (auth.uid()::text = author_id AND status IN ('pending', 'rejected'));
+CREATE POLICY "Enable insert likes" ON public.matchmaker_likes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read own likes" ON public.matchmaker_likes FOR SELECT USING (true);
+CREATE POLICY "Enable read own matches" ON public.matchmaker_matches FOR SELECT USING (true);
+CREATE POLICY "Enable insert matches" ON public.matchmaker_matches FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read match messages" ON public.matchmaker_messages FOR SELECT USING (true);
+CREATE POLICY "Enable insert messages" ON public.matchmaker_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable all on contact requests" ON public.matchmaker_contact_requests FOR ALL USING (true);
+CREATE POLICY "Enable all on blocks" ON public.matchmaker_blocks FOR ALL USING (true);
+CREATE POLICY "Enable insert reports" ON public.matchmaker_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read reports for admin" ON public.matchmaker_reports FOR SELECT USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable all for admin on sensitive words" ON public.matchmaker_sensitive_words FOR ALL USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable read settings for everyone" ON public.matchmaker_settings FOR SELECT USING (true);
+CREATE POLICY "Enable inserts for admin" ON public.matchmaker_settings FOR INSERT WITH CHECK ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable updates for admin" ON public.matchmaker_settings FOR UPDATE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable deletes for admin" ON public.matchmaker_settings FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable insert user actions" ON public.matchmaker_user_actions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable read for admin" ON public.matchmaker_user_actions FOR SELECT USING ((SELECT auth.role()) = 'authenticated');
 
-CREATE POLICY "Enable update for authenticated users (admin)"
-ON public.confessions FOR UPDATE
-USING ((SELECT auth.role()) = 'authenticated')
-WITH CHECK ((SELECT auth.role()) = 'authenticated');
+DROP FUNCTION IF EXISTS public.increment_reaction(BIGINT, TEXT);
 
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON public.confessions FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable insert for all users"
-ON public.comments FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable read for all users"
-ON public.comments FOR SELECT USING (true);
-
-CREATE POLICY "Enable update for all users (for reactions)"
-ON public.comments FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON public.comments FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable read for all users"
-ON public.reactions FOR SELECT USING (true);
-
-CREATE POLICY "Enable insert for all users"
-ON public.reactions FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update for all users"
-ON public.reactions FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Enable insert for service role"
-ON public.actions_log FOR INSERT
-WITH CHECK ((SELECT auth.role()) = 'service_role');
-
-CREATE POLICY "Enable read for service role"
-ON public.actions_log FOR SELECT
-USING ((SELECT auth.role()) = 'service_role');
-
-CREATE POLICY "Enable read for all users"
-ON public.polls FOR SELECT USING (true);
-
-CREATE POLICY "Enable insert for all users"
-ON public.polls FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update for all users"
-ON public.polls FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON public.polls FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable read for all users"
-ON public.poll_votes FOR SELECT USING (true);
-
-CREATE POLICY "Enable insert for all users"
-ON public.poll_votes FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON public.poll_votes FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable read for all users"
-ON public.user_reputation FOR SELECT USING (true);
-
-CREATE POLICY "Enable read for all users"
-ON public.events FOR SELECT USING (true);
-
-CREATE POLICY "Enable insert for all users"
-ON public.events FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON public.events FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('confessions', 'confessions', true)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE POLICY "Enable insert for all users"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'confessions');
-
-CREATE POLICY "Enable read for all users"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'confessions');
-
-CREATE POLICY "Enable delete for authenticated users (admin)"
-ON storage.objects FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
-
-CREATE POLICY "Enable read approved profiles"
-ON public.matchmaker_profiles FOR SELECT
-USING (status = 'approved' AND is_visible = true);
-
-CREATE POLICY "Enable read own profile"
-ON public.matchmaker_profiles FOR SELECT
-USING (author_id = current_setting('request.jwt.claims', true)::json->>'sub');
-
-CREATE POLICY "Enable insert own profile"
-ON public.matchmaker_profiles FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable update own profile"
-ON public.matchmaker_profiles FOR UPDATE
-USING (author_id = current_setting('request.jwt.claims', true)::json->>'sub' OR (SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable delete for admin"
-ON public.matchmaker_profiles FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable insert likes"
-ON public.matchmaker_likes FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable read own likes"
-ON public.matchmaker_likes FOR SELECT
-USING (true);
-
-CREATE POLICY "Enable read own matches"
-ON public.matchmaker_matches FOR SELECT
-USING (true);
-
-CREATE POLICY "Enable insert matches"
-ON public.matchmaker_matches FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable read match messages"
-ON public.matchmaker_messages FOR SELECT
-USING (true);
-
-CREATE POLICY "Enable insert messages"
-ON public.matchmaker_messages FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable all on contact requests"
-ON public.matchmaker_contact_requests FOR ALL
-USING (true);
-
-CREATE POLICY "Enable all on blocks"
-ON public.matchmaker_blocks FOR ALL
-USING (true);
-
-CREATE POLICY "Enable insert reports"
-ON public.matchmaker_reports FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable read reports for admin"
-ON public.matchmaker_reports FOR SELECT
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable all for admin on sensitive words"
-ON public.matchmaker_sensitive_words FOR ALL
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable read settings for everyone"
-ON public.matchmaker_settings FOR SELECT
-USING (true);
-
-CREATE POLICY "Enable inserts for admin"
-ON public.matchmaker_settings FOR INSERT
-WITH CHECK ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable updates for admin"
-ON public.matchmaker_settings FOR UPDATE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable deletes for admin"
-ON public.matchmaker_settings FOR DELETE
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE POLICY "Enable insert user actions"
-ON public.matchmaker_user_actions FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Enable read for admin"
-ON public.matchmaker_user_actions FOR SELECT
-USING ((SELECT auth.role()) = 'authenticated');
-
-CREATE OR REPLACE FUNCTION increment_reaction(post_id_in BIGINT, emoji_in TEXT)
+CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
+    post_id_in BIGINT,
+    emoji_in TEXT,
+    user_id_in TEXT
+)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+    old_emoji TEXT;
 BEGIN
-    INSERT INTO public.reactions (post_id, emoji, count)
-    VALUES (post_id_in, emoji_in, 1)
-    ON CONFLICT (post_id, emoji)
-    DO UPDATE SET count = reactions.count + 1;
+    SELECT emoji INTO old_emoji
+    FROM public.post_user_reactions
+    WHERE post_id = post_id_in AND user_id = user_id_in;
 
-    IF emoji_in = '👍' THEN
-        UPDATE public.confessions
-        SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
-        WHERE id = post_id_in;
+    IF old_emoji IS NULL THEN
+        INSERT INTO public.post_user_reactions (post_id, user_id, emoji)
+        VALUES (post_id_in, user_id_in, emoji_in);
+
+        INSERT INTO public.reactions (post_id, emoji, count)
+        VALUES (post_id_in, emoji_in, 1)
+        ON CONFLICT (post_id, emoji)
+        DO UPDATE SET count = reactions.count + 1;
+        
+        IF emoji_in = '👍' THEN
+            UPDATE public.confessions
+            SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
+            WHERE id = post_id_in;
+        END IF;
+
+    ELSIF old_emoji = emoji_in THEN
+        DELETE FROM public.post_user_reactions
+        WHERE post_id = post_id_in AND user_id = user_id_in;
+
+        UPDATE public.reactions
+        SET count = GREATEST(0, count - 1)
+        WHERE post_id = post_id_in AND emoji = emoji_in;
+
+        IF emoji_in = '👍' THEN
+            UPDATE public.confessions
+            SET likes_count = GREATEST(0, COALESCE(likes_count, 0) - 1), updated_at = NOW()
+            WHERE id = post_id_in;
+        END IF;
+
     ELSE
-        UPDATE public.confessions
-        SET updated_at = NOW()
-        WHERE id = post_id_in;
+        UPDATE public.post_user_reactions
+        SET emoji = emoji_in, created_at = NOW()
+        WHERE post_id = post_id_in AND user_id = user_id_in;
+
+        UPDATE public.reactions
+        SET count = GREATEST(0, count - 1)
+        WHERE post_id = post_id_in AND emoji = old_emoji;
+
+        INSERT INTO public.reactions (post_id, emoji, count)
+        VALUES (post_id_in, emoji_in, 1)
+        ON CONFLICT (post_id, emoji)
+        DO UPDATE SET count = reactions.count + 1;
+
+        IF old_emoji = '👍' THEN
+            UPDATE public.confessions
+            SET likes_count = GREATEST(0, COALESCE(likes_count, 0) - 1), updated_at = NOW()
+            WHERE id = post_id_in;
+        END IF;
+        IF emoji_in = '👍' THEN
+            UPDATE public.confessions
+            SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
+            WHERE id = post_id_in;
+        END IF;
     END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.toggle_comment_reaction(
+    comment_id_in BIGINT,
+    emoji_in TEXT,
+    user_id_in TEXT
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    old_emoji TEXT;
+    current_reactions JSONB;
+    new_reactions JSONB;
+    old_count INTEGER;
+    new_count INTEGER;
+BEGIN
+    SELECT reactions INTO current_reactions
+    FROM public.comments
+    WHERE id = comment_id_in;
+    
+    IF current_reactions IS NULL THEN
+        current_reactions := '{}'::jsonb;
+    END IF;
+
+    SELECT emoji INTO old_emoji
+    FROM public.comment_user_reactions
+    WHERE comment_id = comment_id_in AND user_id = user_id_in;
+
+    IF old_emoji IS NULL THEN
+        INSERT INTO public.comment_user_reactions (comment_id, user_id, emoji)
+        VALUES (comment_id_in, user_id_in, emoji_in);
+        
+        old_count := (current_reactions->>emoji_in)::int;
+        IF old_count IS NULL THEN old_count := 0; END IF;
+        new_reactions := jsonb_set(current_reactions, ARRAY[emoji_in], to_jsonb(old_count + 1));
+
+    ELSIF old_emoji = emoji_in THEN
+        DELETE FROM public.comment_user_reactions
+        WHERE comment_id = comment_id_in AND user_id = user_id_in;
+
+        old_count := (current_reactions->>emoji_in)::int;
+        IF old_count IS NULL OR old_count <= 1 THEN
+            new_reactions := current_reactions - emoji_in;
+        ELSE
+            new_reactions := jsonb_set(current_reactions, ARRAY[emoji_in], to_jsonb(old_count - 1));
+        END IF;
+
+    ELSE
+        UPDATE public.comment_user_reactions
+        SET emoji = emoji_in, created_at = NOW()
+        WHERE comment_id = comment_id_in AND user_id = user_id_in;
+
+        old_count := (current_reactions->>old_emoji)::int;
+        IF old_count IS NULL OR old_count <= 1 THEN
+            new_reactions := current_reactions - old_emoji;
+        ELSE
+            new_reactions := jsonb_set(current_reactions, ARRAY[old_emoji], to_jsonb(old_count - 1));
+        END IF;
+
+        new_count := (new_reactions->>emoji_in)::int;
+        IF new_count IS NULL THEN new_count := 0; END IF;
+        new_reactions := jsonb_set(new_reactions, ARRAY[emoji_in], to_jsonb(new_count + 1));
+    END IF;
+
+    UPDATE public.comments
+    SET reactions = new_reactions, updated_at = NOW()
+    WHERE id = comment_id_in
+    RETURNING reactions INTO new_reactions;
+
+    RETURN new_reactions;
 END;
 $$;
 
@@ -1082,6 +1078,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.get_user_matches(user_id_in TEXT);
 CREATE OR REPLACE FUNCTION get_user_matches(user_id_in TEXT)
 RETURNS TABLE (
     match_id BIGINT,
@@ -1089,6 +1086,7 @@ RETURNS TABLE (
     nickname TEXT,
     gender TEXT,
     age INTEGER,
+    selfie_url TEXT,
     self_intro TEXT,
     matched_at TIMESTAMP WITH TIME ZONE,
     contact_exchanged BOOLEAN,
@@ -1109,6 +1107,7 @@ BEGIN
         p.nickname,
         p.gender,
         p.age,
+        p.selfie_url,
         p.self_intro,
         m.matched_at,
         m.contact_exchanged,
@@ -1195,33 +1194,21 @@ CREATE INDEX IF NOT EXISTS idx_matchmaker_matches_users ON public.matchmaker_mat
 CREATE INDEX IF NOT EXISTS idx_matchmaker_messages_match ON public.matchmaker_messages(match_id);
 CREATE INDEX IF NOT EXISTS idx_matchmaker_blocks_blocker ON public.matchmaker_blocks(blocker_id);
 CREATE INDEX IF NOT EXISTS idx_matchmaker_blocks_blocked ON public.matchmaker_blocks(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_post_user_reactions_user_id ON public.post_user_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_user_reactions_user_id ON public.comment_user_reactions(user_id);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
-GRANT ALL ON public.confessions TO anon, authenticated;
-GRANT ALL ON public.comments TO anon, authenticated;
-GRANT ALL ON public.reactions TO anon, authenticated;
-GRANT ALL ON public.polls TO anon, authenticated;
-GRANT ALL ON public.poll_votes TO anon, authenticated;
-GRANT ALL ON public.user_reputation TO anon, authenticated;
-GRANT ALL ON public.events TO anon, authenticated;
-GRANT ALL ON SEQUENCE confessions_id_seq TO anon, authenticated;
-GRANT ALL ON SEQUENCE comments_id_seq TO anon, authenticated;
-GRANT ALL ON SEQUENCE reactions_id_seq TO anon, authenticated;
-GRANT ALL ON SEQUENCE polls_id_seq TO anon, authenticated;
-GRANT ALL ON SEQUENCE poll_votes_id_seq TO anon, authenticated;
-GRANT ALL ON SEQUENCE events_id_seq TO anon, authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_reaction(BIGINT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_post_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_comment_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_comment_count(BIGINT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_comment_reaction_total(JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_new_confession() TO anon, authenticated;
