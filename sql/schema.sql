@@ -1111,11 +1111,11 @@ BEGIN
         p.self_intro,
         m.matched_at,
         m.contact_exchanged,
-        (SELECT message FROM public.matchmaker_messages
-        WHERE match_id = m.id
+        (SELECT message FROM public.matchmaker_messages mm
+        WHERE mm.match_id = m.id
         ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM public.matchmaker_messages
-        WHERE match_id = m.id
+        (SELECT created_at FROM public.matchmaker_messages mm
+        WHERE mm.match_id = m.id
         ORDER BY created_at DESC LIMIT 1) as last_message_time
     FROM public.matchmaker_matches m
     JOIN public.matchmaker_profiles p ON (

@@ -145,7 +145,7 @@ import { supabase } from "./lib/supabaseClient";
 function MatchmakerButton() {
   const showMessage = () => {
     alert(
-      "传说中的「月老功能」即将上线, 为你的缘分牵线搭桥! 准备好迎接命中注定的邂逅了吗? 敬请期待 ❤️\n\nThe legendary “Yue Lao Feature” is about to go live, ready to connect the threads of your destiny! Are you prepared for a fated encounter? Stay tuned ❤️"
+      "传说中的「月老功能」即将上线, 为你的缘分牵线搭桥! 准备好迎接命中注定的邂逅了吗? 敬请期待 ❤️\n\nThe legendary “Matchmaker Feature” is about to go live, ready to connect the threads of your destiny! Are you prepared for a fated encounter? Stay tuned ❤️"
     );
   };
 

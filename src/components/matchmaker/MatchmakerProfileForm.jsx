@@ -43,6 +43,29 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                 looking_for: profile.looking_for || '',
                 contact_info: profile.contact_info || '',
             });
+
+            // Load existing images into previews
+            const loadImages = async () => {
+                // Load Selfie (Public Bucket)
+                if (profile.selfie_url) {
+                    const { data } = supabase.storage
+                        .from('matchmaker_selfies')
+                        .getPublicUrl(profile.selfie_url);
+                    setPreviews(prev => ({ ...prev, selfie: data.publicUrl }));
+                }
+
+                // Load Student ID (Private Bucket - Requires Signed URL)
+                if (profile.student_id_url) {
+                    const { data, error } = await supabase.storage
+                        .from('matchmaker_verification')
+                        .createSignedUrl(profile.student_id_url, 60 * 60); // Valid for 1 hour
+                    
+                    if (data?.signedUrl) {
+                        setPreviews(prev => ({ ...prev, id: data.signedUrl }));
+                    }
+                }
+            };
+            loadImages();
         }
         
         // Cleanup previews on unmount
@@ -95,11 +118,10 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
         setSuccess(false);
 
         // Manual Validation for Files
-        // We removed 'required' from the input to prevent silent browser blocking
+        // Only require files if it's a NEW profile (no existing profile data)
         if (!profile && (!studentIdFile || !selfieFile)) {
             setError('Please upload both your Student ID and a Selfie to continue.');
             setLoading(false);
-            // Scroll to top to see error
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
@@ -107,13 +129,26 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
         try {
             let studentIdPath = profile?.student_id_url || null;
             let selfiePath = profile?.selfie_url || null;
+            const filesToDelete = []; // Track old files to delete after successful update
 
-            // Upload new files if selected
+            // Upload new Student ID if selected
             if (studentIdFile) {
+                // If there was an old file, mark it for deletion
+                if (profile?.student_id_url) {
+                    filesToDelete.push({ bucket: 'matchmaker_verification', path: profile.student_id_url });
+                }
+
                 const fileName = `student_id_${Date.now()}.${studentIdFile.name.split('.').pop()}`;
                 studentIdPath = await uploadFile(studentIdFile, 'matchmaker_verification', `${user.id}/${fileName}`);
             }
+
+            // Upload new Selfie if selected
             if (selfieFile) {
+                // If there was an old file, mark it for deletion
+                if (profile?.selfie_url) {
+                    filesToDelete.push({ bucket: 'matchmaker_selfies', path: profile.selfie_url });
+                }
+
                 const fileName = `selfie_${Date.now()}.${selfieFile.name.split('.').pop()}`;
                 selfiePath = await uploadFile(selfieFile, 'matchmaker_selfies', `${user.id}/${fileName}`);
             }
@@ -144,6 +179,16 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
             const { error: dbError } = await query;
             if (dbError) throw dbError;
 
+            // Clean up old files ONLY after successful DB update
+            if (filesToDelete.length > 0) {
+                for (const file of filesToDelete) {
+                    const { error: delError } = await supabase.storage
+                        .from(file.bucket)
+                        .remove([file.path]);
+                    if (delError) console.error('Error deleting old file:', delError);
+                }
+            }
+
             setSuccess(true);
             if (onSave) onSave();
 
@@ -167,8 +212,6 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                 type="file" 
                 accept="image/*" 
                 onChange={onChange} 
-                // IMPORTANT: Removed 'required' attribute to prevent silent failures.
-                // We handle validation manually in handleSubmit.
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" 
             />
             
