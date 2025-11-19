@@ -163,6 +163,30 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE matchmaker_loves
+DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
+ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
+    FOREIGN KEY (from_user_id) REFERENCES matchmaker_profiles(author_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE matchmaker_loves
+DROP CONSTRAINT IF EXISTS matchmaker_loves_to_user_id_fkey,
+ADD CONSTRAINT matchmaker_loves_to_user_id_fkey
+    FOREIGN KEY (to_user_id) REFERENCES matchmaker_profiles(author_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE matchmaker_reports
+DROP CONSTRAINT IF EXISTS matchmaker_reports_reporter_id_fkey,
+ADD CONSTRAINT matchmaker_reports_reporter_id_fkey
+    FOREIGN KEY (reporter_id) REFERENCES matchmaker_profiles(author_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE matchmaker_reports
+DROP CONSTRAINT IF EXISTS matchmaker_reports_reported_id_fkey,
+ADD CONSTRAINT matchmaker_reports_reported_id_fkey
+    FOREIGN KEY (reported_id) REFERENCES matchmaker_profiles(author_id)
+    ON DELETE CASCADE;
+
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('confessions', 'confessions', true)
 ON CONFLICT (id) DO NOTHING;
@@ -230,29 +254,16 @@ CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELE
 CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
-
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
-
-CREATE POLICY "Read Own Loves" ON public.matchmaker_loves
-    FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves
-    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
-
-CREATE POLICY "Send Love" ON public.matchmaker_loves
-    FOR INSERT WITH CHECK (from_user_id = (SELECT auth.uid()::text));
-CREATE POLICY "Update Love" ON public.matchmaker_loves
-    FOR UPDATE USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
-
-CREATE POLICY "Read Own Matches" ON public.matchmaker_matches
-    FOR SELECT USING (user1_id = (SELECT auth.uid()::text) OR user2_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches
-    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
-
-CREATE POLICY "Insert Reports" ON public.matchmaker_reports
-    FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports
-    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Read Own Loves" ON public.matchmaker_loves FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Send Love" ON public.matchmaker_loves FOR INSERT WITH CHECK (from_user_id = (SELECT auth.uid()::text));
+CREATE POLICY "Update Love" ON public.matchmaker_loves FOR UPDATE USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
+CREATE POLICY "Read Own Matches" ON public.matchmaker_matches FOR SELECT USING (user1_id = (SELECT auth.uid()::text) OR user2_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Insert Reports" ON public.matchmaker_reports FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports FOR SELECT USING (true);
 
 CREATE POLICY "Admin Select Profiles"
 ON public.matchmaker_profiles
@@ -269,6 +280,11 @@ FOR SELECT USING (true);
 CREATE POLICY "Admin Delete Profiles"
 ON public.matchmaker_profiles
 FOR SELECT USING (true);
+
+CREATE POLICY "Admin full access to all profiles"
+ON public.matchmaker_profiles
+FOR ALL
+USING (true);
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
     post_id_in BIGINT,

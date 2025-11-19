@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-// Added ShieldAlert to imports for the rejection UI
-import { Check, Loader2, User, Heart, MapPin, AtSign, X, Sparkles, Trash2, AlertCircle, Info, ShieldAlert } from 'lucide-react';
+import { Check, Loader2, User, Heart, MapPin, AtSign, X, Sparkles, Trash2, AlertCircle, Info, ShieldAlert, Siren } from 'lucide-react';
 
 const INTEREST_OPTIONS = [
     'Movies', 'Music', 'Reading', 'Gaming', 'Traveling', 'Cooking',
@@ -140,21 +139,25 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
         }
     };
 
+    // ============================================================
+    // DELETION LOGIC
+    // ============================================================
     const handleWithdraw = async () => {
-        if (!window.confirm("Are you sure you want to withdraw your profile? You will be removed from the queue.")) return;
+        const confirmMessage = profile?.status === 'pending' 
+            ? "Withdraw your application? You will be removed from the queue."
+            : "Delete your Identity? This will permanently remove your profile, matches, and chats. You will be returned to the welcome screen.";
+
+        if (!window.confirm(confirmMessage)) return;
 
         setLoading(true);
         try {
             const { error } = await supabase.from('matchmaker_profiles').delete().eq('author_id', user.id);
             if (error) throw error;
-            
-            setTimeout(() => {
-                 if (onSave) onSave();
-                 setLoading(false);
-            }, 500);
-
+            await supabase.auth.signOut();
+            window.location.reload();
         } catch (err) {
-            setError(err.message);
+            console.error('Deletion error:', err);
+            setError("Could not delete profile: " + err.message);
             setLoading(false);
         }
     };
@@ -162,6 +165,8 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
     const inputStyle = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium placeholder-gray-400";
     const labelStyle = "block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2";
     const cardStyle = "bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 md:p-8 transition-colors";
+
+    const isWarning = profile?.rejection_reason?.toLowerCase().includes('warning');
 
     return (
         <>
@@ -204,17 +209,37 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     </p>
                 </div>
 
-                {/* REJECTED ALERT BLOCK */}
+                {/* REJECTED / WARNING ALERT BLOCK */}
                 {profile?.status === 'rejected' && (
-                    <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 shadow-sm">
-                        <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className={`mb-8 p-6 rounded-2xl flex flex-col md:flex-row items-start gap-4 animate-in fade-in slide-in-from-top-4 shadow-lg border-l-8 
+                        ${isWarning 
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500' 
+                            : 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                        }`}>
+                        
+                        <div className={`p-3 rounded-full flex-shrink-0 
+                            ${isWarning ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600' : 'bg-red-100 dark:bg-red-900/40 text-red-600'}`}>
+                            {isWarning ? <Siren className="w-8 h-8 animate-pulse" /> : <ShieldAlert className="w-8 h-8" />}
+                        </div>
+
                         <div className="flex-1">
-                            <h4 className="font-bold text-red-800 dark:text-red-300">Action Required: Profile Rejected</h4>
-                            <p className="text-sm text-red-700 dark:text-red-300 mt-1 leading-relaxed">
-                                Reason: <span className="font-semibold italic">"{profile.rejection_reason || 'Violation of guidelines'}"</span>
-                            </p>
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-3 font-medium bg-red-100 dark:bg-red-900/40 p-2 rounded-lg inline-block">
-                                Please modify your profile below to comply with the rules and submit again.
+                            <h4 className={`text-xl font-black uppercase tracking-wide mb-2 
+                                ${isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}`}>
+                                {isWarning ? 'Community Guideline Warning' : 'Profile Rejected'}
+                            </h4>
+                            
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-4">
+                                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Admin Message:</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100 italic text-lg">
+                                    "{profile.rejection_reason || 'Violation of guidelines'}"
+                                </p>
+                            </div>
+
+                            <p className={`text-sm font-bold 
+                                ${isWarning ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'}`}>
+                                {isWarning 
+                                    ? 'Your browsing access is temporarily suspended. Please correct your profile based on the warning above to restore access.'
+                                    : 'Please modify your profile below to comply with the rules and submit again for approval.'}
                             </p>
                         </div>
                     </div>
@@ -341,9 +366,12 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     </div>
 
                     <div className="flex flex-col-reverse md:flex-row justify-center gap-4 pt-4">
-                        {profile?.status === 'pending' && (
+                        {profile && (
                             <button type="button" onClick={handleWithdraw} disabled={loading} className="w-full md:w-auto px-6 py-4 text-red-600 dark:text-red-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-100 dark:hover:border-red-800 transition-all flex items-center justify-center gap-2">
-                                <Trash2 className="w-5 h-5" /> <span>Withdraw</span>
+                                <Trash2 className="w-5 h-5" /> 
+                                <span>
+                                    {profile.status === 'pending' ? 'Withdraw Request' : 'Delete Identity'}
+                                </span>
                             </button>
                         )}
                         <button type="submit" disabled={loading} className="w-full md:w-auto md:min-w-[300px] flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-lg font-bold rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none">

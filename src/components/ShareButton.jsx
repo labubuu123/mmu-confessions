@@ -40,7 +40,7 @@ export default function ShareButton({ post }) {
     const [downloaded, setDownloaded] = useState(false)
     const cardRef = useRef(null)
 
-    const shareUrl = `${window.location.origin}${window.location.pathname}#/post/${post.id}`
+    const shareUrl = `${window.location.origin}/post/${post.id}`
     const shareText = `Check out this confession on MMU Confessions: ${post.text.slice(0, 100)}${post.text.length > 100 ? '...' : ''}`
 
     const CARD_TEXT_LIMIT = 100

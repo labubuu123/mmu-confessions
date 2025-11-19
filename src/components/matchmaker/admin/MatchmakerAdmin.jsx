@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock, Siren } from 'lucide-react';
 
 export default function MatchmakerAdmin() {
     const [pending, setPending] = useState([]);
     const [approved, setApproved] = useState([]);
+    const [rejected, setRejected] = useState([]); // Section for suspended users
     const [loves, setLoves] = useState([]);
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,7 +18,13 @@ export default function MatchmakerAdmin() {
     const refreshAll = async () => {
         setLoading(true);
         try {
-            await Promise.all([fetchPending(), fetchApproved(), fetchLoves(), fetchReports()]);
+            await Promise.all([
+                fetchPending(), 
+                fetchApproved(), 
+                fetchRejected(), 
+                fetchLoves(), 
+                fetchReports()
+            ]);
         } catch (error) {
             console.error("Error refreshing admin data:", error);
         } finally {
@@ -35,6 +42,12 @@ export default function MatchmakerAdmin() {
         setApproved(data || []);
     };
 
+    const fetchRejected = async () => {
+        // Users who must update their profile before continuing
+        const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'rejected').order('updated_at', { ascending: false });
+        setRejected(data || []);
+    };
+
     const fetchLoves = async () => {
         const { data } = await supabase.from('matchmaker_loves').select('*, from:from_user_id(nickname), to:to_user_id(nickname)').order('created_at', { ascending: false }).limit(50);
         setLoves(data || []);
@@ -47,25 +60,36 @@ export default function MatchmakerAdmin() {
         setReports(data || []);
     };
 
+    // =========================================================
+    // STATUS UPDATES
+    // =========================================================
     const updateStatus = async (id, status, reason = null) => {
         if (processingId) return;
         setProcessingId(id);
         try {
-            await supabase
+            const updates = { 
+                status: status, 
+                updated_at: new Date().toISOString() 
+            };
+            if (reason) updates.rejection_reason = reason;
+            if (status === 'rejected') updates.is_visible = false;
+
+            const { error } = await supabase
                 .from('matchmaker_profiles')
-                .update({ status: status, rejection_reason: reason, updated_at: new Date().toISOString() })
+                .update(updates)
                 .eq('author_id', id);
+
+            if (error) throw error;
             await refreshAll();
         } catch (err) {
-            alert(`Error: ${err.message}`);
+            alert(`Error updating status: ${err.message}`);
         } finally {
             setProcessingId(null);
         }
     };
 
-    // Ban now performs a PERMANENT DELETE
     const handleBan = async (id, nickname) => {
-        if (!window.confirm(`CONFIRM BAN: Are you sure you want to BAN ${nickname}?\n\nThis will PERMANENTLY DELETE their identity from the database.`)) return;
+        if (!window.confirm(`CONFIRM BAN: Are you sure you want to BAN ${nickname}?\n\nThis will PERMANENTLY DELETE their identity and all matches.`)) return;
         
         if (processingId) return;
         setProcessingId(id);
@@ -81,19 +105,42 @@ export default function MatchmakerAdmin() {
         }
     };
 
-    const handleWarnUser = async (userId, currentCount) => {
+    // =========================================================
+    // WARN & REVOKE (MOVES TO "REQUIRES ACTION" & CLEARS REPORTS)
+    // =========================================================
+    const handleWarnAndRevoke = async (userId, currentCount, reportReason) => {
         if (processingId) return;
         setProcessingId(userId);
+
         try {
             const newCount = (currentCount || 0) + 1;
-            await supabase
+            const warningMessage = `Community Warning #${newCount}: ${reportReason}. Please update your profile to comply with our guidelines.`;
+
+            // 1. Suspend User: Set status to 'rejected' (Moves them to "Requires User Action" list)
+            const { error: updateError } = await supabase
                 .from('matchmaker_profiles')
-                .update({ warning_count: newCount })
+                .update({ 
+                    status: 'rejected',
+                    warning_count: newCount,
+                    rejection_reason: warningMessage,
+                    is_visible: false
+                })
                 .eq('author_id', userId);
-            await fetchReports();
-            await fetchApproved();
+
+            if (updateError) throw updateError;
+
+            // 2. Clear Reports: Delete ALL reports regarding this user (Removes them from "Reports" section)
+            const { error: deleteError } = await supabase
+                .from('matchmaker_reports')
+                .delete()
+                .eq('reported_id', userId);
+
+            if (deleteError) throw deleteError;
+
+            await refreshAll();
         } catch (err) {
-            alert(`Error: ${err.message}`);
+            console.error(err);
+            alert(`Error processing warning: ${err.message}`);
         } finally {
             setProcessingId(null);
         }
@@ -103,8 +150,11 @@ export default function MatchmakerAdmin() {
         if (processingId) return;
         setProcessingId(reportId);
         try {
-            await supabase.from('matchmaker_reports').delete().eq('id', reportId);
+            const { error } = await supabase.from('matchmaker_reports').delete().eq('id', reportId);
+            if (error) throw error;
             await fetchReports();
+        } catch (err) {
+            alert(`Error dismissing report: ${err.message}`);
         } finally {
             setProcessingId(null);
         }
@@ -120,7 +170,7 @@ export default function MatchmakerAdmin() {
                 </button>
             </div>
 
-            {/* REPORTS SECTION */}
+            {/* 1. REPORTS SECTION */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg"><Flag size={20} /></div>
@@ -128,16 +178,49 @@ export default function MatchmakerAdmin() {
                 </div>
                 <div className="space-y-3">
                     {reports.map(r => (
-                        <div key={r.id} className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl flex flex-col md:flex-row gap-4">
-                            <div className="flex-1">
-                                <div className="font-bold text-gray-900 dark:text-white">{r.reported?.nickname || 'Unknown'} <span className="font-normal text-gray-500">reported by {r.reporter?.nickname}</span></div>
-                                <p className="text-sm bg-white dark:bg-gray-900 p-2 rounded mt-1 border border-gray-200 dark:border-gray-700">"{r.reason}"</p>
-                                <div className="text-xs text-gray-500 mt-1">Status: {r.reported?.status} • Warnings: {r.reported?.warning_count || 0}</div>
+                        <div key={r.id} className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="font-bold text-gray-900 dark:text-white text-lg">
+                                        {r.reported?.nickname || 'Unknown'} 
+                                        <span className="text-sm font-normal text-gray-500 ml-2">reported by {r.reporter?.nickname}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                                        <span>Status: <span className="font-bold uppercase">{r.reported?.status}</span></span>
+                                        <span>•</span>
+                                        <span>Warnings: {r.reported?.warning_count || 0}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <button onClick={() => handleDismissReport(r.id)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600">Dismiss</button>
-                                <button onClick={() => handleWarnUser(r.reported_id, r.reported?.warning_count)} className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded text-xs font-bold hover:bg-yellow-200 dark:hover:bg-yellow-900/50 flex gap-1 items-center"><AlertTriangle size={12}/> Warn</button>
-                                <button onClick={() => handleBan(r.reported_id, r.reported?.nickname)} className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded text-xs font-bold hover:bg-red-200 dark:hover:bg-red-900/50 flex gap-1 items-center"><Ban size={12}/> Ban (Delete)</button>
+                            
+                            <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
+                                <p className="text-xs font-bold text-red-500 uppercase mb-1">Reason for Report:</p>
+                                <p className="text-sm text-gray-800 dark:text-gray-200 italic">"{r.reason}"</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                <button 
+                                    onClick={() => handleDismissReport(r.id)} 
+                                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    Dismiss (False Alarm)
+                                </button>
+                                
+                                <button 
+                                    onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)} 
+                                    className="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-200 dark:hover:bg-yellow-900/50 flex gap-2 items-center transition-colors border border-yellow-200 dark:border-yellow-800"
+                                >
+                                    <AlertTriangle size={14}/> 
+                                    Warn & Revoke Access
+                                </button>
+                                
+                                <button 
+                                    onClick={() => handleBan(r.reported_id, r.reported?.nickname)} 
+                                    className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-200 dark:hover:bg-red-900/50 flex gap-2 items-center transition-colors ml-auto border border-red-200 dark:border-red-800"
+                                >
+                                    <Ban size={14}/> 
+                                    Ban User
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -145,11 +228,11 @@ export default function MatchmakerAdmin() {
                 </div>
             </div>
 
-            {/* PENDING SECTION */}
+            {/* 2. PENDING SECTION */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg"><ShieldAlert size={20} /></div>
-                    <h2 className="text-xl font-bold dark:text-white">Pending ({pending.length})</h2>
+                    <h2 className="text-xl font-bold dark:text-white">Pending Approvals ({pending.length})</h2>
                 </div>
                 <div className="grid gap-3">
                     {pending.map(p => (
@@ -157,11 +240,11 @@ export default function MatchmakerAdmin() {
                             <div className="flex-1">
                                 <div className="font-bold text-gray-900 dark:text-white">{p.nickname} <span className="text-xs font-normal text-gray-500">({p.gender}, {p.age})</span></div>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{p.self_intro}</p>
+                                <div className="text-xs text-gray-400 mt-2">Looking for: {p.looking_for}</div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1"><Check size={16}/> Approve</button>
-                                <button onClick={() => updateStatus(p.author_id, 'rejected', 'Content violation')} className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/20"><X size={16}/> Reject</button>
-                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600"><Ban size={16}/> Ban</button>
+                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 transition-all"><Check size={16}/> Approve</button>
+                                <button onClick={() => updateStatus(p.author_id, 'rejected', 'Profile information incomplete or inappropriate')} className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"><X size={16}/> Reject</button>
                             </div>
                         </div>
                     ))}
@@ -169,26 +252,57 @@ export default function MatchmakerAdmin() {
                 </div>
             </div>
 
-            {/* APPROVED USERS */}
+            {/* 3. REQUIRES USER ACTION (SUSPENDED) - NO BUTTONS */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h2 className="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><UserCheck className="text-green-500"/> Approved Users</h2>
-                <div className="grid gap-3 max-h-96 overflow-y-auto pr-2">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"><Clock size={20} /></div>
+                    <h2 className="text-xl font-bold dark:text-white">Requires User Action ({rejected.length})</h2>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 ml-1">
+                    Users here are suspended until they update their profile. Once updated, they automatically move to "Pending Approvals".
+                </p>
+                <div className="grid gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                    {rejected.map(p => (
+                        <div key={p.author_id} className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2 opacity-75">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="font-bold dark:text-white text-gray-700">{p.nickname}</div>
+                                    <div className="text-xs text-gray-400">Warnings: {p.warning_count || 0}</div>
+                                </div>
+                                <span className="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                                    <Clock size={10}/> Suspended
+                                </span>
+                            </div>
+                            <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/30">
+                                <span className="font-bold">Admin Note:</span> "{p.rejection_reason}"
+                            </div>
+                            {/* No buttons - admin waits for user to fix it */}
+                        </div>
+                    ))}
+                    {rejected.length === 0 && <div className="text-center text-gray-400 italic py-4">No users in remediation</div>}
+                </div>
+            </div>
+
+            {/* 4. APPROVED USERS */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h2 className="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><UserCheck className="text-green-500"/> Approved User Database</h2>
+                <div className="grid gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                     {approved.map(p => (
-                        <div key={p.author_id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-100 dark:border-gray-700">
+                        <div key={p.author_id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <div>
-                                <div className="font-bold dark:text-white">{p.nickname}</div>
+                                <div className="font-bold dark:text-white text-sm">{p.nickname}</div>
                                 <div className="text-xs text-gray-500">Warnings: {p.warning_count || 0}</div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => handleWarnUser(p.author_id, p.warning_count)} className="p-2 text-yellow-600 dark:text-yellow-500 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded" title="Warn"><AlertTriangle size={16}/></button>
-                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded" title="Ban (Delete)"><Ban size={16}/></button>
+                                <button onClick={() => updateStatus(p.author_id, 'rejected', 'Administrative Action')} className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded" title="Revoke Approval (Reject)"><X size={16}/></button>
+                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded" title="Permanent Ban"><Trash2 size={16}/></button>
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* LOVE ACTIVITY SECTION */}
+            {/* 5. LOVE ACTIVITY */}
             <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400">
@@ -196,53 +310,37 @@ export default function MatchmakerAdmin() {
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Love Activity</h2>
                 </div>
-
-                <div className="overflow-x-auto -mx-4 md:mx-0">
-                    <div className="inline-block min-w-full align-middle px-4 md:px-0">
-                        <table className="min-w-full text-sm text-left rounded-lg overflow-hidden">
-                            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">
-                                <tr>
-                                    <th className="p-3 md:p-4 rounded-tl-lg">From</th>
-                                    <th className="p-3 md:p-4">To</th>
-                                    <th className="p-3 md:p-4">Status</th>
-                                    <th className="p-3 md:p-4 rounded-tr-lg text-right">Time</th>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left">
+                        <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs font-bold">
+                            <tr>
+                                <th className="p-3 rounded-tl-lg">From</th>
+                                <th className="p-3">To</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3 rounded-tr-lg text-right">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {loves.map(l => (
+                                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                    <td className="p-3 font-medium text-gray-900 dark:text-white">{l.from?.nickname || 'Unknown'}</td>
+                                    <td className="p-3 text-gray-600 dark:text-gray-300">{l.to?.nickname || 'Unknown'}</td>
+                                    <td className="p-3">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                            l.status === 'accepted' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 
+                                            l.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 
+                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                        }`}>
+                                            {l.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-right text-gray-400 text-xs font-mono">
+                                        {new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                {loves.map(l => (
-                                    <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                        <td className="p-3 md:p-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                            {l.from?.nickname || 'Unknown'}
-                                        </td>
-                                        <td className="p-3 md:p-4 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                                            {l.to?.nickname || 'Unknown'}
-                                        </td>
-                                        <td className="p-3 md:p-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                                ${l.status === 'accepted'
-                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
-                                                    : l.status === 'rejected'
-                                                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800'
-                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
-                                                }`}>
-                                                {l.status === 'pending_sent' ? 'Pending' : l.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 md:p-4 text-right text-gray-400 dark:text-gray-500 font-mono text-xs whitespace-nowrap">
-                                            {new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {loves.length === 0 && (
-                                    <tr>
-                                        <td colSpan="4" className="p-8 text-center text-gray-400 dark:text-gray-500 italic">
-                                            No recent activity.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
