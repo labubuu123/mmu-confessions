@@ -144,8 +144,8 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     id BIGSERIAL PRIMARY KEY,
-    from_user_id TEXT NOT NULL,
-    to_user_id TEXT NOT NULL,
+    from_user_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
+    to_user_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -154,16 +154,16 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_matches (
     id BIGSERIAL PRIMARY KEY,
-    user1_id TEXT NOT NULL,
-    user2_id TEXT NOT NULL,
+    user1_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
+    user2_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
     matched_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user1_id, user2_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_reports (
     id BIGSERIAL PRIMARY KEY,
-    reporter_id TEXT NOT NULL,
-    reported_id TEXT NOT NULL,
+    reporter_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
+    reported_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
     reason TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -236,11 +236,15 @@ CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELE
 CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
+
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
 
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves
     FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves
+    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+
 CREATE POLICY "Send Love" ON public.matchmaker_loves
     FOR INSERT WITH CHECK (from_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Update Love" ON public.matchmaker_loves
@@ -248,9 +252,13 @@ CREATE POLICY "Update Love" ON public.matchmaker_loves
 
 CREATE POLICY "Read Own Matches" ON public.matchmaker_matches
     FOR SELECT USING (user1_id = (SELECT auth.uid()::text) OR user2_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches
+    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
 
 CREATE POLICY "Insert Reports" ON public.matchmaker_reports
     FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports
+    FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
 
 CREATE POLICY "Admin Select Profiles"
 ON public.matchmaker_profiles
@@ -297,7 +305,7 @@ BEGIN
         ON CONFLICT (post_id, emoji)
         DO UPDATE SET count = reactions.count + 1;
         
-        IF emoji_in = '総' THEN
+        IF emoji_in = '👍' THEN
             UPDATE public.confessions
             SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
             WHERE id = post_id_in;
@@ -311,7 +319,7 @@ BEGIN
         SET count = GREATEST(0, count - 1)
         WHERE post_id = post_id_in AND emoji = emoji_in;
 
-        IF emoji_in = '総' THEN
+        IF emoji_in = '👍' THEN
             UPDATE public.confessions
             SET likes_count = GREATEST(0, COALESCE(likes_count, 0) - 1), updated_at = NOW()
             WHERE id = post_id_in;
@@ -331,16 +339,39 @@ BEGIN
         ON CONFLICT (post_id, emoji)
         DO UPDATE SET count = reactions.count + 1;
 
-        IF old_emoji = '総' THEN
+        IF old_emoji = '👍' THEN
             UPDATE public.confessions
             SET likes_count = GREATEST(0, COALESCE(likes_count, 0) - 1), updated_at = NOW()
             WHERE id = post_id_in;
         END IF;
-        IF emoji_in = '総' THEN
+        IF emoji_in = '👍' THEN
             UPDATE public.confessions
             SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
             WHERE id = post_id_in;
         END IF;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.increment_reaction(
+    post_id_in BIGINT,
+    emoji_in TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    INSERT INTO public.reactions (post_id, emoji, count)
+    VALUES (post_id_in, emoji_in, 1)
+    ON CONFLICT (post_id, emoji)
+    DO UPDATE SET count = public.reactions.count + 1;
+
+    IF emoji_in = '❤️' THEN
+        UPDATE public.confessions
+        SET likes_count = COALESCE(likes_count, 0) + 1, updated_at = NOW()
+        WHERE id = post_id_in;
     END IF;
 END;
 $$;
@@ -1144,4 +1175,5 @@ GRANT EXECUTE ON FUNCTION public.increment_report_count(BIGINT) TO anon, authent
 GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_reaction(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;

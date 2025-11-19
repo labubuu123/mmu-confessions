@@ -32,6 +32,29 @@ export default function MatchmakerBrowse({ user }) {
         });
     };
 
+    const handleReport = async (targetId, nickname) => {
+        const reason = window.prompt(`Why are you reporting ${nickname}? (e.g., Fake Profile, Harassment)`);
+
+        if (!reason) return;
+
+        setProfiles(prev => prev.filter(p => p.author_id !== targetId));
+
+        try {
+            const { error } = await supabase.from('matchmaker_reports').insert({
+                reporter_id: user.id,
+                reported_id: targetId,
+                reason: reason,
+                status: 'pending'
+            });
+
+            if (error) throw error;
+            alert(`User ${nickname} has been reported. Thank you for helping keep the community safe.`);
+        } catch (err) {
+            console.error('Report error:', err);
+            alert('Failed to submit report. Please try again.');
+        }
+    };
+
     if (loading) return <div className="text-center text-indigo-500 dark:text-indigo-400 p-10 animate-pulse font-medium">Finding matches near you...</div>;
 
     return (
@@ -78,7 +101,12 @@ export default function MatchmakerBrowse({ user }) {
                                 <Heart className="w-5 h-5" /> Send Love
                             </button>
 
-                            <button className="mt-3 w-full text-xs text-gray-400 dark:text-gray-500 underline hover:text-gray-600 dark:hover:text-gray-300">Report User</button>
+                            <button
+                                onClick={() => handleReport(profile.author_id, profile.nickname)}
+                                className="mt-3 w-full text-xs text-gray-400 dark:text-gray-500 underline hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                                Report User
+                            </button>
                         </div>
                     </div>
                 ))}
