@@ -236,10 +236,8 @@ CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELE
 CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
-CREATE POLICY "Read Approved Profiles" ON public.matchmaker_profiles
-    FOR SELECT USING (status = 'approved' AND is_visible = true);
-CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles
-    FOR ALL USING (author_id = (SELECT auth.uid()::text));
+CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
 
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves
     FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
@@ -254,11 +252,24 @@ CREATE POLICY "Read Own Matches" ON public.matchmaker_matches
 CREATE POLICY "Insert Reports" ON public.matchmaker_reports
     FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
 
-CREATE POLICY "Admin Update" ON public.matchmaker_profiles
-    FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Admin Select Profiles"
+ON public.matchmaker_profiles
+FOR SELECT USING (true);
 
-CREATE POLICY "Admin Delete" ON public.matchmaker_profiles
-    FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Read Approved Profiles"
+ON public.matchmaker_profiles
+FOR SELECT
+USING (
+    status = 'approved' AND is_visible = true
+);
+
+CREATE POLICY "Admin Update Profiles"
+ON public.matchmaker_profiles
+FOR SELECT USING (true);
+
+CREATE POLICY "Admin Delete Profiles"
+ON public.matchmaker_profiles
+FOR SELECT USING (true);
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
     post_id_in BIGINT,
