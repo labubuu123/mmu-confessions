@@ -6,51 +6,26 @@ import MatchmakerProfileForm from './MatchmakerProfileForm';
 import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
-import { Loader2, User, Shield, Sparkles, LogOut, Bell, Check, XCircle, AlertTriangle } from 'lucide-react';
-
-// Simple Toast Component for Realtime Notifications
-const Toast = ({ message, type, onClose }) => {
-    useEffect(() => {
-        const timer = setTimeout(onClose, 8000); // Increased duration to 8s
-        return () => clearTimeout(timer);
-    }, [onClose]);
-
-    const styles = {
-        success: 'bg-green-500 text-white border-green-600',
-        error: 'bg-red-500 text-white border-red-600',
-        info: 'bg-indigo-500 text-white border-indigo-600'
-    };
-
-    const icons = {
-        success: <Check className="w-6 h-6" />,
-        error: <XCircle className="w-6 h-6" />,
-        info: <Bell className="w-6 h-6" />
-    };
-
-    return (
-        <div className={`fixed top-20 right-4 z-[200] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl animate-in slide-in-from-right-full transition-all border-b-4 ${styles[type] || styles.info}`}>
-            <div className="flex-shrink-0">{icons[type]}</div>
-            <span className="font-bold text-sm md:text-base">{message}</span>
-            <button onClick={onClose} className="ml-2 opacity-80 hover:opacity-100"><XCircle className="w-5 h-5" /></button>
-        </div>
-    );
-};
+import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, FileText } from 'lucide-react';
 
 export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();
     const [view, setView] = useState('browse');
     const [isAdmin, setIsAdmin] = useState(false);
-    const [toast, setToast] = useState(null); // { message, type }
+    
+    // Warning State
+    const [showWarning, setShowWarning] = useState(false);
+    const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
 
     useEffect(() => {
         if (user?.email === 'admin@mmu.edu.my') setIsAdmin(true);
     }, [user]);
 
-    // Realtime Listener for Admin Actions
+    // ===========================================================
+    // 1. REALTIME LISTENER (Silent Updates)
+    // ===========================================================
     useEffect(() => {
         if (!user?.id) return;
-
-        console.log("Subscribing to profile changes for:", user.id);
 
         const channel = supabase.channel('public:matchmaker_profiles')
             .on('postgres_changes', {
@@ -58,40 +33,60 @@ export default function Matchmaker() {
                 schema: 'public',
                 table: 'matchmaker_profiles'
             }, async (payload) => {
-                
-                // Filter manually in JS to be 100% sure we catch the event
                 const relevantId = payload.new?.author_id || payload.old?.author_id;
-                
                 if (relevantId === user.id) {
-                    console.log("Realtime Change Detected:", payload);
-
-                    if (payload.eventType === 'DELETE') {
-                        setToast({ message: 'Your profile was deleted by the admin.', type: 'error' });
-                        await refreshProfile(); 
-                    } else if (payload.eventType === 'UPDATE') {
-                        const newStatus = payload.new.status;
-                        const oldStatus = payload.old.status;
-
-                        if (oldStatus !== 'approved' && newStatus === 'approved') {
-                            setToast({ message: '🎉 Your profile has been APPROVED! You can now browse.', type: 'success' });
-                        } else if (newStatus === 'rejected') {
-                            setToast({ message: `Profile Rejected: ${payload.new.rejection_reason || 'No reason provided.'}`, type: 'error' });
-                        } else if (newStatus === 'banned') {
-                            setToast({ message: 'Your account has been BANNED.', type: 'error' });
-                        }
-                        await refreshProfile(); 
-                    }
+                    // Just refresh data. UI logic handles the rest.
+                    await refreshProfile();
                 }
             })
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [user?.id]);
 
+    // ===========================================================
+    // 2. PERSISTENT WARNING CHECK
+    // ===========================================================
+    useEffect(() => {
+        if (profile && user) {
+            const storageKey = `mm_warnings_${user.id}`;
+            const lastAck = parseInt(localStorage.getItem(storageKey) || '0');
+            const currentWarnings = profile.warning_count || 0;
+
+            if (currentWarnings > lastAck) {
+                setShowWarning(true);
+                setAgreedToGuidelines(false); // Reset tick
+            }
+        }
+    }, [profile, user]);
+
+    const handleAcknowledgeWarning = () => {
+        if (!agreedToGuidelines) return;
+        
+        const storageKey = `mm_warnings_${user.id}`;
+        localStorage.setItem(storageKey, profile.warning_count.toString());
+        setShowWarning(false);
+    };
+
+    // ===========================================================
+    // 3. RESET IDENTITY (Delete DB Record & Logout)
+    // ===========================================================
     const handleResetIdentity = async () => {
         if (confirm("This will wipe your current profile and identity from this device. You cannot recover it. Are you sure?")) {
+            
+            // 1. Delete from Database
+            const { error } = await supabase
+                .from('matchmaker_profiles')
+                .delete()
+                .eq('author_id', user.id);
+
+            if (error) {
+                console.error("Error deleting identity:", error);
+                alert("Failed to delete profile from database. Please try again.");
+                return;
+            }
+
+            // 2. Sign Out
             await supabase.auth.signOut();
             window.location.reload();
         }
@@ -108,34 +103,94 @@ export default function Matchmaker() {
         );
     }
 
+    // State: No Session -> Welcome
     if (!session || !user) {
         return <MatchmakerWelcome onAuthSuccess={refreshProfile} />;
     }
 
+    // State: Banned -> Persistent Block Screen
     if (profile?.status === 'banned') {
         return (
-            <>
-                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-                <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
-                    <div className="max-w-lg w-full p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-center shadow-xl">
-                        <h2 className="text-3xl font-black text-red-700 dark:text-red-400 mb-2">Access Denied</h2>
-                        <p className="text-lg text-red-600 dark:text-red-300 font-bold mb-1">Your account has been suspended.</p>
-                        <p className="text-sm text-red-500 dark:text-red-400 mb-8 italic">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
+                <div className="max-w-lg w-full p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-center shadow-xl">
+                    <div className="w-20 h-20 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Shield className="w-10 h-10 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h2 className="text-3xl font-black text-red-700 dark:text-red-400 mb-2">Access Denied</h2>
+                    <p className="text-lg text-red-600 dark:text-red-300 font-bold mb-4">Your account has been suspended.</p>
+                    
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-red-100 dark:border-red-900/30 mb-6">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold mb-1">Reason</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 italic">
                             " {profile.rejection_reason || 'Violation of community standards'} "
                         </p>
-                        <button onClick={handleResetIdentity} className="px-6 py-3 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl font-bold transition-colors">
-                            Start Over (New Identity)
+                    </div>
+
+                    <button onClick={handleResetIdentity} className="px-6 py-3 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl font-bold transition-colors w-full">
+                        Create New Identity
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // State: Warning Modal (Blocking)
+    if (showWarning) {
+        return (
+            <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-2xl border-l-8 border-yellow-500 overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="p-6">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex-shrink-0">
+                                <AlertTriangle className="w-8 h-8 text-yellow-600 dark:text-yellow-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Community Warning</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    Your account has received a warning from the admin. To continue using Matchmaker, you must review and accept our guidelines.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 text-sm text-gray-600 dark:text-gray-300 space-y-2">
+                            <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> Community Guidelines:
+                            </p>
+                            <ul className="list-disc list-inside space-y-1 pl-1">
+                                <li>Be respectful to all users.</li>
+                                <li>No harassment, hate speech, or inappropriate content.</li>
+                                <li>Do not spam or impersonate others.</li>
+                                <li>Keep interactions safe and consensual.</li>
+                            </ul>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer" onClick={() => setAgreedToGuidelines(!agreedToGuidelines)}>
+                            <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${agreedToGuidelines ? 'bg-indigo-600 border-indigo-600' : 'border-gray-400 bg-white dark:bg-gray-700'}`}>
+                                {agreedToGuidelines && <Check className="w-3.5 h-3.5 text-white" />}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200 select-none">
+                                I have read and agree to follow the Community Guidelines.
+                            </span>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900/50 p-4 flex justify-end">
+                        <button 
+                            onClick={handleAcknowledgeWarning}
+                            disabled={!agreedToGuidelines}
+                            className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Resume Matchmaker
                         </button>
                     </div>
                 </div>
-            </>
+            </div>
         );
     }
 
     // Logic for rendering views
     const renderContent = () => {
+        // If profile is deleted (null) or not approved yet, force them to Profile Form
         if (!profile || (profile.status !== 'approved' && view !== 'admin')) {
-            // Force profile form if not approved yet (unless admin)
             return (
                 <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors">
                     <div className="flex justify-end max-w-2xl mx-auto mb-4">
@@ -201,10 +256,5 @@ export default function Matchmaker() {
         );
     };
 
-    return (
-        <>
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            {renderContent()}
-        </>
-    );
+    return renderContent();
 }

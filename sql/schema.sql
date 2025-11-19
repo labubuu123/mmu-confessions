@@ -113,16 +113,6 @@ CREATE TABLE IF NOT EXISTS public.comment_user_reactions (
     PRIMARY KEY (comment_id, user_id)
 );
 
-DROP TABLE IF EXISTS public.matchmaker_messages CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_contact_requests CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_blocks CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_likes CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_matches CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_profiles CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_reports CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_settings CASCADE;
-DROP TABLE IF EXISTS public.matchmaker_user_actions CASCADE;
-
 CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
     id BIGSERIAL PRIMARY KEY,
     author_id TEXT NOT NULL UNIQUE,
@@ -137,10 +127,14 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
     avatar_seed TEXT,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'banned')),
     rejection_reason TEXT,
+    warning_count INTEGER DEFAULT 0,
     is_visible BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.matchmaker_profiles
+ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     id BIGSERIAL PRIMARY KEY,
@@ -266,10 +260,7 @@ FOR SELECT USING (true);
 
 CREATE POLICY "Read Approved Profiles"
 ON public.matchmaker_profiles
-FOR SELECT
-USING (
-    status = 'approved' AND is_visible = true
-);
+FOR SELECT USING (true);
 
 CREATE POLICY "Admin Update Profiles"
 ON public.matchmaker_profiles
