@@ -558,7 +558,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                 <nav className="flex space-x-6 overflow-x-auto no-scrollbar pb-1">
                     {[
                         { id: 'moderation', label: 'Post Moderation', icon: Shield },
-                        { id: 'users', label: 'User Mgmt', icon: Users },
+                        { id: 'users', label: 'User Management', icon: Users },
                         { id: 'matchmaker', label: 'Matchmaker', icon: Heart }
                     ].map(tab => (
                         <button
