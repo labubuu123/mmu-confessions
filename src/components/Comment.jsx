@@ -9,7 +9,6 @@ import CommentForm from './CommentForm'
 dayjs.extend(relativeTime)
 
 const COMMENT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐']
-const MAX_MOBILE_DEPTH = 3
 
 export default function Comment({ comment, postId, depth = 0 }) {
     const [isReplying, setIsReplying] = useState(false)
@@ -23,7 +22,6 @@ export default function Comment({ comment, postId, depth = 0 }) {
 
     const isNested = depth > 0
     const hasReplies = replies.length > 0
-    const reachedMaxDepth = depth >= MAX_MOBILE_DEPTH
 
     useEffect(() => {
         const channel = supabase
@@ -160,15 +158,13 @@ export default function Comment({ comment, postId, depth = 0 }) {
                             )}
                         </div>
 
-                        {!reachedMaxDepth && (
-                            <button
-                                onClick={() => setIsReplying(!isReplying)}
-                                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-all touch-manipulation"
-                            >
-                                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden xs:inline">Reply</span>
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setIsReplying(!isReplying)}
+                            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-all touch-manipulation"
+                        >
+                            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="hidden xs:inline">Reply</span>
+                        </button>
 
                         {hasReplies && (
                             <button
@@ -203,12 +199,6 @@ export default function Comment({ comment, postId, depth = 0 }) {
                             depth={depth + 1}
                         />
                     ))}
-
-                    {reachedMaxDepth && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 italic px-2 py-1">
-                            💡 Reply to the parent comment to continue the thread
-                        </div>
-                    )}
                 </div>
             )}
         </div>

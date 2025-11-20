@@ -339,6 +339,11 @@ CREATE POLICY "Public Read"
 ON public.support_messages FOR SELECT
 USING (true);
 
+CREATE POLICY "Admins can delete messages"
+ON public.support_messages
+FOR DELETE
+USING (true);
+
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
     post_id_in BIGINT,
     emoji_in TEXT,
