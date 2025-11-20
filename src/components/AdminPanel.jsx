@@ -26,20 +26,15 @@ export default function AdminPanel() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [actionLoading, setActionLoading] = useState({})
-
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
-
     const [comments, setComments] = useState({})
     const [commentsLoading, setCommentsLoading] = useState({})
     const [visibleComments, setVisibleComments] = useState({})
-
     const [selectedPosts, setSelectedPosts] = useState(new Set())
     const [bulkLoading, setBulkLoading] = useState(false)
     const [polls, setPolls] = useState({})
-
     const [activeTab, setActiveTab] = useState('moderation')
-
     const [supportUsers, setSupportUsers] = useState([])
     const [selectedSupportUser, setSelectedSupportUser] = useState(null)
     const [adminChatHistory, setAdminChatHistory] = useState([])
