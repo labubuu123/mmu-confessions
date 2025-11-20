@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock, Siren } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock } from 'lucide-react';
 
 export default function MatchmakerAdmin() {
     const [pending, setPending] = useState([]);
     const [approved, setApproved] = useState([]);
-    const [rejected, setRejected] = useState([]); // Section for suspended users
+    const [rejected, setRejected] = useState([]);
     const [loves, setLoves] = useState([]);
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -43,7 +43,6 @@ export default function MatchmakerAdmin() {
     };
 
     const fetchRejected = async () => {
-        // Users who must update their profile before continuing
         const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'rejected').order('updated_at', { ascending: false });
         setRejected(data || []);
     };
@@ -72,7 +71,7 @@ export default function MatchmakerAdmin() {
                 updated_at: new Date().toISOString() 
             };
             if (reason) updates.rejection_reason = reason;
-            if (status === 'rejected') updates.is_visible = false;
+            if (status === 'rejected') updates.is_visible = false; // Hide from browse
 
             const { error } = await supabase
                 .from('matchmaker_profiles')
@@ -85,6 +84,14 @@ export default function MatchmakerAdmin() {
             alert(`Error updating status: ${err.message}`);
         } finally {
             setProcessingId(null);
+        }
+    };
+
+    // NEW: Prompt for Rejection Reason
+    const handleReject = async (id, currentNickname) => {
+        const reason = window.prompt(`Enter rejection/revocation reason for ${currentNickname}:`, "Content violation");
+        if (reason !== null && reason.trim() !== "") {
+            await updateStatus(id, 'rejected', reason);
         }
     };
 
@@ -146,6 +153,7 @@ export default function MatchmakerAdmin() {
         }
     };
 
+    // Dismiss Report: Removes the specific report from the list
     const handleDismissReport = async (reportId) => {
         if (processingId) return;
         setProcessingId(reportId);
@@ -203,7 +211,7 @@ export default function MatchmakerAdmin() {
                                     onClick={() => handleDismissReport(r.id)} 
                                     className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                                 >
-                                    Dismiss (False Alarm)
+                                    Dismiss
                                 </button>
                                 
                                 <button 
@@ -244,7 +252,8 @@ export default function MatchmakerAdmin() {
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 transition-all"><Check size={16}/> Approve</button>
-                                <button onClick={() => updateStatus(p.author_id, 'rejected', 'Profile information incomplete or inappropriate')} className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"><X size={16}/> Reject</button>
+                                {/* UPDATED: Uses handleReject to prompt for reason */}
+                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"><X size={16}/> Reject</button>
                             </div>
                         </div>
                     ))}
@@ -252,14 +261,14 @@ export default function MatchmakerAdmin() {
                 </div>
             </div>
 
-            {/* 3. REQUIRES USER ACTION (SUSPENDED) - NO BUTTONS */}
+            {/* 3. REQUIRES USER ACTION (SUSPENDED) */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"><Clock size={20} /></div>
                     <h2 className="text-xl font-bold dark:text-white">Requires User Action ({rejected.length})</h2>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 ml-1">
-                    Users here are suspended until they update their profile. Once updated, they automatically move to "Pending Approvals".
+                    Users here are suspended/rejected until they update their profile. Once updated, they automatically move to "Pending Approvals".
                 </p>
                 <div className="grid gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                     {rejected.map(p => (
@@ -270,13 +279,12 @@ export default function MatchmakerAdmin() {
                                     <div className="text-xs text-gray-400">Warnings: {p.warning_count || 0}</div>
                                 </div>
                                 <span className="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                                    <Clock size={10}/> Suspended
+                                    <Clock size={10}/> Waiting for user
                                 </span>
                             </div>
                             <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/30">
-                                <span className="font-bold">Admin Note:</span> "{p.rejection_reason}"
+                                <span className="font-bold">Reason:</span> "{p.rejection_reason}"
                             </div>
-                            {/* No buttons - admin waits for user to fix it */}
                         </div>
                     ))}
                     {rejected.length === 0 && <div className="text-center text-gray-400 italic py-4">No users in remediation</div>}
@@ -294,7 +302,8 @@ export default function MatchmakerAdmin() {
                                 <div className="text-xs text-gray-500">Warnings: {p.warning_count || 0}</div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => updateStatus(p.author_id, 'rejected', 'Administrative Action')} className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded" title="Revoke Approval (Reject)"><X size={16}/></button>
+                                {/* UPDATED: Uses handleReject to prompt for reason */}
+                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded" title="Revoke Approval (Reject)"><X size={16}/></button>
                                 <button onClick={() => handleBan(p.author_id, p.nickname)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded" title="Permanent Ban"><Trash2 size={16}/></button>
                             </div>
                         </div>

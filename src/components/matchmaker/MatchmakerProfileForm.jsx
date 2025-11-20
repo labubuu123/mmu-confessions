@@ -374,8 +374,9 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                                 </span>
                             </button>
                         )}
+                        {/* UPDATED BUTTON TEXT LOGIC */}
                         <button type="submit" disabled={loading} className="w-full md:w-auto md:min-w-[300px] flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-lg font-bold rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none">
-                            {loading ? <><Loader2 className="w-6 h-6 animate-spin" /><span>Submitting...</span></> : <span>{profile && profile.status !== 'rejected' ? 'Update Profile' : 'Submit Profile'}</span>}
+                            {loading ? <><Loader2 className="w-6 h-6 animate-spin" /><span>Submitting...</span></> : <span>{profile ? 'Update Profile' : 'Submit Profile'}</span>}
                         </button>
                     </div>
                 </div>
