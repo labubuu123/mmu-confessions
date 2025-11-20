@@ -15,7 +15,7 @@ import SeriesIndicator from './SeriesIndicator';
 
 dayjs.extend(relativeTime)
 
-const getOptimizedUrl = (url, quality = 80) => {
+const getOptimizedUrl = (url, quality = 60) => {
     if (!url || typeof url !== 'string') return url;
 
     if (url.includes('/storage/v1/object/public')) {
