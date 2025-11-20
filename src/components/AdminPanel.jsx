@@ -582,7 +582,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                             <button
                                 onClick={toggleSelectAll}
-                                className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition disabled:opacity-50"
+                                className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition disabled:opacity-50"
                                 disabled={bulkLoading}
                             >
                                 {allPostsSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
@@ -595,7 +595,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             <button
                                 onClick={handleBulkDelete}
                                 disabled={selectedPosts.size === 0 || bulkLoading}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-bold shadow-sm"
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-bold shadow-sm"
                             >
                                 {bulkLoading ? (
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -704,7 +704,7 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                                         disabled={actionLoading[p.id] || bulkLoading}
                                                         isLoading={actionLoading[p.id] === 'permanent'}
                                                         icon={Infinity}
-                                                        label={p.is_permanent ? 'Permanent' : 'Auto Delete'}
+                                                        label={p.is_permanent ? 'Permanent' : 'Auto-Del'}
                                                         variant={p.is_permanent ? 'purple' : 'secondary'}
                                                         title={p.is_permanent ? "This post will NOT be auto-deleted" : "This post will be deleted after 15 days"}
                                                     />
