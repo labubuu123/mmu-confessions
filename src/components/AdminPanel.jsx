@@ -509,6 +509,22 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             </div>
                         )}
                     </form>
+                    <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700/50 text-center">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                            Having Issue
+                        </p>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                Zyora Lab
+                            </span>
+                            <a
+                                href="mailto:zyoralab@gmail.com"
+                                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                            >
+                                zyoralab@gmail.com
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         )
