@@ -15,6 +15,17 @@ import SeriesIndicator from './SeriesIndicator';
 
 dayjs.extend(relativeTime)
 
+const getOptimizedUrl = (url, quality = 80) => {
+    if (!url || typeof url !== 'string') return url;
+
+    if (url.includes('/storage/v1/object/public')) {
+        let optimized = url.replace('/object/public', '/render/image/public');
+        return `${optimized}?quality=${quality}`;
+    }
+
+    return url;
+};
+
 export default function PostCard({ post: initialPost, onOpen }) {
     const [post, setPost] = useState(initialPost)
     const [reactions, setReactions] = useState({})
@@ -257,11 +268,11 @@ export default function PostCard({ post: initialPost, onOpen }) {
                             >
                                 <img
                                     loading="lazy"
-                                    src={url}
+                                    src={getOptimizedUrl(url)}
                                     alt={`media ${idx + 1}`}
                                     className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1
-                                            ? 'max-h-[75vh]'
-                                            : 'object-cover h-40 sm:h-48'
+                                        ? 'max-h-[75vh]'
+                                        : 'object-cover h-40 sm:h-48'
                                         }`}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />

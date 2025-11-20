@@ -112,8 +112,8 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                 contact_info: finalContact,
                 author_id: user.id,
                 age: formData.age ? parseInt(formData.age, 10) : null,
-                status: 'pending', // Resets status to pending on update
-                rejection_reason: null, // Clear previous rejection reason
+                status: 'pending',
+                rejection_reason: null,
                 updated_at: new Date().toISOString(),
                 avatar_seed: `${formData.nickname}-${formData.gender}`,
             };
@@ -139,11 +139,8 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
         }
     };
 
-    // ============================================================
-    // DELETION LOGIC
-    // ============================================================
     const handleWithdraw = async () => {
-        const confirmMessage = profile?.status === 'pending' 
+        const confirmMessage = profile?.status === 'pending'
             ? "Withdraw your application? You will be removed from the queue."
             : "Delete your Identity? This will permanently remove your profile, matches, and chats. You will be returned to the welcome screen.";
 
@@ -199,7 +196,6 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     </p>
                 </div>
 
-                {/* INFO BOX */}
                 <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl flex items-start gap-3 text-blue-800 dark:text-blue-300 animate-in fade-in slide-in-from-top-2">
                     <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
                     <p className="text-sm font-medium leading-relaxed">
@@ -209,14 +205,13 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     </p>
                 </div>
 
-                {/* REJECTED / WARNING ALERT BLOCK */}
                 {profile?.status === 'rejected' && (
                     <div className={`mb-8 p-6 rounded-2xl flex flex-col md:flex-row items-start gap-4 animate-in fade-in slide-in-from-top-4 shadow-lg border-l-8 
-                        ${isWarning 
-                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500' 
+                        ${isWarning
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500'
                             : 'bg-red-50 dark:bg-red-900/20 border-red-500'
                         }`}>
-                        
+
                         <div className={`p-3 rounded-full flex-shrink-0 
                             ${isWarning ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600' : 'bg-red-100 dark:bg-red-900/40 text-red-600'}`}>
                             {isWarning ? <Siren className="w-8 h-8 animate-pulse" /> : <ShieldAlert className="w-8 h-8" />}
@@ -227,7 +222,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                                 ${isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}`}>
                                 {isWarning ? 'Community Guideline Warning' : 'Profile Rejected'}
                             </h4>
-                            
+
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-4">
                                 <p className="text-xs font-bold text-gray-500 uppercase mb-1">Admin Message:</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100 italic text-lg">
@@ -235,9 +230,9 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                                 </p>
                             </div>
 
-                            <p className={`text-sm font-bold 
+                            <p className={`text-sm font-bold
                                 ${isWarning ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'}`}>
-                                {isWarning 
+                                {isWarning
                                     ? 'Your browsing access is temporarily suspended. Please correct your profile based on the warning above to restore access.'
                                     : 'Please modify your profile below to comply with the rules and submit again for approval.'}
                             </p>
@@ -245,7 +240,6 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     </div>
                 )}
 
-                {/* PENDING ALERT BLOCK */}
                 {profile?.status === 'pending' && (
                     <div className="mb-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
                         <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -368,13 +362,12 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     <div className="flex flex-col-reverse md:flex-row justify-center gap-4 pt-4">
                         {profile && (
                             <button type="button" onClick={handleWithdraw} disabled={loading} className="w-full md:w-auto px-6 py-4 text-red-600 dark:text-red-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-100 dark:hover:border-red-800 transition-all flex items-center justify-center gap-2">
-                                <Trash2 className="w-5 h-5" /> 
+                                <Trash2 className="w-5 h-5" />
                                 <span>
                                     {profile.status === 'pending' ? 'Withdraw Request' : 'Delete Identity'}
                                 </span>
                             </button>
                         )}
-                        {/* UPDATED BUTTON TEXT LOGIC */}
                         <button type="submit" disabled={loading} className="w-full md:w-auto md:min-w-[300px] flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-lg font-bold rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none">
                             {loading ? <><Loader2 className="w-6 h-6 animate-spin" /><span>Submitting...</span></> : <span>{profile ? 'Update Profile' : 'Submit Profile'}</span>}
                         </button>

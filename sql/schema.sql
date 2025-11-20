@@ -136,6 +136,9 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
 ALTER TABLE public.matchmaker_profiles
 ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
 
+ALTER TABLE public.confessions
+ADD COLUMN IF NOT EXISTS is_permanent BOOLEAN DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     id BIGSERIAL PRIMARY KEY,
     from_user_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
@@ -284,6 +287,11 @@ FOR SELECT USING (true);
 CREATE POLICY "Admin full access to all profiles"
 ON public.matchmaker_profiles
 FOR ALL
+USING (true);
+
+CREATE POLICY "Admin Delete Reports"
+ON public.matchmaker_reports
+FOR DELETE
 USING (true);
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
@@ -1107,6 +1115,13 @@ BEGIN
     WHERE l.to_user_id = viewer_id AND l.status = 'pending';
 
     RETURN QUERY
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender,
+        'rejected'::text, NULL::text, l.updated_at
+    FROM public.matchmaker_loves l
+    JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
+    WHERE l.from_user_id = viewer_id AND l.status = 'rejected';
+
+    RETURN QUERY
     SELECT m.id,
         CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END,
         p.nickname, p.avatar_seed, p.gender,
@@ -1116,6 +1131,31 @@ BEGIN
     FROM public.matchmaker_matches m
     JOIN public.matchmaker_profiles p ON p.author_id = (CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END)
     WHERE m.user1_id = viewer_id OR m.user2_id = viewer_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.auto_delete_expired_posts()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    post RECORD;
+    deleted_count INT := 0;
+BEGIN
+    FOR post IN
+        SELECT id FROM public.confessions
+        WHERE created_at < NOW() - INTERVAL '15 days'
+        AND is_permanent = FALSE
+    LOOP
+        PERFORM public.delete_post_and_storage(post.id);
+        deleted_count := deleted_count + 1;
+    END LOOP;
+
+    IF deleted_count > 0 THEN
+        INSERT INTO public.actions_log (action_type, created_at)
+        VALUES ('SYSTEM: Auto-deleted ' || deleted_count || ' expired posts', NOW());
+    END IF;
 END;
 $$;
 

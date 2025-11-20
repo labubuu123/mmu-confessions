@@ -125,8 +125,6 @@ export default function PollCreator({ onPollData, onRemovePoll }) {
                         <option value="3">3 Days</option>
                         <option value="7">7 Days</option>
                         <option value="14">14 Days</option>
-                        <option value="30">30 Days</option>
-                        <option value="0">No Expiration</option>
                     </select>
                 </div>
 
