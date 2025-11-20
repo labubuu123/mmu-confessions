@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 export default function FloatingActionMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -9,7 +10,7 @@ export default function FloatingActionMenu() {
     const [chatHistory, setChatHistory] = useState([]);
     const [identityId, setIdentityId] = useState(null);
     const [isGuest, setIsGuest] = useState(false);
-
+    const navigate = useNavigate();
     const chatEndRef = useRef(null);
 
     useEffect(() => {
@@ -129,7 +130,8 @@ export default function FloatingActionMenu() {
     };
 
     const handleMatchmakerClick = () => {
-        setIsOpen(false);
+        setIsOpen(true);
+        // navigate('/matchmaker');
         alert("传说中的「月老功能」即将上线... Stay tuned ❤️");
     };
 
