@@ -151,16 +151,16 @@ export default function MatchmakerAdmin() {
 
     const AdminProfileCard = ({ p, actions }) => (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row">
-            <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col items-center justify-center border-r border-gray-100 dark:border-gray-700 text-center">
-                <div className="w-24 h-24 rounded-full overflow-hidden mb-4 shadow-sm border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-700 text-center relative">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden mb-3 md:mb-4 shadow-sm border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-900">
                     <AvatarGenerator nickname={p.nickname} gender={p.gender} />
                 </div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white">{p.nickname}</h3>
-                <div className="flex flex-col gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+                <div className="flex flex-wrap justify-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
                     <span className="capitalize px-2 py-0.5 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">{p.gender}, {p.age}</span>
-                    <span className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</span>
+                    <span className="flex items-center justify-center gap-1 px-2 py-0.5"><MapPin className="w-3 h-3" /> {p.city}</span>
                 </div>
-                <div className="mt-6 w-full p-3 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                <div className="mt-4 md:mt-6 w-full p-3 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
                     <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"> Contact</div>
                     <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400 break-all text-sm select-all">
                         {p.contact_info}
@@ -168,22 +168,22 @@ export default function MatchmakerAdmin() {
                 </div>
             </div>
 
-            <div className="flex-1 p-6 space-y-6">
+            <div className="flex-1 p-5 md:p-6 space-y-4 md:space-y-6">
                 <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-4 h-4" /> About User</h4>
-                    <p className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-gray-100 dark:border-gray-700 text-sm">{p.self_intro}</p>
+                    <p className="bg-gray-50 dark:bg-gray-900 p-3 md:p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-gray-100 dark:border-gray-700 text-sm">{p.self_intro}</p>
                 </div>
 
                 <div>
                     <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Search className="w-4 h-4" /> Looking For</h4>
-                    <p className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-indigo-100 dark:border-indigo-900/50 text-sm">{p.looking_for}</p>
+                    <p className="bg-indigo-50 dark:bg-indigo-900/20 p-3 md:p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-indigo-100 dark:border-indigo-900/50 text-sm">{p.looking_for}</p>
                 </div>
 
                 <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><Hash className="w-4 h-4" /> Interests</h4>
                     <div className="flex flex-wrap gap-2">
                         {p.interests?.map(i => (
-                            <span key={i} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-lg border border-gray-200 dark:border-gray-600">
+                            <span key={i} className="px-2 md:px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs md:text-sm font-bold rounded-lg border border-gray-200 dark:border-gray-600">
                                 {i}
                             </span>
                         ))}
@@ -196,28 +196,31 @@ export default function MatchmakerAdmin() {
                 )}
             </div>
 
-            <div className="w-full md:w-48 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col gap-3 justify-center border-l border-gray-100 dark:border-gray-700">
+            <div className="w-full md:w-48 bg-gray-50 dark:bg-gray-900/50 p-4 md:p-6 flex flex-row md:flex-col gap-3 justify-center border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-700">
                 {actions}
             </div>
         </div>
     );
 
     return (
-        <div className="space-y-10 pb-20 p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                    <ShieldAlert className="w-8 h-8 text-indigo-600" /> Admin Panel
+        <div className="space-y-8 md:space-y-10 pb-20 p-4 md:p-6 max-w-7xl mx-auto">
+            <div className="flex flex-row justify-between items-center">
+                <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+                    <ShieldAlert className="w-6 h-6 md:w-8 md:h-8 text-indigo-600" />
+                    <span className="hidden md:inline">Matchmaker Admin</span>
+                    <span className="md:hidden">Admin</span>
                 </h1>
-                <button onClick={refreshAll} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white transition-colors">
-                    <RefreshCw className={loading ? 'animate-spin' : ''} size={16} /> Refresh
+                <button onClick={refreshAll} className="flex items-center gap-2 px-3 py-2 md:px-4 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white transition-colors text-sm font-medium">
+                    <RefreshCw className={loading ? 'animate-spin' : ''} size={16} />
+                    <span className="hidden md:inline">Refresh</span>
                 </button>
             </div>
 
             {reports.length > 0 && (
-                <div className="bg-red-50 dark:bg-red-900/10 p-6 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm animate-in slide-in-from-top-4">
+                <div className="bg-red-50 dark:bg-red-900/10 p-4 md:p-6 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg"><Flag size={20} /></div>
-                        <h2 className="text-xl font-bold text-red-900 dark:text-red-100">Active Reports ({reports.length})</h2>
+                        <h2 className="text-lg md:text-xl font-bold text-red-900 dark:text-red-100">Active Reports ({reports.length})</h2>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {reports.map(r => (
@@ -247,12 +250,12 @@ export default function MatchmakerAdmin() {
             )}
 
             <div>
-                <div className="flex gap-2 mb-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700 pb-1">
+                <div className="flex gap-2 mb-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700 pb-1 no-scrollbar">
                     {['pending', 'approved', 'rejected'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-3 font-bold text-lg border-b-4 transition-all capitalize whitespace-nowrap flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            className={`px-4 md:px-6 py-3 font-bold text-base md:text-lg border-b-4 transition-all capitalize whitespace-nowrap flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                         >
                             {tab === 'pending' && <ShieldAlert size={18} />}
                             {tab === 'approved' && <UserCheck size={18} />}
@@ -265,17 +268,17 @@ export default function MatchmakerAdmin() {
                     ))}
                 </div>
 
-                <div className="grid gap-8">
+                <div className="grid gap-6 md:gap-8">
                     {loading && <div className="text-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></div>}
 
                     {!loading && activeTab === 'pending' && pending.map(p => (
                         <AdminProfileCard key={p.author_id} p={p} actions={
                             <>
-                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 transition-all active:scale-95">
-                                    <Check className="w-5 h-5" /> Approve
+                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="flex-1 w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+                                    <Check className="w-5 h-5" /> <span className="md:hidden lg:inline">Approve</span>
                                 </button>
-                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="w-full py-3 bg-white dark:bg-gray-800 border-2 border-red-100 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
-                                    <X className="w-5 h-5" /> Reject
+                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="flex-1 w-full py-3 bg-white dark:bg-gray-800 border-2 border-red-100 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
+                                    <X className="w-5 h-5" /> <span className="md:hidden lg:inline">Reject</span>
                                 </button>
                             </>
                         } />
@@ -284,11 +287,11 @@ export default function MatchmakerAdmin() {
                     {!loading && activeTab === 'approved' && approved.map(p => (
                         <AdminProfileCard key={p.author_id} p={p} actions={
                             <>
-                                <button onClick={() => updateStatus(p.author_id, 'pending')} className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
-                                    <Ban className="w-5 h-5" /> Revoke
+                                <button onClick={() => updateStatus(p.author_id, 'pending')} className="flex-1 w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                    <Ban className="w-5 h-5" /> <span className="md:hidden lg:inline">Revoke</span>
                                 </button>
-                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
-                                    <Trash2 className="w-5 h-5" /> Ban
+                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="flex-1 w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                    <Trash2 className="w-5 h-5" /> <span className="md:hidden lg:inline">Ban</span>
                                 </button>
                             </>
                         } />
@@ -313,7 +316,7 @@ export default function MatchmakerAdmin() {
             <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mt-8">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400"><Heart className="w-5 h-5" /></div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Love Activity</h2>
+                    <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Recent Love Activity</h2>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm text-left">

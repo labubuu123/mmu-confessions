@@ -4,7 +4,7 @@ import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
     ShieldOff, BarChart3, Calendar, User, Clock, Heart, Users, Menu, Infinity,
-    MessageSquare, Send, X
+    MessageSquare, Send, X, ArrowLeft
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -631,14 +631,14 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
     const allPostsSelected = posts.length > 0 && selectedPosts.size === posts.length;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-6 md:py-8 pb-20">
+        <div className="max-w-6xl mx-auto px-4 py-4 md:py-8 pb-20">
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                        <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                    <div className="p-2 md:p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                        <Shield className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
                             Admin Panel
                         </h1>
                         <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 break-all">
@@ -651,19 +651,19 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     <button
                         onClick={() => fetchPosts(true)}
                         disabled={loading || bulkLoading}
-                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 text-sm font-medium"
+                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 text-sm font-medium"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
-                        Refresh
+                        <span className="md:inline hidden">Refresh</span>
                     </button>
 
                     <button
                         onClick={signOut}
                         disabled={loading || bulkLoading}
-                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition disabled:opacity-50 text-sm font-medium"
+                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition disabled:opacity-50 text-sm font-medium"
                     >
                         <LogOut className="w-4 h-4" />
-                        Log Out
+                        <span className="md:inline hidden">Log Out</span>
                     </button>
                 </div>
             </div>
@@ -671,15 +671,15 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             <div className="mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 px-4 md:mx-0 md:px-0">
                 <nav className="flex space-x-6 overflow-x-auto no-scrollbar pb-1">
                     {[
-                        { id: 'moderation', label: 'Post Moderation', icon: Shield },
-                        { id: 'users', label: 'User Management', icon: Users },
+                        { id: 'moderation', label: 'Moderation', icon: Shield },
+                        { id: 'users', label: 'Users', icon: Users },
                         { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
-                        { id: 'support', label: 'Support Chat', icon: MessageSquare }
+                        { id: 'support', label: 'Support', icon: MessageSquare }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === tab.id
+                            className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === tab.id
                                 ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
@@ -946,9 +946,10 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             )}
             {activeTab === 'users' && <UserManagement />}
             {activeTab === 'matchmaker' && <MatchmakerAdmin />}
+
             {activeTab === 'support' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px]">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[80vh] md:h-[600px]">
+                    <div className={`${selectedSupportUser ? 'hidden md:flex' : 'flex'} bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-col h-full`}>
                         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 className="font-bold text-gray-700 dark:text-gray-200">Conversations</h3>
                         </div>
@@ -973,17 +974,20 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                         </div>
                     </div>
 
-                    <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+                    <div className={`${selectedSupportUser ? 'flex' : 'hidden md:flex'} md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex-col overflow-hidden h-full`}>
                         {selectedSupportUser ? (
                             <>
-                                <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                                    <span className="font-mono text-sm text-gray-500">Chatting with: {selectedSupportUser}</span>
+                                <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center gap-2">
+                                    <button onClick={() => setSelectedSupportUser(null)} className="md:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg">
+                                        <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                    </button>
+                                    <span className="font-mono text-sm text-gray-500 truncate">Chatting with: {selectedSupportUser}</span>
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {adminChatHistory.map(msg => (
                                         <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[70%] rounded-xl px-4 py-2 text-sm ${msg.sender_role === 'admin'
+                                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2 text-sm ${msg.sender_role === 'admin'
                                                 ? 'bg-indigo-600 text-white'
                                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                                                 }`}>
@@ -994,20 +998,20 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                                     <div ref={adminChatEndRef} />
                                 </div>
 
-                                <form onSubmit={sendAdminReply} className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                                <form onSubmit={sendAdminReply} className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
                                     <input
-                                        className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
                                         placeholder="Type a reply..."
                                         value={adminMessageInput}
                                         onChange={e => setAdminMessageInput(e.target.value)}
                                     />
-                                    <button type="submit" className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                    <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                                         <Send className="w-5 h-5" />
                                     </button>
                                 </form>
                             </>
                         ) : (
-                            <div className="flex-1 flex items-center justify-center text-gray-400">
+                            <div className="flex-1 flex items-center justify-center text-gray-400 p-8 text-center">
                                 Select a conversation to start chatting
                             </div>
                         )}
