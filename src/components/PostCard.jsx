@@ -15,7 +15,7 @@ import SeriesIndicator from './SeriesIndicator';
 
 dayjs.extend(relativeTime)
 
-const getOptimizedUrl = (url, quality = 60) => {
+const getOptimizedUrl = (url, quality = 80) => {
     if (!url || typeof url !== 'string') return url;
 
     if (url.includes('/storage/v1/object/public')) {
@@ -26,13 +26,11 @@ const getOptimizedUrl = (url, quality = 60) => {
     return url;
 };
 
-export default function PostCard({ post: initialPost, onOpen }) {
-    const [post, setPost] = useState(initialPost)
+export default function PostCard({ post, onOpen }) {
     const [reactions, setReactions] = useState({})
-    const [isReported, setIsReported] = useState(initialPost.reported || false)
+    const [isReported, setIsReported] = useState(post.reported || false)
     const [poll, setPoll] = useState(null)
     const [event, setEvent] = useState(null)
-    const [linkCopied, setLinkCopied] = useState(false)
     const [zoomedImage, setZoomedImage] = useState(null)
 
     const getTotalReactions = useCallback((reactionsObj) => {
@@ -72,37 +70,8 @@ export default function PostCard({ post: initialPost, onOpen }) {
     )
 
     useEffect(() => {
-        const channel = supabase
-            .channel(`post-${post.id}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'confessions',
-                filter: `id=eq.${post.id}`
-            }, payload => {
-                setPost(prevPost => ({ ...prevPost, ...payload.new }))
-            })
-            .subscribe()
-
         fetchReactions()
         fetchPollAndEvent()
-
-        const reactionsChannel = supabase
-            .channel(`reactions-${post.id}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'reactions',
-                filter: `post_id=eq.${post.id}`
-            }, () => {
-                fetchReactions()
-            })
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(channel)
-            supabase.removeChannel(reactionsChannel)
-        }
     }, [post.id])
 
     async function fetchReactions() {

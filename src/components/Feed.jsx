@@ -7,6 +7,18 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowUp } from 'lucide-react'
 import { FeedSkeleton } from './LoadingSkeleton'
 
+const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
 export default function Feed() {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(false)
@@ -62,13 +74,13 @@ export default function Feed() {
     }, [])
 
     useEffect(() => {
-        const handleScroll = () => {
+        const handleScroll = debounce(() => {
             const isNearBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100;
 
             if (isNearBottom && !loading && hasMore) {
                 fetchPosts();
             }
-        };
+        }, 200);
 
         window.addEventListener('scroll', handleScroll);
 
@@ -78,15 +90,26 @@ export default function Feed() {
 
     useEffect(() => {
         const channel = supabase
-            .channel('new-confessions-feed')
+            .channel('global-feed-updates')
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'confessions'
             }, (payload) => {
-                if (!posts.some(p => p.id === payload.new.id)) {
+                if (payload.new.approved && !posts.some(p => p.id === payload.new.id)) {
                     setNewPostsAvailable(true)
                 }
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'confessions'
+            }, (payload) => {
+                setPosts(currentPosts =>
+                    currentPosts.map(post =>
+                        post.id === payload.new.id ? { ...post, ...payload.new } : post
+                    )
+                )
             })
             .subscribe()
 

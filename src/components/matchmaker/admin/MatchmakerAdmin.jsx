@@ -1,6 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock, AtSign } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock, AtSign, User, Search, Hash, MapPin } from 'lucide-react';
+
+const AvatarGenerator = ({ nickname, gender }) => {
+    const seed = useMemo(() => {
+        const str = (nickname || 'User') + gender;
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        return Math.abs(hash);
+    }, [nickname, gender]);
+
+    const pick = (options, offset = 0) => options[(seed + offset) % options.length];
+    const skinColors = ['#f3d2c1', '#f5e0d7', '#e6c3b3', '#ffdfc4', '#dbb298'];
+    const bgColors = gender === 'male' ? ['#e0e7ff', '#dbeafe', '#ccfbf1', '#f3f4f6'] : ['#fce7f3', '#ffe4e6', '#fef3c7', '#fae8ff'];
+    const skin = pick(skinColors);
+    const bg = pick(bgColors, 1);
+    const eyesVariant = seed % 3;
+    const mouthVariant = (seed >> 1) % 3;
+
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-full bg-white">
+            <rect width="100" height="100" fill={bg} />
+            <path d="M20 100 Q50 80 80 100" fill={gender === 'male' ? '#6366f1' : '#ec4899'} opacity="0.8" />
+            <circle cx="50" cy="50" r="35" fill={skin} />
+            <g fill="#1f2937">
+                {eyesVariant === 0 && (<><circle cx="38" cy="48" r="4" /><circle cx="62" cy="48" r="4" /></>)}
+                {eyesVariant === 1 && (<><path d="M34 50 Q38 42 42 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M58 50 Q62 42 66 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /></>)}
+                {eyesVariant === 2 && (<><circle cx="38" cy="48" r="4" /><path d="M58 48 L66 48" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" /></>)}
+            </g>
+            <g stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round">
+                {mouthVariant === 0 && (<path d="M42 65 Q50 70 58 65" />)}
+                {mouthVariant === 1 && (<path d="M38 62 Q50 75 62 62" />)}
+                {mouthVariant === 2 && (<circle cx="50" cy="66" r="4" fill="#1f2937" stroke="none" />)}
+            </g>
+            {gender === 'male' ? (<path d="M25 40 Q50 15 75 40" fill="#1f2937" opacity="0.1" />) : (<path d="M20 45 Q50 10 80 45" fill="#1f2937" opacity="0.1" />)}
+        </svg>
+    );
+};
 
 export default function MatchmakerAdmin() {
     const [pending, setPending] = useState([]);
@@ -10,10 +46,9 @@ export default function MatchmakerAdmin() {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
+    const [activeTab, setActiveTab] = useState('pending');
 
-    useEffect(() => {
-        refreshAll();
-    }, []);
+    useEffect(() => { refreshAll(); }, []);
 
     const refreshAll = async () => {
         setLoading(true);
@@ -36,26 +71,20 @@ export default function MatchmakerAdmin() {
         const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'pending').order('updated_at', { ascending: true });
         setPending(data || []);
     };
-
     const fetchApproved = async () => {
         const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'approved').order('updated_at', { ascending: false });
         setApproved(data || []);
     };
-
     const fetchRejected = async () => {
         const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'rejected').order('updated_at', { ascending: false });
         setRejected(data || []);
     };
-
     const fetchLoves = async () => {
         const { data } = await supabase.from('matchmaker_loves').select('*, from:from_user_id(nickname), to:to_user_id(nickname)').order('created_at', { ascending: false }).limit(50);
         setLoves(data || []);
     };
-
     const fetchReports = async () => {
-        const { data } = await supabase.from('matchmaker_reports')
-            .select('*, reporter:reporter_id(nickname), reported:reported_id(nickname, warning_count, status)')
-            .order('created_at', { ascending: false });
+        const { data } = await supabase.from('matchmaker_reports').select('*, reporter:reporter_id(nickname), reported:reported_id(nickname, warning_count, status)').order('created_at', { ascending: false });
         setReports(data || []);
     };
 
@@ -63,245 +92,225 @@ export default function MatchmakerAdmin() {
         if (processingId) return;
         setProcessingId(id);
         try {
-            const updates = {
-                status: status,
-                updated_at: new Date().toISOString()
-            };
+            const updates = { status, updated_at: new Date().toISOString() };
             if (reason) updates.rejection_reason = reason;
             if (status === 'rejected' || status === 'banned') updates.is_visible = false;
 
-            const { error } = await supabase
-                .from('matchmaker_profiles')
-                .update(updates)
-                .eq('author_id', id);
-
+            const { error } = await supabase.from('matchmaker_profiles').update(updates).eq('author_id', id);
             if (error) throw error;
             await refreshAll();
-        } catch (err) {
-            alert(`Error updating status: ${err.message}`);
-        } finally {
-            setProcessingId(null);
-        }
+        } catch (err) { alert(`Error: ${err.message}`); }
+        finally { setProcessingId(null); }
     };
 
     const handleReject = async (id, currentNickname) => {
-        const reason = window.prompt(`Enter rejection reason for ${currentNickname} (User can edit & resubmit):`, "Profile info incomplete");
-        if (reason !== null && reason.trim() !== "") {
-            await updateStatus(id, 'rejected', reason);
-        }
+        const reason = window.prompt(`Enter rejection reason for ${currentNickname}:`, "Profile info incomplete");
+        if (reason?.trim()) await updateStatus(id, 'rejected', reason);
     };
 
     const handleBan = async (id, nickname) => {
-        const reason = window.prompt(`BAN ${nickname}? \n\nEnter the message they will see on the blocked screen:`, "Violation of Terms of Service");
-
-        if (reason === null) return;
-
+        const reason = window.prompt(`BAN ${nickname}? Message:`, "Violation of Terms of Service");
+        if (!reason) return;
         if (processingId) return;
         setProcessingId(id);
-
         try {
-            const { error } = await supabase
-                .from('matchmaker_profiles')
-                .update({
-                    status: 'banned',
-                    rejection_reason: reason,
-                    is_visible: false
-                })
-                .eq('author_id', id);
-
+            const { error } = await supabase.from('matchmaker_profiles').update({ status: 'banned', rejection_reason: reason, is_visible: false }).eq('author_id', id);
             if (error) throw error;
-
             await supabase.from('matchmaker_reports').delete().eq('reported_id', id);
-
             await refreshAll();
-        } catch (err) {
-            alert(`Error banning user: ${err.message}`);
-        } finally {
-            setProcessingId(null);
-        }
+        } catch (err) { alert(`Error banning: ${err.message}`); }
+        finally { setProcessingId(null); }
     };
 
     const handleWarnAndRevoke = async (userId, currentCount, reportReason) => {
         if (processingId) return;
-
         const newCount = (currentCount || 0) + 1;
-        const defaultMessage = `Community Warning #${newCount}: ${reportReason || 'Violation'}. Please review guidelines.`;
-
-        const customReason = window.prompt("Enter warning message for user:", defaultMessage);
-        if (customReason === null) return;
+        const customReason = window.prompt("Warning message:", `Community Warning #${newCount}: ${reportReason || 'Violation'}.`);
+        if (!customReason) return;
 
         setProcessingId(userId);
         try {
-            const { error: updateError } = await supabase
-                .from('matchmaker_profiles')
-                .update({
-                    status: 'rejected',
-                    warning_count: newCount,
-                    rejection_reason: customReason,
-                    is_visible: false
-                })
-                .eq('author_id', userId);
-
-            if (updateError) throw updateError;
-
-            const { error: deleteError } = await supabase
-                .from('matchmaker_reports')
-                .delete()
-                .eq('reported_id', userId);
-
-            if (deleteError) throw deleteError;
-
+            const { error } = await supabase.from('matchmaker_profiles').update({ status: 'rejected', warning_count: newCount, rejection_reason: customReason, is_visible: false }).eq('author_id', userId);
+            if (error) throw error;
+            await supabase.from('matchmaker_reports').delete().eq('reported_id', userId);
             await refreshAll();
-        } catch (err) {
-            console.error(err);
-            alert(`Error processing warning: ${err.message}`);
-        } finally {
-            setProcessingId(null);
-        }
+        } catch (err) { alert(`Error: ${err.message}`); }
+        finally { setProcessingId(null); }
     };
 
     const handleDismissReport = async (reportId) => {
         if (processingId) return;
-        if (!window.confirm("Dismiss this report? It will be removed from the list.")) return;
-
+        if (!window.confirm("Dismiss report?")) return;
         setProcessingId(reportId);
         try {
-            const { error } = await supabase.from('matchmaker_reports').delete().eq('id', reportId);
-            if (error) throw error;
+            await supabase.from('matchmaker_reports').delete().eq('id', reportId);
             setReports(prev => prev.filter(r => r.id !== reportId));
-        } catch (err) {
-            alert(`Error dismissing report: ${err.message}`);
-        } finally {
-            setProcessingId(null);
-        }
+        } catch (err) { alert(`Error: ${err.message}`); }
+        finally { setProcessingId(null); }
     };
 
-    if (loading && pending.length === 0) return <div className="p-10 text-center"><Loader2 className="animate-spin w-8 h-8 mx-auto text-indigo-500" /></div>;
+    const AdminProfileCard = ({ p, actions }) => (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row">
+            <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col items-center justify-center border-r border-gray-100 dark:border-gray-700 text-center">
+                <div className="w-24 h-24 rounded-full overflow-hidden mb-4 shadow-sm border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-900">
+                    <AvatarGenerator nickname={p.nickname} gender={p.gender} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">{p.nickname}</h3>
+                <div className="flex flex-col gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    <span className="capitalize px-2 py-0.5 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">{p.gender}, {p.age}</span>
+                    <span className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</span>
+                </div>
+                <div className="mt-6 w-full p-3 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                    <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"> Contact</div>
+                    <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400 break-all text-sm select-all">
+                        {p.contact_info}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 p-6 space-y-6">
+                <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-4 h-4" /> About User</h4>
+                    <p className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-gray-100 dark:border-gray-700 text-sm">{p.self_intro}</p>
+                </div>
+
+                <div>
+                    <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Search className="w-4 h-4" /> Looking For</h4>
+                    <p className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-indigo-100 dark:border-indigo-900/50 text-sm">{p.looking_for}</p>
+                </div>
+
+                <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><Hash className="w-4 h-4" /> Interests</h4>
+                    <div className="flex flex-wrap gap-2">
+                        {p.interests?.map(i => (
+                            <span key={i} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-lg border border-gray-200 dark:border-gray-600">
+                                {i}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+                {p.rejection_reason && (
+                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-red-600 dark:text-red-400 text-sm border border-red-100 dark:border-red-900/30">
+                        <strong>Status Reason:</strong> {p.rejection_reason}
+                    </div>
+                )}
+            </div>
+
+            <div className="w-full md:w-48 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col gap-3 justify-center border-l border-gray-100 dark:border-gray-700">
+                {actions}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="space-y-8 pb-20">
-            <div className="flex justify-end">
-                <button onClick={refreshAll} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
+        <div className="space-y-10 pb-20 p-6 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+                    <ShieldAlert className="w-8 h-8 text-indigo-600" /> Admin Panel
+                </h1>
+                <button onClick={refreshAll} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white transition-colors">
                     <RefreshCw className={loading ? 'animate-spin' : ''} size={16} /> Refresh
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg"><Flag size={20} /></div>
-                    <h2 className="text-xl font-bold dark:text-white">Reports ({reports.length})</h2>
-                </div>
-                <div className="space-y-3">
-                    {reports.map(r => (
-                        <div key={r.id} className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl flex flex-col gap-3">
-                            <div className="flex justify-between">
-                                <div>
-                                    <div className="font-bold text-gray-900 dark:text-white">
-                                        {r.reported?.nickname || 'Unknown'}
-                                        <span className="text-sm font-normal text-gray-500 ml-2">reported by {r.reporter?.nickname}</span>
+            {reports.length > 0 && (
+                <div className="bg-red-50 dark:bg-red-900/10 p-6 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg"><Flag size={20} /></div>
+                        <h2 className="text-xl font-bold text-red-900 dark:text-red-100">Active Reports ({reports.length})</h2>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {reports.map(r => (
+                            <div key={r.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30 flex flex-col gap-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="font-bold text-gray-900 dark:text-white">{r.reported?.nickname || 'Unknown User'}</div>
+                                        <div className="text-xs text-gray-500">Reported by: {r.reporter?.nickname}</div>
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">Status: {r.reported?.status} • Warnings: {r.reported?.warning_count || 0}</div>
+                                    <div className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-bold text-gray-600 dark:text-gray-300">
+                                        Warnings: {r.reported?.warning_count || 0}
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <p className="text-xs font-bold text-red-500 uppercase mb-1">Reason</p>
+                                    <p className="text-sm text-gray-800 dark:text-gray-200 italic">"{r.reason}"</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-auto pt-2">
+                                    <button onClick={() => handleDismissReport(r.id)} disabled={processingId === r.id} className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300">Dismiss</button>
+                                    <button onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)} disabled={processingId === r.reported_id} className="flex-1 px-3 py-2 bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 rounded-lg text-xs font-bold text-yellow-700 dark:text-yellow-400">Warn</button>
+                                    <button onClick={() => handleBan(r.reported_id, r.reported?.nickname)} disabled={processingId === r.reported_id} className="flex-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 rounded-lg text-xs font-bold text-red-700 dark:text-red-400">Ban</button>
                                 </div>
                             </div>
-                            <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
-                                <p className="text-xs font-bold text-red-500 uppercase mb-1">Reason:</p>
-                                <p className="text-sm text-gray-800 dark:text-gray-200 italic">"{r.reason}"</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2 mt-1">
-                                <button
-                                    onClick={() => handleDismissReport(r.id)}
-                                    disabled={processingId === r.id}
-                                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-                                >
-                                    {processingId === r.id ? '...' : 'Dismiss'}
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div>
+                <div className="flex gap-2 mb-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700 pb-1">
+                    {['pending', 'approved', 'rejected'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-6 py-3 font-bold text-lg border-b-4 transition-all capitalize whitespace-nowrap flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                        >
+                            {tab === 'pending' && <ShieldAlert size={18} />}
+                            {tab === 'approved' && <UserCheck size={18} />}
+                            {tab === 'rejected' && <Ban size={18} />}
+                            {tab}
+                            <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${activeTab === tab ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                                {tab === 'pending' ? pending.length : tab === 'approved' ? approved.length : rejected.length}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="grid gap-8">
+                    {loading && <div className="text-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></div>}
+
+                    {!loading && activeTab === 'pending' && pending.map(p => (
+                        <AdminProfileCard key={p.author_id} p={p} actions={
+                            <>
+                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+                                    <Check className="w-5 h-5" /> Approve
                                 </button>
-                                <button
-                                    onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)}
-                                    disabled={processingId === r.reported_id}
-                                    className="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-200 flex gap-2 items-center border border-yellow-200 dark:border-yellow-800 disabled:opacity-50"
-                                >
-                                    <AlertTriangle size={14} /> Warn & Revoke
+                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="w-full py-3 bg-white dark:bg-gray-800 border-2 border-red-100 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold rounded-xl flex items-center justify-center gap-2 transition-all">
+                                    <X className="w-5 h-5" /> Reject
                                 </button>
-                                <button
-                                    onClick={() => handleBan(r.reported_id, r.reported?.nickname)}
-                                    disabled={processingId === r.reported_id}
-                                    className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-200 flex gap-2 items-center ml-auto border border-red-200 dark:border-red-800 disabled:opacity-50"
-                                >
-                                    <Ban size={14} /> Ban
+                            </>
+                        } />
+                    ))}
+
+                    {!loading && activeTab === 'approved' && approved.map(p => (
+                        <AdminProfileCard key={p.author_id} p={p} actions={
+                            <>
+                                <button onClick={() => updateStatus(p.author_id, 'pending')} className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                    <Ban className="w-5 h-5" /> Revoke
                                 </button>
-                            </div>
-                        </div>
+                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                    <Trash2 className="w-5 h-5" /> Ban
+                                </button>
+                            </>
+                        } />
                     ))}
-                    {reports.length === 0 && <div className="text-center text-gray-400 italic py-4">No active reports</div>}
+
+                    {!loading && activeTab === 'rejected' && rejected.map(p => (
+                        <AdminProfileCard key={p.author_id} p={p} actions={
+                            <div className="text-center text-gray-400 text-sm italic">
+                                User must edit profile to resubmit.
+                            </div>
+                        } />
+                    ))}
+
+                    {!loading && ((activeTab === 'pending' && pending.length === 0) || (activeTab === 'approved' && approved.length === 0) || (activeTab === 'rejected' && rejected.length === 0)) && (
+                        <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <p className="text-gray-400 font-medium">No profiles in this category.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg"><ShieldAlert size={20} /></div>
-                    <h2 className="text-xl font-bold dark:text-white">Pending Approvals ({pending.length})</h2>
-                </div>
-                <div className="grid gap-3">
-                    {pending.map(p => (
-                        <div key={p.author_id} className="p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 rounded-xl flex flex-col md:flex-row justify-between gap-4">
-                            <div className="flex-1">
-                                <div className="font-bold text-gray-900 dark:text-white">{p.nickname} <span className="text-xs font-normal text-gray-500">({p.gender}, {p.age})</span></div>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{p.self_intro}</p>
-                                <div className="flex items-center gap-2 mt-2.5 text-xs">
-                                    <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider"><AtSign size={12} /> Contact:</div>
-                                    <code className="px-2 py-1 bg-white dark:bg-gray-900 rounded border border-indigo-100 dark:border-indigo-900 font-mono text-gray-800 dark:text-gray-200 select-all">{p.contact_info}</code>
-                                </div>
-                            </div>
-                            <div className="flex gap-2 items-start">
-                                <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"><Check size={16} /> Approve</button>
-                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-50"><X size={16} /> Reject</button>
-                            </div>
-                        </div>
-                    ))}
-                    {pending.length === 0 && <div className="text-center text-gray-400 italic py-4">No pending profiles</div>}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"><Clock size={20} /></div>
-                    <h2 className="text-xl font-bold dark:text-white">Requires User Action ({rejected.length})</h2>
-                </div>
-                <div className="grid gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                    {rejected.map(p => (
-                        <div key={p.author_id} className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2 opacity-75">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="font-bold dark:text-white text-gray-700">{p.nickname}</div>
-                                    <div className="text-xs text-gray-400">Warnings: {p.warning_count || 0}</div>
-                                </div>
-                                <span className="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-bold uppercase rounded flex items-center gap-1"><Clock size={10} /> Waiting</span>
-                            </div>
-                            <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/30"><span className="font-bold">Reason:</span> "{p.rejection_reason}"</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h2 className="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><UserCheck className="text-green-500" /> Approved Users</h2>
-                <div className="grid gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                    {approved.map(p => (
-                        <div key={p.author_id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">
-                            <div>
-                                <div className="font-bold dark:text-white text-sm">{p.nickname}</div>
-                                <div className="text-xs text-gray-500">Warnings: {p.warning_count || 0}</div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => handleReject(p.author_id, p.nickname)} className="p-2 text-orange-600 hover:bg-orange-100 rounded" title="Revoke"><X size={16} /></button>
-                                <button onClick={() => handleBan(p.author_id, p.nickname)} className="p-2 text-red-600 hover:bg-red-100 rounded" title="Ban & Message"><Trash2 size={16} /></button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mt-8">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400"><Heart className="w-5 h-5" /></div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Love Activity</h2>
@@ -322,7 +331,7 @@ export default function MatchmakerAdmin() {
                                     <td className="p-3 font-medium text-gray-900 dark:text-white">{l.from?.nickname || 'Unknown'}</td>
                                     <td className="p-3 text-gray-600 dark:text-gray-300">{l.to?.nickname || 'Unknown'}</td>
                                     <td className="p-3">
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${l.status === 'accepted' ? 'bg-green-100 text-green-800' : l.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${l.status === 'accepted' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : l.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}>
                                             {l.status}
                                         </span>
                                     </td>
@@ -331,6 +340,9 @@ export default function MatchmakerAdmin() {
                                     </td>
                                 </tr>
                             ))}
+                            {loves.length === 0 && (
+                                <tr><td colSpan="4" className="p-8 text-center text-gray-400 italic">No activity yet.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
