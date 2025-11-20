@@ -166,6 +166,15 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.support_messages (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL DEFAULT auth.uid(),
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('user', 'admin')),
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -208,6 +217,10 @@ ALTER TABLE public.matchmaker_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_loves ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.support_messages
+DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
 
 DO $$
 DECLARE pol RECORD;
@@ -292,6 +305,38 @@ USING (true);
 CREATE POLICY "Admin Delete Reports"
 ON public.matchmaker_reports
 FOR DELETE
+USING (true);
+
+CREATE POLICY "Users can view own support messages"
+ON public.support_messages FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can send support messages"
+ON public.support_messages FOR INSERT
+WITH CHECK (auth.uid() = user_id AND sender_role = 'user');
+
+CREATE POLICY "Admins can view all messages"
+ON public.support_messages FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can reply"
+ON public.support_messages FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Admins can update messages"
+ON public.support_messages FOR UPDATE
+USING (true);
+
+CREATE POLICY "Anyone can insert messages"
+ON public.support_messages FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Public Insert"
+ON public.support_messages FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Public Read"
+ON public.support_messages FOR SELECT
 USING (true);
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(

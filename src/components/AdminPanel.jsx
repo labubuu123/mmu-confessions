@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3, Calendar, User, Clock, Heart, Users, Menu, Infinity
+    ShieldOff, BarChart3, Calendar, User, Clock, Heart, Users, Menu, Infinity,
+    MessageSquare, Send, X
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -38,6 +39,13 @@ export default function AdminPanel() {
     const [polls, setPolls] = useState({})
 
     const [activeTab, setActiveTab] = useState('moderation')
+
+    const [supportUsers, setSupportUsers] = useState([])
+    const [selectedSupportUser, setSelectedSupportUser] = useState(null)
+    const [adminChatHistory, setAdminChatHistory] = useState([])
+    const [adminMessageInput, setAdminMessageInput] = useState('')
+    const adminChatEndRef = useRef(null)
+    const selectedUserRef = useRef(null)
 
     useEffect(() => {
         checkSession()
@@ -97,6 +105,52 @@ export default function AdminPanel() {
             fetchPollsForPosts()
         }
     }, [posts, activeTab])
+
+    useEffect(() => {
+        selectedUserRef.current = selectedSupportUser;
+        if (selectedSupportUser) {
+            setTimeout(() => adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+        }
+    }, [selectedSupportUser]);
+
+    useEffect(() => {
+        if (activeTab === 'support' && selectedSupportUser) {
+            setTimeout(() => adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+        }
+    }, [adminChatHistory, activeTab, selectedSupportUser])
+
+    useEffect(() => {
+        if (activeTab === 'support') {
+            fetchSupportUsers()
+
+            const channel = supabase
+                .channel('admin-support-global')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, (payload) => {
+                    fetchSupportUsers()
+
+                    const currentUser = selectedUserRef.current;
+
+                    if (currentUser && payload.new.user_id === currentUser) {
+                        setAdminChatHistory(prev => {
+                            if (prev.some(m => m.id === payload.new.id)) return prev;
+                            return [...prev, payload.new];
+                        });
+
+                        if (payload.new.sender_role === 'user') {
+                            supabase.from('support_messages')
+                                .update({ is_read: true })
+                                .eq('id', payload.new.id)
+                                .then()
+                        }
+                    }
+                })
+                .subscribe()
+
+            return () => {
+                supabase.removeChannel(channel)
+            }
+        }
+    }, [activeTab])
 
     async function checkSession() {
         const { data } = await supabase.auth.getSession()
@@ -443,6 +497,66 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
         }
     }
 
+    async function fetchSupportUsers() {
+        const { data, error } = await supabase
+            .from('support_messages')
+            .select('user_id, created_at, content, is_read, sender_role')
+            .order('created_at', { ascending: false })
+
+        if (data) {
+            const uniqueUsers = {}
+            data.forEach(msg => {
+                if (!uniqueUsers[msg.user_id]) {
+                    uniqueUsers[msg.user_id] = {
+                        user_id: msg.user_id,
+                        last_message: msg.content,
+                        last_active: msg.created_at,
+                        has_unread: !msg.is_read && msg.sender_role === 'user'
+                    }
+                }
+            })
+            setSupportUsers(Object.values(uniqueUsers))
+        }
+    }
+
+    async function fetchAdminChatHistory(userId) {
+        const { data } = await supabase
+            .from('support_messages')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true })
+
+        setAdminChatHistory(data || [])
+
+        await supabase
+            .from('support_messages')
+            .update({ is_read: true })
+            .eq('user_id', userId)
+            .eq('sender_role', 'user')
+            .eq('is_read', false)
+    }
+
+    async function sendAdminReply(e) {
+        e.preventDefault()
+        if (!adminMessageInput.trim() || !selectedSupportUser) return
+
+        const content = adminMessageInput.trim()
+        setAdminMessageInput('')
+
+        const { error } = await supabase.from('support_messages').insert({
+            user_id: selectedSupportUser,
+            sender_role: 'admin',
+            content: content
+        })
+
+        if (error) {
+            console.error("Failed to send reply", error)
+            alert("Failed to send reply")
+        } else {
+            fetchSupportUsers()
+        }
+    }
+
     if (!user) {
         return (
             <div className="max-w-md mx-auto px-4 py-20">
@@ -509,22 +623,6 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                             </div>
                         )}
                     </form>
-                    <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700/50 text-center">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                            Having Issue
-                        </p>
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                                Zyora Lab
-                            </span>
-                            <a
-                                href="mailto:zyoralab@gmail.com"
-                                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-                            >
-                                zyoralab@gmail.com
-                            </a>
-                        </div>
-                    </div>
                 </div>
             </div>
         )
@@ -575,7 +673,8 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
                     {[
                         { id: 'moderation', label: 'Post Moderation', icon: Shield },
                         { id: 'users', label: 'User Management', icon: Users },
-                        { id: 'matchmaker', label: 'Matchmaker', icon: Heart }
+                        { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
+                        { id: 'support', label: 'Support Chat', icon: MessageSquare }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -847,6 +946,74 @@ ${failedDeletes.length > 0 ? 'Check console for error details on failed deletion
             )}
             {activeTab === 'users' && <UserManagement />}
             {activeTab === 'matchmaker' && <MatchmakerAdmin />}
+            {activeTab === 'support' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px]">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                            <h3 className="font-bold text-gray-700 dark:text-gray-200">Conversations</h3>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {supportUsers.length === 0 && (
+                                <div className="p-4 text-center text-sm text-gray-500">No messages yet.</div>
+                            )}
+                            {supportUsers.map(u => (
+                                <button
+                                    key={u.user_id}
+                                    onClick={() => { setSelectedSupportUser(u.user_id); fetchAdminChatHistory(u.user_id); }}
+                                    className={`w-full p-4 text-left border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${selectedSupportUser === u.user_id ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="text-xs font-mono text-gray-500 truncate w-24">User: {u.user_id.slice(0, 8)}...</span>
+                                        {u.has_unread && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{u.last_message}</p>
+                                    <span className="text-xs text-gray-400">{dayjs(u.last_active).fromNow()}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+                        {selectedSupportUser ? (
+                            <>
+                                <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                                    <span className="font-mono text-sm text-gray-500">Chatting with: {selectedSupportUser}</span>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                    {adminChatHistory.map(msg => (
+                                        <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[70%] rounded-xl px-4 py-2 text-sm ${msg.sender_role === 'admin'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                                }`}>
+                                                {msg.content}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={adminChatEndRef} />
+                                </div>
+
+                                <form onSubmit={sendAdminReply} className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                                    <input
+                                        className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        placeholder="Type a reply..."
+                                        value={adminMessageInput}
+                                        onChange={e => setAdminMessageInput(e.target.value)}
+                                    />
+                                    <button type="submit" className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                        <Send className="w-5 h-5" />
+                                    </button>
+                                </form>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-gray-400">
+                                Select a conversation to start chatting
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

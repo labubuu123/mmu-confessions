@@ -10,6 +10,7 @@
 // import UserAnalytics from './components/UserAnalytics';
 // import Matchmaker from './components/matchmaker/Matchmaker';
 // import { NotificationProvider } from './components/NotificationSystem';
+// import FloatingActionMenu from "./components/FloatingActionMenu";
 // import { supabase } from './lib/supabaseClient';
 
 // function MatchmakerButton() {
@@ -90,7 +91,7 @@
 //           <Route path="/matchmaker" element={<Matchmaker />} />
 //         </Routes>
 
-//         <MatchmakerButton />
+//         <FloatingActionMenu />
 
 //         <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
 //           <div className="max-w-5xl mx-auto px-4">
@@ -138,6 +139,7 @@ import PolicyPage from "./components/PolicyPage";
 import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
 import { NotificationProvider } from "./components/NotificationSystem";
+import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 
 function MatchmakerButton() {
@@ -217,7 +219,7 @@ function App() {
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
         </Routes>
 
-        <MatchmakerButton />
+        <FloatingActionMenu />
 
         <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="max-w-5xl mx-auto px-4">
