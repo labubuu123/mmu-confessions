@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import LiveActivityPanel from './LiveActivityPanel';
 
 export default function FloatingActionMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [identityId, setIdentityId] = useState(null);
@@ -131,19 +133,32 @@ export default function FloatingActionMenu() {
 
     const handleMatchmakerClick = () => {
         setIsOpen(true);
-        // navigate('/matchmaker');
         alert("传说中的「月老功能」即将上线... Stay tuned ❤️");
     };
 
     const handleContactAdminClick = () => {
         setIsOpen(false);
         setIsChatOpen(true);
+        setIsActivityOpen(false);
+    };
+
+    const handleLiveActivityClick = () => {
+        setIsOpen(false);
+        setIsActivityOpen(true);
+        setIsChatOpen(false);
     };
 
     return (
         <>
             <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
                 <div className={`flex flex-col gap-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+                    <button onClick={handleLiveActivityClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
+                        <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400">
+                            <Activity className="w-5 h-5" />
+                        </div>
+                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Live Comments</span>
+                    </button>
+
                     <button onClick={handleContactAdminClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
                         <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                             <MessageSquare className="w-5 h-5" />
@@ -166,6 +181,10 @@ export default function FloatingActionMenu() {
                     {isOpen ? <X className="w-8 h-8" /> : <Sparkles className="w-8 h-8" />}
                 </button>
             </div>
+
+            {isActivityOpen && (
+                <LiveActivityPanel onClose={() => setIsActivityOpen(false)} />
+            )}
 
             {isChatOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 pointer-events-none">
