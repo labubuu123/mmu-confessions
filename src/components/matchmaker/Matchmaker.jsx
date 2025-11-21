@@ -6,7 +6,7 @@ import MatchmakerProfileForm from './MatchmakerProfileForm';
 import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
-import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, FileText, Heart } from 'lucide-react';
+import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check } from 'lucide-react';
 
 export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();

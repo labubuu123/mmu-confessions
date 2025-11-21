@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Heart, MapPin, Frown, Sparkles, AlertTriangle, X, Check, Filter, User, Search, Hash } from 'lucide-react';
+import ShareProfileButton from './ShareProfileButton';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -40,6 +41,29 @@ const AvatarGenerator = ({ nickname, gender }) => {
     );
 };
 
+const ExpandableText = ({ text, limit = 120 }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!text) return null;
+
+    const classes = "text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap break-words";
+
+    if (text.length <= limit) return <p className={classes}>{text}</p>;
+
+    return (
+        <div>
+            <p className={classes}>
+                {expanded ? text : text.slice(0, limit) + '...'}
+            </p>
+            <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 hover:underline focus:outline-none"
+            >
+                {expanded ? 'Show Less' : 'Read More'}
+            </button>
+        </div>
+    );
+};
+
 export default function MatchmakerBrowse({ user }) {
     const [profiles, setProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -63,6 +87,10 @@ export default function MatchmakerBrowse({ user }) {
     };
 
     useEffect(() => { fetchProfiles(); }, []);
+
+    const closeProfileModal = () => {
+        setSelectedProfile(null);
+    };
 
     const filteredProfiles = useMemo(() => {
         return profiles.filter(profile => {
@@ -96,7 +124,7 @@ export default function MatchmakerBrowse({ user }) {
             await supabase.rpc('handle_love_action', { target_user_id: reportTarget.id, action_type: 'reject' });
             setProfiles(prev => prev.filter(p => p.author_id !== reportTarget.id));
             setReportTarget(null);
-            setSelectedProfile(null);
+            closeProfileModal();
         } catch (err) {
             alert("Failed to report.");
         } finally {
@@ -104,7 +132,7 @@ export default function MatchmakerBrowse({ user }) {
         }
     };
 
-    if (loading) return (
+    if (loading && profiles.length === 0 && !selectedProfile) return (
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
             <Sparkles className="w-10 h-10 text-indigo-500 animate-bounce mb-4" />
             <p className="text-indigo-600 font-bold">Finding matches...</p>
@@ -141,6 +169,10 @@ export default function MatchmakerBrowse({ user }) {
                         className="group bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:scale-[1.02] transition-all duration-300 cursor-pointer flex flex-col"
                     >
                         <div className={`relative h-24 bg-gradient-to-br ${profile.gender === 'male' ? 'from-indigo-400 via-blue-400 to-indigo-500' : 'from-pink-400 via-rose-400 to-pink-500'}`}>
+                            <div className="absolute top-2 right-2 z-10">
+                                <ShareProfileButton profile={profile} />
+                            </div>
+
                             <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
                                 <div className="w-24 h-24 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden bg-white dark:bg-gray-900">
                                     <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
@@ -157,7 +189,7 @@ export default function MatchmakerBrowse({ user }) {
                             </div>
 
                             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 mb-3 flex-1 border border-gray-100 dark:border-gray-700">
-                                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">
+                                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed break-words">
                                     {profile.self_intro}
                                 </p>
                             </div>
@@ -189,7 +221,7 @@ export default function MatchmakerBrowse({ user }) {
                 ))}
             </div>
 
-            {filteredProfiles.length === 0 && (
+            {filteredProfiles.length === 0 && !loading && (
                 <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
                     <Frown className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
                     <p className="text-gray-500 dark:text-gray-400 font-medium">No profiles match your filters</p>
@@ -198,12 +230,15 @@ export default function MatchmakerBrowse({ user }) {
             )}
 
             {selectedProfile && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={closeProfileModal}>
                     <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="relative px-6 pt-6">
-                            <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full text-gray-600 dark:text-gray-300 transition-colors">
+                            <button onClick={closeProfileModal} className="absolute top-4 right-4 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full text-gray-600 dark:text-gray-300 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
+                            <div className="absolute top-4 left-4">
+                                <ShareProfileButton profile={selectedProfile} />
+                            </div>
                         </div>
 
                         <div className="px-6 pb-6">
@@ -222,14 +257,14 @@ export default function MatchmakerBrowse({ user }) {
                                         <h3 className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <User className="w-3.5 h-3.5" /> About Me
                                         </h3>
-                                        <p className="text-gray-700 dark:text-gray-200 leading-relaxed text-sm">{selectedProfile.self_intro}</p>
+                                        <ExpandableText text={selectedProfile.self_intro} />
                                     </div>
 
                                     <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded-xl border border-pink-100 dark:border-pink-800/30">
                                         <h3 className="text-xs font-semibold text-pink-600 dark:text-pink-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <Search className="w-3.5 h-3.5" /> Looking For
                                         </h3>
-                                        <p className="text-gray-700 dark:text-gray-200 leading-relaxed text-sm">{selectedProfile.looking_for}</p>
+                                        <ExpandableText text={selectedProfile.looking_for} />
                                     </div>
 
                                     <div>

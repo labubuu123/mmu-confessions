@@ -1,61 +1,50 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Share2, X, Copy, Check, Facebook, MessageCircle, Mail, Download } from 'lucide-react';
-import { toPng } from 'html-to-image';
-import { QRCodeCanvas } from 'qrcode.react';
+import { Share2, X, Check, Download } from 'lucide-react';
+import { toJpeg } from 'html-to-image';
 
-function getTruncatedText(text, limit) {
-    if (!text) return "";
-    if (text.length <= limit) {
-        return text;
-    }
-    const lastSpace = text.lastIndexOf(' ', limit);
-    if (lastSpace === -1) {
-        return text.slice(0, limit) + '...';
-    } else {
-        return text.slice(0, lastSpace) + '...';
-    }
-}
+const AvatarGenerator = ({ nickname, gender }) => {
+    const seed = useMemo(() => {
+        const str = (nickname || 'User') + gender;
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return Math.abs(hash);
+    }, [nickname, gender]);
+
+    const pick = (options, offset = 0) => options[(seed + offset) % options.length];
+    const skinColors = ['#f3d2c1', '#f5e0d7', '#e6c3b3', '#ffdfc4', '#dbb298'];
+    const bgColors = gender === 'male' ? ['#e0e7ff', '#dbeafe', '#ccfbf1', '#f3f4f6'] : ['#fce7f3', '#ffe4e6', '#fef3c7', '#fae8ff'];
+    const skin = pick(skinColors);
+    const bg = pick(bgColors, 1);
+    const eyesVariant = seed % 3;
+    const mouthVariant = (seed >> 1) % 3;
+
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+            <rect width="100" height="100" fill={bg} />
+            <path d="M20 100 Q50 80 80 100" fill={gender === 'male' ? '#6366f1' : '#ec4899'} opacity="0.8" />
+            <circle cx="50" cy="50" r="35" fill={skin} />
+            <g fill="#1f2937">
+                {eyesVariant === 0 && (<><circle cx="38" cy="48" r="4" /><circle cx="62" cy="48" r="4" /></>)}
+                {eyesVariant === 1 && (<><path d="M34 50 Q38 42 42 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M58 50 Q62 42 66 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /></>)}
+                {eyesVariant === 2 && (<><circle cx="38" cy="48" r="4" /><path d="M58 48 L66 48" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" /></>)}
+            </g>
+            <g stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round">
+                {mouthVariant === 0 && (<path d="M42 65 Q50 70 58 65" />)}
+                {mouthVariant === 1 && (<path d="M38 62 Q50 75 62 62" />)}
+                {mouthVariant === 2 && (<circle cx="50" cy="66" r="4" fill="#1f2937" stroke="none" />)}
+            </g>
+            {gender === 'male' ? (<path d="M25 40 Q50 15 75 40" fill="#1f2937" opacity="0.1" />) : (<path d="M20 45 Q50 10 80 45" fill="#1f2937" opacity="0.1" />)}
+        </svg>
+    );
+};
 
 export default function ShareProfileButton({ profile }) {
     const [showModal, setShowModal] = useState(false);
-    const [copied, setCopied] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
     const cardRef = useRef(null);
-
-    const shareUrl = `${window.location.origin}/#/matchmaker/profile/${profile.author_id}`;
-    const shareText = `Check out ${profile.nickname} on MMU Matchmaker! ${profile.age} from ${profile.city}`;
-
-    const CARD_TEXT_LIMIT = 100;
-    const cardIntro = getTruncatedText(profile.self_intro, CARD_TEXT_LIMIT);
-
-    const handleCopyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(shareUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
-    };
-
-    const handleShare = (platform) => {
-        let url = '';
-        switch (platform) {
-            case 'facebook':
-                url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-                break;
-            case 'whatsapp':
-                url = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\n' + shareUrl)}`;
-                break;
-            case 'email':
-                url = `mailto:?subject=${encodeURIComponent('MMU Matchmaker Profile')}&body=${encodeURIComponent(shareText + '\n\n' + shareUrl)}`;
-                break;
-        }
-        if (url) {
-            window.open(url, '_blank', 'width=600,height=400');
-        }
-    };
 
     const handleOpenShareModal = (e) => {
         e.preventDefault();
@@ -68,16 +57,25 @@ export default function ShareProfileButton({ profile }) {
         if (!cardRef.current || downloaded) return;
 
         try {
-            const dataUrl = await toPng(cardRef.current, {
+            const dataUrl = await toJpeg(cardRef.current, {
+                quality: 0.95,
+                backgroundColor: '#ffffff',
                 cacheBust: true,
                 pixelRatio: 2,
-                useCORS: true
+                style: {
+                    height: 'auto',
+                    maxHeight: 'none',
+                    overflow: 'visible'
+                }
             });
 
             const link = document.createElement('a');
-            link.download = `MMU-Matchmaker-${profile.nickname}.png`;
+            link.download = `MMU-Matchmaker-${profile.nickname}.jpg`;
             link.href = dataUrl;
+
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
 
             setDownloaded(true);
             setTimeout(() => setDownloaded(false), 3000);
@@ -95,10 +93,10 @@ export default function ShareProfileButton({ profile }) {
             />
 
             <div
-                className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full overflow-hidden flex flex-col pointer-events-auto"
+                className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full flex flex-col pointer-events-auto max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                         Share Profile
                     </h3>
@@ -110,116 +108,86 @@ export default function ShareProfileButton({ profile }) {
                     </button>
                 </div>
 
-                <div
-                    ref={cardRef}
-                    className="mb-4 p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden"
-                >
-                    <div className="absolute inset-0 opacity-10 pointer-events-none">
-                        {[...Array(20)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="absolute w-1 h-1 bg-white rounded-full"
-                                style={{
-                                    left: `${Math.random() * 100}%`,
-                                    top: `${Math.random() * 100}%`
-                                }}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-1 bg-white/20 backdrop-blur-sm rounded-full flex-shrink-0">
-                                <img
-                                    src={`https://api.dicebear.com/9.x/notionists/svg?seed=${profile.avatar_seed}&backgroundColor=transparent&brows=variant10&lips=variant05`}
-                                    className="w-12 h-12 rounded-full bg-white"
-                                    alt="Avatar"
-                                    crossOrigin="anonymous"
+                <div className="overflow-y-auto flex-1 pr-1 -mr-1 mb-4">
+                    <div
+                        ref={cardRef}
+                        className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden flex flex-col gap-4"
+                    >
+                        <div className="absolute inset-0 opacity-10 pointer-events-none">
+                            {[...Array(20)].map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="absolute w-1 h-1 bg-white rounded-full"
+                                    style={{
+                                        left: `${Math.random() * 100}%`,
+                                        top: `${Math.random() * 100}%`
+                                    }}
                                 />
-                            </div>
-                            <div>
-                                <h2 className="font-black text-lg leading-tight drop-shadow-sm">{profile.nickname}</h2>
-                                <p className="text-xs text-indigo-100 opacity-90 font-medium">
-                                    {profile.age} • {profile.city}
-                                </p>
-                            </div>
+                            ))}
                         </div>
 
-                        {cardIntro && (
-                            <div className="text-sm mb-4 bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/10">
-                                <p className="leading-relaxed italic text-xs">
-                                    "{cardIntro}"
-                                </p>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-4 pb-4 border-b border-white/20">
+                                <div className="w-16 h-16 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white/30 shadow-sm">
+                                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+                                </div>
+                                <div>
+                                    <h2 className="font-black text-2xl leading-tight drop-shadow-sm">{profile.nickname}</h2>
+                                    <p className="text-sm text-indigo-100 opacity-90 font-medium flex items-center gap-2">
+                                        <span className="px-2 py-0.5 bg-white/20 rounded-md text-xs capitalize">{profile.gender}</span>
+                                        <span>{profile.age} years old</span>
+                                    </p>
+                                    <p className="text-xs text-indigo-200 mt-1 font-mono">
+                                        {profile.city}
+                                    </p>
+                                </div>
                             </div>
-                        )}
 
-                        <div className="flex items-end justify-between">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-1">Interests</span>
-                                <div className="flex flex-wrap gap-1 max-w-[140px]">
-                                    {profile.interests && profile.interests.slice(0, 3).map(interest => (
-                                        <span key={interest} className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] font-medium">
+                            <div className="mt-4">
+                                <h4 className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-1">About Me</h4>
+                                <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/10">
+                                    <p className="leading-relaxed text-sm whitespace-pre-wrap">
+                                        {profile.self_intro}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {profile.looking_for && (
+                                <div>
+                                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-1">Looking For</h4>
+                                    <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/10">
+                                        <p className="leading-relaxed text-sm whitespace-pre-wrap">
+                                            {profile.looking_for}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-2 pt-4 border-t border-white/20">
+                                <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-2 block">Interests</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {profile.interests && profile.interests.map(interest => (
+                                        <span key={interest} className="bg-white/20 px-2 py-1 rounded-md text-[10px] font-medium">
                                             {interest}
                                         </span>
                                     ))}
                                 </div>
                             </div>
-
-                            <div className="flex flex-col items-center">
-                                <div className="bg-white p-1.5 rounded-lg shadow-lg">
-                                    <QRCodeCanvas
-                                        value={shareUrl}
-                                        size={64}
-                                        bgColor={"#ffffff"}
-                                        fgColor={"#000000"}
-                                        level={"L"}
-                                        includeMargin={false}
-                                    />
-                                </div>
-                                <span className="text-[9px] font-medium text-indigo-100 mt-1 opacity-90">
-                                    Scan to connect
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                    <SharePlatformButton
-                        icon={<Facebook className="w-5 h-5" />}
-                        label="Facebook"
-                        color="bg-blue-600 hover:bg-blue-700"
-                        onClick={() => handleShare('facebook')}
-                    />
-                    <SharePlatformButton
-                        icon={<MessageCircle className="w-5 h-5" />}
-                        label="WhatsApp"
-                        color="bg-green-600 hover:bg-green-700"
-                        onClick={() => handleShare('whatsapp')}
-                    />
-                    <SharePlatformButton
-                        icon={<Mail className="w-5 h-5" />}
-                        label="Email"
-                        color="bg-gray-600 hover:bg-gray-700"
-                        onClick={() => handleShare('email')}
-                    />
-                    <SharePlatformButton
-                        icon={copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                        label={copied ? 'Copied!' : 'Copy Link'}
-                        color={copied ? "bg-green-600" : "bg-indigo-600 hover:bg-indigo-700"}
-                        onClick={handleCopyLink}
-                    />
+                <div className="flex-shrink-0 pt-2">
+                    <button
+                        onClick={handleDownloadImage}
+                        disabled={downloaded}
+                        className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium transition-all shadow-md hover:shadow-lg active:scale-95
+                        ${downloaded ? 'bg-green-600' : 'bg-gray-900 dark:bg-indigo-600 hover:bg-gray-800 dark:hover:bg-indigo-700'}`}
+                    >
+                        {downloaded ? <Check className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                        <span>{downloaded ? 'Saved to Gallery' : 'Download Image'}</span>
+                    </button>
                 </div>
-
-                <button
-                    onClick={handleDownloadImage}
-                    disabled={downloaded}
-                    className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium transition-all shadow-md hover:shadow-lg active:scale-95 mb-2
-                    ${downloaded ? 'bg-green-600' : 'bg-gray-900 dark:bg-indigo-600 hover:bg-gray-800 dark:hover:bg-indigo-700'}`}
-                >
-                    {downloaded ? <Check className="w-5 h-5" /> : <Download className="w-5 h-5" />}
-                    <span>{downloaded ? 'Saved to Gallery' : 'Save Image'}</span>
-                </button>
             </div>
         </div>
     );
@@ -236,14 +204,5 @@ export default function ShareProfileButton({ profile }) {
 
             {showModal && createPortal(modalContent, document.body)}
         </>
-    );
-}
-
-function SharePlatformButton({ icon, label, color, onClick }) {
-    return (
-        <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-white transition-all shadow-md hover:shadow-lg active:scale-95 ${color}`}>
-            {icon}
-            <span className="text-[10px] font-medium">{label}</span>
-        </button>
     );
 }

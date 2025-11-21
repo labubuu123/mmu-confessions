@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, AlertTriangle, Trash2, Clock, AtSign, User, Search, Hash, MapPin } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash } from 'lucide-react';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -35,6 +35,29 @@ const AvatarGenerator = ({ nickname, gender }) => {
             </g>
             {gender === 'male' ? (<path d="M25 40 Q50 15 75 40" fill="#1f2937" opacity="0.1" />) : (<path d="M20 45 Q50 10 80 45" fill="#1f2937" opacity="0.1" />)}
         </svg>
+    );
+};
+
+const ExpandableText = ({ text, limit = 150 }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!text) return null;
+
+    const baseClasses = "bg-gray-50 dark:bg-gray-900 p-3 md:p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-gray-100 dark:border-gray-700 text-sm break-words";
+
+    if (text.length <= limit) return <p className={baseClasses}>{text}</p>;
+
+    return (
+        <div className="relative">
+            <p className={baseClasses}>
+                {expanded ? text : text.slice(0, limit) + '...'}
+            </p>
+            <button
+                onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 ml-1 hover:underline"
+            >
+                {expanded ? 'Show Less' : 'Read More'}
+            </button>
+        </div>
     );
 };
 
@@ -155,7 +178,7 @@ export default function MatchmakerAdmin() {
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden mb-3 md:mb-4 shadow-sm border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-900">
                     <AvatarGenerator nickname={p.nickname} gender={p.gender} />
                 </div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white">{p.nickname}</h3>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white break-words w-full">{p.nickname}</h3>
                 <div className="flex flex-wrap justify-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
                     <span className="capitalize px-2 py-0.5 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">{p.gender}, {p.age}</span>
                     <span className="flex items-center justify-center gap-1 px-2 py-0.5"><MapPin className="w-3 h-3" /> {p.city}</span>
@@ -168,15 +191,15 @@ export default function MatchmakerAdmin() {
                 </div>
             </div>
 
-            <div className="flex-1 p-5 md:p-6 space-y-4 md:space-y-6">
+            <div className="flex-1 p-5 md:p-6 space-y-4 md:space-y-6 min-w-0">
                 <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-4 h-4" /> About User</h4>
-                    <p className="bg-gray-50 dark:bg-gray-900 p-3 md:p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-gray-100 dark:border-gray-700 text-sm">{p.self_intro}</p>
+                    <ExpandableText text={p.self_intro} />
                 </div>
 
                 <div>
                     <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Search className="w-4 h-4" /> Looking For</h4>
-                    <p className="bg-indigo-50 dark:bg-indigo-900/20 p-3 md:p-4 rounded-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap border border-indigo-100 dark:border-indigo-900/50 text-sm">{p.looking_for}</p>
+                    <ExpandableText text={p.looking_for} />
                 </div>
 
                 <div>
@@ -236,7 +259,7 @@ export default function MatchmakerAdmin() {
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
                                     <p className="text-xs font-bold text-red-500 uppercase mb-1">Reason</p>
-                                    <p className="text-sm text-gray-800 dark:text-gray-200 italic">"{r.reason}"</p>
+                                    <p className="text-sm text-gray-800 dark:text-gray-200 italic break-words">{r.reason}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-auto pt-2">
                                     <button onClick={() => handleDismissReport(r.id)} disabled={processingId === r.id} className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300">Dismiss</button>

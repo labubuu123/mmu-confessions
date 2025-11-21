@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Heart, X, MessageCircle, Loader2, Send, Instagram, MapPin, Info, Search, User, Hash, Check } from 'lucide-react';
+import { Heart, X, Instagram, MapPin, User, Search, Hash, Trash2, Ban } from 'lucide-react';
+import ShareProfileButton from './ShareProfileButton';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -40,6 +41,29 @@ const AvatarGenerator = ({ nickname, gender }) => {
     );
 };
 
+const ExpandableText = ({ text, limit = 120 }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!text) return null;
+
+    const classes = "text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap break-words";
+
+    if (text.length <= limit) return <p className={classes}>{text}</p>;
+
+    return (
+        <div>
+            <p className={classes}>
+                {expanded ? text : text.slice(0, limit) + '...'}
+            </p>
+            <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 hover:underline focus:outline-none"
+            >
+                {expanded ? 'Show Less' : 'Read More'}
+            </button>
+        </div>
+    );
+};
+
 export default function MatchmakerConnections({ user }) {
     const [activeTab, setActiveTab] = useState('received');
     const [items, setItems] = useState([]);
@@ -47,58 +71,101 @@ export default function MatchmakerConnections({ user }) {
     const [viewingProfile, setViewingProfile] = useState(null);
 
     const fetchConnections = async () => {
-        if (items.length === 0) setLoading(true);
-        const { data } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
-        setItems(data || []);
-        setLoading(false);
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
+            if (error) throw error;
+
+            const formattedItems = (data || []).map(item => ({
+                id: item.connection_id,
+                status: item.status,
+                updated_at: item.updated_at,
+                other_user: {
+                    id: item.other_user_id,
+                    nickname: item.nickname,
+                    avatar_seed: item.avatar_seed,
+                    gender: item.gender,
+                    city: item.city,
+                    contact_info: item.contact_info,
+                    self_intro: item.status === 'matched' ? 'Matched! Check contact info.' : '...'
+                }
+            }));
+
+            setItems(formattedItems);
+        } catch (err) {
+            console.error("Error fetching connections:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchFullProfile = async (userId) => {
+        const { data } = await supabase.from('matchmaker_profiles').select('*').eq('author_id', userId).single();
+        if (data) setViewingProfile(data);
     };
 
     useEffect(() => {
         fetchConnections();
+
         const channel = supabase.channel('connections_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves', filter: `to_user_id=eq.${user.id}` }, fetchConnections)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, fetchConnections)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, fetchConnections)
             .subscribe();
+
         return () => { supabase.removeChannel(channel); };
-    }, []);
+    }, [user.id]);
 
     const handleAction = async (targetId, action) => {
-        setItems(prev => prev.filter(i => i.other_user?.id !== targetId));
+        setItems(prev => prev.filter(i => i.other_user.id !== targetId));
+
         await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
         fetchConnections();
     };
 
     const filteredItems = items.filter(i => {
-        if (activeTab === 'received') return i.status === 'pending' && i.direction === 'received';
-        if (activeTab === 'sent') return i.status === 'pending' && i.direction === 'sent';
-        if (activeTab === 'matches') return i.status === 'accepted';
+        if (activeTab === 'received') return i.status === 'pending_received';
+        if (activeTab === 'sent') return i.status === 'pending_sent';
+        if (activeTab === 'matches') return i.status === 'matched';
+        if (activeTab === 'rejected') return i.status === 'rejected';
         return false;
     });
 
-    if (loading) return <div className="p-10 text-center text-gray-500">Loading connections...</div>;
+    const getTabCount = (tab) => {
+        if (tab === 'received') return items.filter(i => i.status === 'pending_received').length;
+        if (tab === 'sent') return items.filter(i => i.status === 'pending_sent').length;
+        if (tab === 'matches') return items.filter(i => i.status === 'matched').length;
+        if (tab === 'rejected') return items.filter(i => i.status === 'rejected').length;
+        return 0;
+    };
+
+    if (loading && items.length === 0) return <div className="p-10 text-center text-gray-500">Loading connections...</div>;
 
     return (
         <div className="min-h-[60vh]">
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
-                {['received', 'matches', 'sent'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`flex-1 py-2.5 text-sm font-bold rounded-lg capitalize transition-all ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                    >
-                        {tab}
-                        {tab === 'received' && items.filter(i => i.status === 'pending' && i.direction === 'received').length > 0 && (
-                            <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full animate-pulse">
-                                {items.filter(i => i.status === 'pending' && i.direction === 'received').length}
-                            </span>
-                        )}
-                    </button>
-                ))}
+            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto no-scrollbar">
+                {['received', 'matches', 'sent', 'rejected'].map(tab => {
+                    const count = getTabCount(tab);
+                    return (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex-1 py-2.5 px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            {tab}
+                            {count > 0 && (
+                                <span className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-full ${tab === 'matches' ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'}`}>
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    )
+                })}
             </div>
 
             <div className="space-y-4">
                 {filteredItems.length === 0 && (
                     <div className="text-center py-10 text-gray-400 italic bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                        No {activeTab} connections yet.
+                        No {activeTab} connections.
                     </div>
                 )}
 
@@ -106,21 +173,47 @@ export default function MatchmakerConnections({ user }) {
                     <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
                         <div
                             className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 cursor-pointer hover:opacity-90 ring-2 ring-transparent hover:ring-indigo-400 transition-all"
-                            onClick={() => setViewingProfile(item.other_user)}
+                            onClick={() => fetchFullProfile(item.other_user.id)}
                         >
                             <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
                         </div>
 
                         <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white truncate text-lg">{item.other_user.nickname}, {item.other_user.age}</h4>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1 font-medium uppercase tracking-wide"><MapPin className="w-3 h-3" /> {item.other_user.city}</div>
-                            <button onClick={() => setViewingProfile(item.other_user)} className="text-xs font-bold text-indigo-500 dark:text-indigo-400 hover:underline">View Full Profile</button>
+                            <h4 className="font-bold text-gray-900 dark:text-white truncate text-lg">{item.other_user.nickname}</h4>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1 font-medium uppercase tracking-wide">
+                                <MapPin className="w-3 h-3" /> {item.other_user.city || 'Unknown'}
+                            </div>
+                            {activeTab === 'rejected' ? (
+                                <span className="text-xs font-bold text-red-500 flex items-center gap-1">
+                                    <Ban className="w-3 h-3" /> Application Rejected
+                                </span>
+                            ) : (
+                                <button onClick={() => fetchFullProfile(item.other_user.id)} className="text-xs font-bold text-indigo-500 dark:text-indigo-400 hover:underline">
+                                    View Full Profile
+                                </button>
+                            )}
                         </div>
 
                         {activeTab === 'received' && (
                             <div className="flex gap-2">
                                 <button onClick={() => handleAction(item.other_user.id, 'reject')} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
                                 <button onClick={() => handleAction(item.other_user.id, 'accept')} className="p-3 bg-pink-500 rounded-xl text-white hover:bg-pink-600 shadow-lg shadow-pink-500/30 transition-transform active:scale-90"><Heart className="w-5 h-5 fill-white" /></button>
+                            </div>
+                        )}
+
+                        {activeTab === 'sent' && (
+                            <div className="flex gap-2">
+                                <button onClick={() => handleAction(item.other_user.id, 'withdraw')} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 text-xs font-bold transition-colors">
+                                    Withdraw
+                                </button>
+                            </div>
+                        )}
+
+                        {activeTab === 'rejected' && (
+                            <div className="flex gap-2">
+                                <button onClick={() => handleAction(item.other_user.id, 'withdraw')} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-600 transition-colors" title="Dismiss">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                         )}
 
@@ -142,6 +235,10 @@ export default function MatchmakerConnections({ user }) {
                     <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                         <div className={`p-6 text-white text-center relative bg-gradient-to-br ${viewingProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
                             <button onClick={() => setViewingProfile(null)} className="absolute top-4 right-4 text-white/80 hover:text-white"><X className="w-6 h-6" /></button>
+                            <div className="absolute top-4 left-4 text-white/80 hover:text-white">
+                                <ShareProfileButton profile={viewingProfile} />
+                            </div>
+
                             <div className="w-24 h-24 mx-auto bg-white dark:bg-gray-900 rounded-full border-4 border-white/20 mb-3 overflow-hidden shadow-lg">
                                 <AvatarGenerator nickname={viewingProfile.nickname} gender={viewingProfile.gender} />
                             </div>
@@ -154,12 +251,12 @@ export default function MatchmakerConnections({ user }) {
                         <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
                             <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                                 <h5 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-3 h-3" /> About Me</h5>
-                                <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{viewingProfile.self_intro}</p>
+                                <ExpandableText text={viewingProfile.self_intro} />
                             </div>
 
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
                                 <h5 className="text-xs font-bold text-indigo-500 uppercase mb-2 flex items-center gap-2"><Search className="w-3 h-3" /> Looking For</h5>
-                                <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{viewingProfile.looking_for}</p>
+                                <ExpandableText text={viewingProfile.looking_for} />
                             </div>
 
                             <div>
@@ -171,7 +268,7 @@ export default function MatchmakerConnections({ user }) {
                                 </div>
                             </div>
 
-                            {activeTab === 'matches' && (
+                            {activeTab === 'matches' && viewingProfile.contact_info && (
                                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
                                     <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-2">You matched! Here is their contact:</p>
                                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-center font-mono font-bold text-green-700 dark:text-green-400 select-all">

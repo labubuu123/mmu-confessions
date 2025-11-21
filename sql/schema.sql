@@ -1135,6 +1135,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS get_my_connections(text);
 CREATE OR REPLACE FUNCTION get_my_connections(viewer_id TEXT)
 RETURNS TABLE (
     connection_id BIGINT,
@@ -1142,6 +1143,7 @@ RETURNS TABLE (
     nickname TEXT,
     avatar_seed TEXT,
     gender TEXT,
+    city TEXT,
     status TEXT,
     contact_info TEXT,
     updated_at TIMESTAMP WITH TIME ZONE
@@ -1151,21 +1153,21 @@ SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender,
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
         'pending_sent'::text, NULL::text, l.updated_at
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
     WHERE l.from_user_id = viewer_id AND l.status = 'pending';
 
     RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender,
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
         'pending_received'::text, NULL::text, l.updated_at
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.from_user_id = p.author_id
     WHERE l.to_user_id = viewer_id AND l.status = 'pending';
 
     RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender,
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
         'rejected'::text, NULL::text, l.updated_at
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
@@ -1174,7 +1176,7 @@ BEGIN
     RETURN QUERY
     SELECT m.id,
         CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END,
-        p.nickname, p.avatar_seed, p.gender,
+        p.nickname, p.avatar_seed, p.gender, p.city,
         'matched'::text,
         p.contact_info,
         m.matched_at
