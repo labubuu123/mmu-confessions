@@ -104,7 +104,7 @@ export default function LiveActivityPanel({ onClose }) {
                         <MessageCircle className="w-5 h-5 animate-pulse" />
                         <div>
                             <h3 className="font-bold text-sm">Live Comments</h3>
-                            <p className="text-xs text-indigo-100">Real-time discussions</p>
+                            <p className="text-xs text-indigo-100">Real time discussions</p>
                         </div>
                     </div>
                     <button
