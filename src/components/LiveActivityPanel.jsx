@@ -92,7 +92,6 @@ export default function LiveActivityPanel({ onClose }) {
                 className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
                 onClick={onClose}
             />
-
             <div className="pointer-events-auto relative w-full sm:w-96 h-[85vh] sm:h-[600px] bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in duration-300">
 
                 <div className="sm:hidden absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
