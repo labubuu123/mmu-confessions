@@ -264,7 +264,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto pb-20 pt-4 px-3 md:px-4">
+        <div className="max-w-2xl mx-auto pb-0 pt-4 px-3 md:px-4">
             {loading && (
                 <div className="fixed top-0 left-0 w-full h-1.5 z-[100] bg-indigo-100 dark:bg-indigo-900">
                     <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-[shimmer_1s_infinite] w-full origin-left" style={{ backgroundSize: '200% 100%' }}></div>
@@ -309,14 +309,14 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                 </div>
             )}
 
-            <div className="mb-6 sticky top-2 md:top-4 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
                 <div className="flex justify-between text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                     <span>Identity</span>
                     <span>Vibe</span>
                     <span>Details</span>
                     <span>Contact</span>
                 </div>
-                <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full">
                     <div
                         className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out rounded-full"
                         style={{ width: `${(step / totalSteps) * 100}%` }}
