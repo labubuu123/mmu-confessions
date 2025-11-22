@@ -58,7 +58,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                             </li>
                             <li>
                                 <p className="font-medium">Your "Secret Contact" (IG) is ONLY revealed if BOTH sides match.</p>
-                                <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">只有在双方都点击“喜欢”配对成功后，才会向对方显示您的“联系方式”。</p>
+                                <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">只有在双方都点击“喜欢”配对成功后，才会向对方显示您的“秘密联系方式”。</p>
                             </li>
                             <li>
                                 <p className="font-medium">Do NOT post contact info in your public Bio.</p>

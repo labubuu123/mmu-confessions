@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, FileText, Check, AlertTriangle, Shield, Info, ArrowLeft } from 'lucide-react';
+import { Home, FileText, Check, AlertTriangle, Shield, Info, ArrowLeft, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function PolicyPage() {
@@ -58,6 +58,21 @@ export default function PolicyPage() {
                         <Rule
                             en="No Advertising or Spam: Do not post advertisements, promotions, or commercial solicitation unless approved."
                             cn="禁止广告或垃圾信息：除非版主同意/推荐，会员不能发广告、招商。"
+                        />
+                    </Section>
+
+                    <Section icon={<Heart />} title="Matchmaker Rules" titleCN="配对功能守则">
+                        <Rule
+                            en="Authenticity Required: All profile details (Age, Gender, etc.) must be accurate. Impersonation or fake profiles will be banned."
+                            cn="必须真实：所有个人资料（年龄、性别等）必须准确。冒充或虚假档案将被封禁。"
+                        />
+                        <Rule
+                            en="Privacy First: Do not share contact info (Instagram) in your public Bio. Use the 'Secret Contact' field only."
+                            cn="隐私优先：请勿在公开简介中分享联系方式。请仅使用“秘密联系方式”栏位。"
+                        />
+                        <Rule
+                            en="Safe Interactions: Harassment, stalking, or inappropriate behavior towards matches is strictly prohibited."
+                            cn="安全互动：严禁对配对对象进行骚扰、跟踪或不当行为。"
                         />
                     </Section>
 
