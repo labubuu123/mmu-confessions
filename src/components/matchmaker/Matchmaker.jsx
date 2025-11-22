@@ -212,8 +212,8 @@ export default function Matchmaker() {
             </div>
 
             <div className="max-w-5xl mx-auto px-4 py-6">
-                {view === 'browse' && <MatchmakerBrowse user={user} />}
-                {view === 'connections' && <MatchmakerConnections user={user} />}
+                {view === 'browse' && <MatchmakerBrowse user={user} userProfile={profile} />}
+                {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} />}
                 {view === 'profile' && (
                     <MatchmakerProfileForm profile={profile} user={user} onSave={() => { refreshProfile(); setView('browse'); }} />
                 )}

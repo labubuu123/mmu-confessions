@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Heart, X, Instagram, MapPin, User, Search, Hash, Trash2, Ban } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
+import CompatibilityBadge from './CompatibilityBadge';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -64,7 +65,7 @@ const ExpandableText = ({ text, limit = 120 }) => {
     );
 };
 
-export default function MatchmakerConnections({ user }) {
+export default function MatchmakerConnections({ user, userProfile }) {
     const [activeTab, setActiveTab] = useState('received');
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -249,6 +250,8 @@ export default function MatchmakerConnections({ user }) {
                         </div>
 
                         <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+                            <CompatibilityBadge myProfile={userProfile} theirProfile={viewingProfile} />
+
                             <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                                 <h5 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-3 h-3" /> About Me</h5>
                                 <ExpandableText text={viewingProfile.self_intro} />
