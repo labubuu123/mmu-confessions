@@ -110,7 +110,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                         </ul>
                     </PolicySection>
 
-                    <div className="p-6 mt-8 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
                         <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
                         <h3 className="font-bold text-gray-900 dark:text-white mb-1">Violation Consequences / 违规后果</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -119,7 +119,6 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                             违反规则将导致<strong>永久封禁</strong>，严重者将被报警处理。
                         </p>
                     </div>
-                    <div className="h-8"></div>
                 </div>
 
                 <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
