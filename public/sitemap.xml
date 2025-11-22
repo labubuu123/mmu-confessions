@@ -26,19 +26,19 @@
 <url>
   <loc>https://mmuconfessions.fun/analytics</loc>
   <lastmod>2025-11-22T00:00:00+00:00</lastmod>
-  <priority>0.60</priority>
+  <priority>0.80</priority>
 </url>
 
 <url>
   <loc>https://mmuconfessions.fun/policy</loc>
   <lastmod>2025-11-22T00:00:00+00:00</lastmod>
-  <priority>0.50</priority>
+  <priority>0.80</priority>
 </url>
 
 <!-- <url>
   <loc>https://mmuconfessions.fun/matchmaker</loc>
   <lastmod>2025-11-22T00:00:00+00:00</lastmod>
-  <priority>0.70</priority>
+  <priority>0.80</priority>
 </url> -->
 
 </urlset>
