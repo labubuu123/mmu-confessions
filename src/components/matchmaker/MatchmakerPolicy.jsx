@@ -142,7 +142,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                                 <span>I Understand & Agree</span>
                             </>
                         ) : (
-                            <span>Read All to Agree / 请阅读所有条款</span>
+                            <span>Read All to Agree</span>
                         )}
                     </button>
                 </div>

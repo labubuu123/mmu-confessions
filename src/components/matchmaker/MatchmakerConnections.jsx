@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Heart, X, Instagram, MapPin, User, Search, Hash, Trash2, Ban } from 'lucide-react';
+import { Heart, X, Instagram, MapPin, Trash2, Ban, Flag, User, Calendar, Search, Hash, Info, AlertTriangle, Check } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
@@ -8,9 +8,7 @@ const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
         const str = (nickname || 'User') + gender;
         let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
         return Math.abs(hash);
     }, [nickname, gender]);
 
@@ -45,20 +43,12 @@ const AvatarGenerator = ({ nickname, gender }) => {
 const ExpandableText = ({ text, limit = 120 }) => {
     const [expanded, setExpanded] = useState(false);
     if (!text) return null;
-
-    const classes = "text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap break-words";
-
-    if (text.length <= limit) return <p className={classes}>{text}</p>;
-
+    const style = "text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed";
+    if (text.length <= limit) return <p className={style}>{text}</p>;
     return (
-        <div>
-            <p className={classes}>
-                {expanded ? text : text.slice(0, limit) + '...'}
-            </p>
-            <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 hover:underline focus:outline-none"
-            >
+        <div className="w-full">
+            <p className={style}>{expanded ? text : text.slice(0, limit) + '...'}</p>
+            <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="text-xs font-bold text-indigo-500 mt-2 hover:underline py-1 px-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
                 {expanded ? 'Show Less' : 'Read More'}
             </button>
         </div>
@@ -76,7 +66,6 @@ export default function MatchmakerConnections({ user, userProfile }) {
         try {
             const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
             if (error) throw error;
-
             const formattedItems = (data || []).map(item => ({
                 id: item.connection_id,
                 status: item.status,
@@ -88,16 +77,11 @@ export default function MatchmakerConnections({ user, userProfile }) {
                     gender: item.gender,
                     city: item.city,
                     contact_info: item.contact_info,
-                    self_intro: item.status === 'matched' ? 'Matched! Check contact info.' : '...'
+                    self_intro: item.status === 'matched' ? 'Matched! Check contact info.' : '...',
                 }
             }));
-
             setItems(formattedItems);
-        } catch (err) {
-            console.error("Error fetching connections:", err);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
     const fetchFullProfile = async (userId) => {
@@ -107,20 +91,47 @@ export default function MatchmakerConnections({ user, userProfile }) {
 
     useEffect(() => {
         fetchConnections();
-
         const channel = supabase.channel('connections_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, fetchConnections)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, fetchConnections)
             .subscribe();
-
         return () => { supabase.removeChannel(channel); };
     }, [user.id]);
 
-    const handleAction = async (targetId, action) => {
+    const handleAction = async (targetId, connectionId, action) => {
+        const previousItems = [...items];
         setItems(prev => prev.filter(i => i.other_user.id !== targetId));
+        if (viewingProfile?.author_id === targetId && action !== 'accept') {
+            setViewingProfile(null);
+        }
 
-        await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
-        fetchConnections();
+        try {
+            if (action === 'delete') {
+                let deleteError = null;
+                let deleteCount = 0;
+                if (connectionId) {
+                    const res = await supabase.from('matchmaker_loves').delete().eq('id', connectionId).select();
+                    deleteError = res.error;
+                    deleteCount = res.data?.length || 0;
+                }
+                if ((deleteError || deleteCount === 0)) {
+                    const res = await supabase.from('matchmaker_loves').delete().eq('from_user_id', user.id).eq('to_user_id', targetId).select();
+                    deleteError = res.error;
+                    deleteCount = res.data?.length || 0;
+                }
+                if (deleteCount === 0) {
+                    const { error: rpcError } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: 'delete' });
+                    if (rpcError) throw rpcError;
+                }
+            } else {
+                const { error } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
+                if (error) throw error;
+            }
+        } catch (err) {
+            console.error("Action error:", err);
+            setItems(previousItems);
+            alert("Action failed. Please try again.");
+        }
     };
 
     const filteredItems = items.filter(i => {
@@ -139,146 +150,135 @@ export default function MatchmakerConnections({ user, userProfile }) {
         return 0;
     };
 
-    if (loading && items.length === 0) return <div className="p-10 text-center text-gray-500">Loading connections...</div>;
+    if (loading && items.length === 0) return <div className="p-10 text-center text-gray-500">Loading...</div>;
 
     return (
         <div className="min-h-[60vh]">
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto no-scrollbar">
+            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto no-scrollbar sticky top-0 z-10">
                 {['received', 'matches', 'sent', 'rejected'].map(tab => {
                     const count = getTabCount(tab);
                     return (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`flex-1 py-2.5 px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            {tab}
-                            {count > 0 && (
-                                <span className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-full ${tab === 'matches' ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'}`}>
-                                    {count}
-                                </span>
-                            )}
+                        <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] py-2.5 px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {tab} {count > 0 && <span className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full ${tab === 'matches' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{count}</span>}
                         </button>
                     )
                 })}
             </div>
 
-            <div className="space-y-4">
-                {filteredItems.length === 0 && (
-                    <div className="text-center py-10 text-gray-400 italic bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                        No {activeTab} connections.
-                    </div>
-                )}
-
+            <div className="space-y-3">
+                {filteredItems.length === 0 && <div className="text-center py-10 text-gray-400 italic">No {activeTab} connections.</div>}
                 {filteredItems.map(item => (
-                    <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
-                        <div
-                            className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 cursor-pointer hover:opacity-90 ring-2 ring-transparent hover:ring-indigo-400 transition-all"
-                            onClick={() => fetchFullProfile(item.other_user.id)}
-                        >
-                            <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
+                    <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col xs:flex-row gap-3">
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden flex-shrink-0" onClick={() => fetchFullProfile(item.other_user.id)}>
+                                <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 dark:text-white text-base">{item.other_user.nickname}</h4>
+                                <div className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.other_user.city || 'Unknown'}</div>
+                                <button onClick={() => fetchFullProfile(item.other_user.id)} className="text-xs font-bold text-indigo-500 mt-1">View Profile</button>
+                            </div>
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white truncate text-lg">{item.other_user.nickname}</h4>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1 font-medium uppercase tracking-wide">
-                                <MapPin className="w-3 h-3" /> {item.other_user.city || 'Unknown'}
-                            </div>
-                            {activeTab === 'rejected' ? (
-                                <span className="text-xs font-bold text-red-500 flex items-center gap-1">
-                                    <Ban className="w-3 h-3" /> Application Rejected
-                                </span>
-                            ) : (
-                                <button onClick={() => fetchFullProfile(item.other_user.id)} className="text-xs font-bold text-indigo-500 dark:text-indigo-400 hover:underline">
-                                    View Full Profile
-                                </button>
+                        <div className="flex gap-2 w-full xs:w-auto mt-1 xs:mt-0">
+                            {activeTab === 'received' && (
+                                <>
+                                    <button onClick={() => handleAction(item.other_user.id, item.id, 'reject')} className="flex-1 py-2 bg-gray-100 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500"><X className="w-5 h-5 mx-auto" /></button>
+                                    <button onClick={() => handleAction(item.other_user.id, item.id, 'accept')} className="flex-1 py-2 bg-pink-500 rounded-xl text-white shadow-lg shadow-pink-500/30"><Heart className="w-5 h-5 fill-white mx-auto" /></button>
+                                </>
+                            )}
+                            {activeTab === 'sent' && (
+                                <button onClick={() => handleAction(item.other_user.id, item.id, 'delete')} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:text-red-500 text-xs font-bold">Withdraw</button>
+                            )}
+                            {activeTab === 'rejected' && (
+                                <button onClick={() => handleAction(item.other_user.id, item.id, 'delete')} className="w-full py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:text-red-500"><Trash2 className="w-5 h-5 mx-auto" /></button>
+                            )}
+                            {activeTab === 'matches' && (
+                                <div className="w-full py-2 bg-green-50 dark:bg-green-900/20 rounded-xl text-center text-xs font-bold text-green-700 dark:text-green-400 flex items-center justify-center gap-1">
+                                    <Instagram className="w-4 h-4" /> {item.other_user.contact_info?.replace('@', '')}
+                                </div>
                             )}
                         </div>
-
-                        {activeTab === 'received' && (
-                            <div className="flex gap-2">
-                                <button onClick={() => handleAction(item.other_user.id, 'reject')} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
-                                <button onClick={() => handleAction(item.other_user.id, 'accept')} className="p-3 bg-pink-500 rounded-xl text-white hover:bg-pink-600 shadow-lg shadow-pink-500/30 transition-transform active:scale-90"><Heart className="w-5 h-5 fill-white" /></button>
-                            </div>
-                        )}
-
-                        {activeTab === 'sent' && (
-                            <div className="flex gap-2">
-                                <button onClick={() => handleAction(item.other_user.id, 'withdraw')} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 text-xs font-bold transition-colors">
-                                    Withdraw
-                                </button>
-                            </div>
-                        )}
-
-                        {activeTab === 'rejected' && (
-                            <div className="flex gap-2">
-                                <button onClick={() => handleAction(item.other_user.id, 'withdraw')} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-600 transition-colors" title="Dismiss">
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
-                            </div>
-                        )}
-
-                        {activeTab === 'matches' && (
-                            <div className="text-right">
-                                <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Contact</div>
-                                <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg text-sm">
-                                    <Instagram className="w-4 h-4" />
-                                    {item.other_user.contact_info?.replace('@', '')}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 ))}
             </div>
 
             {viewingProfile && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setViewingProfile(null)}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className={`p-6 text-white text-center relative bg-gradient-to-br ${viewingProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
-                            <button onClick={() => setViewingProfile(null)} className="absolute top-4 right-4 text-white/80 hover:text-white"><X className="w-6 h-6" /></button>
-                            <div className="absolute top-4 left-4 text-white/80 hover:text-white">
-                                <ShareProfileButton profile={viewingProfile} />
-                            </div>
-
-                            <div className="w-24 h-24 mx-auto bg-white dark:bg-gray-900 rounded-full border-4 border-white/20 mb-3 overflow-hidden shadow-lg">
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingProfile(null)}>
+                    <div
+                        className="bg-white dark:bg-gray-900 w-full h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className={`p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${viewingProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
+                            <button onClick={() => setViewingProfile(null)} className="absolute top-4 right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors"><X className="w-5 h-5" /></button>
+                            <div className="absolute top-4 left-4"><ShareProfileButton profile={viewingProfile} /></div>
+                            <div className="w-28 h-28 mx-auto bg-white dark:bg-gray-800 rounded-full border-4 border-white/20 mb-3 overflow-hidden shadow-xl">
                                 <AvatarGenerator nickname={viewingProfile.nickname} gender={viewingProfile.gender} />
                             </div>
-                            <h2 className="text-2xl font-black">{viewingProfile.nickname}, {viewingProfile.age}</h2>
-                            <div className="flex justify-center items-center gap-2 opacity-90 text-sm font-medium uppercase tracking-wide">
-                                <span className="capitalize">{viewingProfile.gender}</span> • <span>{viewingProfile.city}</span>
+                            <h2 className="text-3xl font-black text-white tracking-tight">{viewingProfile.nickname}</h2>
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                                <span className="px-3 py-1 bg-black/20 text-white text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
+                                    <User className="w-3 h-3" /> {viewingProfile.age} Years
+                                </span>
+                                <CompatibilityBadge myProfile={userProfile} theirProfile={viewingProfile} compact />
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-                            <CompatibilityBadge myProfile={userProfile} theirProfile={viewingProfile} />
-
-                            <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <h5 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-3 h-3" /> About Me</h5>
-                                <ExpandableText text={viewingProfile.self_intro} />
-                            </div>
-
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
-                                <h5 className="text-xs font-bold text-indigo-500 uppercase mb-2 flex items-center gap-2"><Search className="w-3 h-3" /> Looking For</h5>
-                                <ExpandableText text={viewingProfile.looking_for} />
-                            </div>
-
-                            <div>
-                                <h5 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><Hash className="w-3 h-3" /> Interests</h5>
-                                <div className="flex flex-wrap gap-2">
-                                    {viewingProfile.interests?.map(i => (
-                                        <span key={i} className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-xs font-bold rounded-md text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">{i}</span>
-                                    ))}
+                        <div className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth">
+                            <div className="grid grid-cols-2 gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Gender</span>
+                                    <span className="font-bold text-gray-900 dark:text-white capitalize flex items-center gap-1"><User className="w-4 h-4 text-indigo-500" /> {viewingProfile.gender}</span>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Location</span>
+                                    <span className="font-bold text-gray-900 dark:text-white truncate max-w-full flex items-center gap-1"><MapPin className="w-4 h-4 text-pink-500" /> {viewingProfile.city}</span>
                                 </div>
                             </div>
 
-                            {activeTab === 'matches' && viewingProfile.contact_info && (
-                                <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
-                                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-2">You matched! Here is their contact:</p>
-                                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-center font-mono font-bold text-green-700 dark:text-green-400 select-all">
-                                        {viewingProfile.contact_info}
+                            <div className="p-5 space-y-6 pb-8">
+                                {(viewingProfile.zodiac || viewingProfile.mbti) && (
+                                    <div className="flex flex-wrap justify-center gap-3">
+                                        {viewingProfile.zodiac && <span className="px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-bold rounded-2xl border border-purple-100 dark:border-purple-800">{viewingProfile.zodiac}</span>}
+                                        {viewingProfile.mbti && <span className="px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-bold rounded-2xl border border-blue-100 dark:border-blue-800">{viewingProfile.mbti}</span>}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Info className="w-4 h-4" /> About Me</h3>
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                        <ExpandableText text={viewingProfile.self_intro} />
                                     </div>
                                 </div>
-                            )}
+
+                                <div>
+                                    <h3 className="text-xs font-black text-pink-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Search className="w-4 h-4" /> Looking For</h3>
+                                    <div className="bg-pink-50 dark:bg-pink-900/10 p-4 rounded-2xl border border-pink-100 dark:border-pink-900/30">
+                                        <ExpandableText text={viewingProfile.looking_for} />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Hash className="w-4 h-4" /> Interests</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {viewingProfile.interests?.map(tag => (
+                                            <span key={tag} className="px-3 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">{tag}</span>
+                                        ))}
+                                        {!viewingProfile.interests?.length && <span className="text-gray-400 text-sm italic">No interests listed.</span>}
+                                    </div>
+                                </div>
+
+                                {viewingProfile.red_flags && viewingProfile.red_flags.length > 0 && (
+                                    <div className="bg-red-50 dark:bg-red-900/10 p-5 rounded-2xl border border-red-100 dark:border-red-900/30">
+                                        <h3 className="text-xs font-black text-red-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Flag className="w-4 h-4" /> My Red Flags</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {viewingProfile.red_flags.map((flag, idx) => (
+                                                <span key={idx} className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-600 dark:text-red-300 text-xs font-bold rounded-lg border border-red-200 dark:border-red-800 shadow-sm">{flag}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

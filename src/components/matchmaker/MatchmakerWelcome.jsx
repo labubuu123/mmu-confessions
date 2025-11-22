@@ -40,7 +40,7 @@ export default function MatchmakerWelcome({ onAuthSuccess }) {
                 />
             )}
 
-            <div className="min-h-[70vh] flex items-center justify-center px-4">
+            <div className="min-h-[80vh] md:min-h-[70vh] flex items-center justify-center px-4">
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                     <div className="absolute top-[-10%] right-[-5%] w-72 h-72 bg-purple-400/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
                     <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-indigo-400/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -60,7 +60,7 @@ export default function MatchmakerWelcome({ onAuthSuccess }) {
                             <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight">
                                 MMU Matchmaker
                             </h1>
-                            <p className="text-base text-gray-500 dark:text-gray-400 font-medium">
+                            <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium">
                                 Connect with peers, find your duo, or meet your soulmate anonymously.
                                 <br />
                                 <span className="text-xs opacity-80">匿名交友，寻找你的另一半。</span>

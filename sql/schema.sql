@@ -120,7 +120,12 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
     gender TEXT NOT NULL CHECK (gender IN ('male', 'female')),
     age INTEGER CHECK (age >= 18),
     city TEXT,
+    lat FLOAT,
+    long FLOAT,
     interests TEXT[],
+    red_flags TEXT[] DEFAULT '{}',
+    mbti TEXT,
+    zodiac TEXT,
     self_intro TEXT NOT NULL,
     looking_for TEXT NOT NULL,
     contact_info TEXT NOT NULL,
@@ -134,7 +139,12 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_profiles (
 );
 
 ALTER TABLE public.matchmaker_profiles
-ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS lat FLOAT,
+ADD COLUMN IF NOT EXISTS long FLOAT,
+ADD COLUMN IF NOT EXISTS mbti TEXT,
+ADD COLUMN IF NOT EXISTS zodiac TEXT,
+ADD COLUMN IF NOT EXISTS red_flags TEXT[] DEFAULT '{}';
 
 ALTER TABLE public.confessions
 ADD COLUMN IF NOT EXISTS is_permanent BOOLEAN DEFAULT FALSE;
@@ -238,6 +248,9 @@ DROP POLICY IF EXISTS "Enable insert for users (matchmaker_selfies)" ON storage.
 DROP POLICY IF EXISTS "Enable insert for users (matchmaker_verification)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable read for admin (matchmaker_verification)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable delete for admin (matchmaker)" ON storage.objects;
+
+DROP FUNCTION IF EXISTS get_browse_profiles(TEXT);
+DROP FUNCTION IF EXISTS get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT);
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
@@ -343,6 +356,11 @@ CREATE POLICY "Admins can delete messages"
 ON public.support_messages
 FOR DELETE
 USING (true);
+
+CREATE POLICY "Delete Own Loves"
+ON public.matchmaker_loves
+FOR DELETE
+USING (from_user_id = (SELECT auth.uid()::text));
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
     post_id_in BIGINT,
@@ -1075,6 +1093,15 @@ BEGIN
         VALUES (current_uid, target_user_id, 'pending')
         ON CONFLICT (from_user_id, to_user_id)
         DO UPDATE SET status = 'pending', updated_at = NOW();
+    
+    ELSIF action_type = 'delete' THEN
+        DELETE FROM public.matchmaker_loves
+        WHERE (from_user_id = current_uid AND to_user_id = target_user_id)
+            OR (from_user_id = target_user_id AND to_user_id = current_uid);
+
+        DELETE FROM public.matchmaker_matches
+        WHERE (user1_id = current_uid AND user2_id = target_user_id)
+            OR (user1_id = target_user_id AND user2_id = current_uid);
 
     ELSIF action_type = 'withdraw' THEN
         UPDATE public.matchmaker_loves
@@ -1099,7 +1126,12 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION get_browse_profiles(
-    viewer_id TEXT
+    viewer_id TEXT,
+    filter_gender TEXT DEFAULT 'all',
+    filter_max_age INT DEFAULT 100,
+    filter_lat FLOAT DEFAULT NULL,
+    filter_long FLOAT DEFAULT NULL,
+    filter_radius_km INT DEFAULT NULL
 )
 RETURNS TABLE (
     author_id TEXT,
@@ -1108,10 +1140,14 @@ RETURNS TABLE (
     age INT,
     city TEXT,
     interests TEXT[],
+    red_flags TEXT[],
+    mbti TEXT,
+    zodiac TEXT,
     self_intro TEXT,
     looking_for TEXT,
     avatar_seed TEXT,
-    created_at TIMESTAMP WITH TIME ZONE
+    created_at TIMESTAMP WITH TIME ZONE,
+    distance_km FLOAT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1119,18 +1155,61 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        p.author_id, p.nickname, p.gender, p.age, p.city,
-        p.interests, p.self_intro, p.looking_for, p.avatar_seed, p.created_at
+        p.author_id,
+        p.nickname,
+        p.gender,
+        p.age,
+        p.city,
+        p.interests,
+        p.red_flags,
+        p.mbti,
+        p.zodiac,
+        p.self_intro,
+        p.looking_for,
+        p.avatar_seed,
+        p.created_at,
+        CASE
+            WHEN filter_lat IS NOT NULL AND filter_long IS NOT NULL AND p.lat IS NOT NULL AND p.long IS NOT NULL THEN
+                (
+                    6371 * acos(
+                        least(1.0, greatest(-1.0,
+                            cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) +
+                            sin(radians(filter_lat)) * sin(radians(p.lat))
+                        ))
+                    )
+                )
+            ELSE NULL
+        END AS distance_km
     FROM public.matchmaker_profiles p
     WHERE p.status = 'approved'
         AND p.is_visible = true
         AND p.author_id != viewer_id
+        AND (filter_gender = 'all' OR p.gender = filter_gender)
+        AND p.age <= filter_max_age
         AND NOT EXISTS (
             SELECT 1 FROM public.matchmaker_loves l
-            WHERE (l.from_user_id = viewer_id AND l.to_user_id = p.author_id AND l.status IN ('pending', 'accepted', 'rejected'))
+            WHERE (l.from_user_id = viewer_id AND l.to_user_id = p.author_id)
                 OR (l.to_user_id = viewer_id AND l.from_user_id = p.author_id AND l.status = 'accepted')
+        )
+        AND (
+            filter_radius_km IS NULL
+            OR filter_radius_km <= 0
+            OR (
+                filter_lat IS NOT NULL AND p.lat IS NOT NULL AND
+                (
+                    6371 * acos(
+                        least(1.0, greatest(-1.0,
+                            cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) +
+                            sin(radians(filter_lat)) * sin(radians(p.lat))
+                        ))
+                    )
+                ) <= filter_radius_km
             )
-    ORDER BY p.created_at DESC
+        )
+    ORDER BY
+        (CASE WHEN filter_lat IS NOT NULL AND p.lat IS NOT NULL THEN 0 ELSE 1 END) ASC,
+        distance_km ASC,
+        p.created_at DESC
     LIMIT 50;
 END;
 $$;

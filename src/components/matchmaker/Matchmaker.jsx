@@ -23,6 +23,24 @@ export default function Matchmaker() {
     useEffect(() => {
         if (!user?.id) return;
 
+        const fetchInitialCount = async () => {
+            try {
+                const { count, error } = await supabase
+                    .from('matchmaker_loves')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('to_user_id', user.id)
+                    .eq('action_type', 'love');
+
+                if (!error && count !== null) {
+                    setIncomingCount(count);
+                }
+            } catch (err) {
+                console.error("Failed to fetch incoming count", err);
+            }
+        };
+
+        fetchInitialCount();
+
         const profileChannel = supabase.channel('public:matchmaker_profiles')
             .on('postgres_changes', {
                 event: '*',
@@ -40,8 +58,10 @@ export default function Matchmaker() {
                 schema: 'public',
                 table: 'matchmaker_loves',
                 filter: `to_user_id=eq.${user.id}`
-            }, () => {
-                setIncomingCount(prev => prev + 1);
+            }, (payload) => {
+                if (payload.new.action_type === 'love') {
+                    setIncomingCount(prev => prev + 1);
+                }
             })
             .subscribe();
 
@@ -170,11 +190,12 @@ export default function Matchmaker() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-300">
             <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 shadow-sm transition-colors">
-                <div className="max-w-5xl mx-auto px-4">
-                    <div className="flex justify-between items-center h-16">
-                        <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2" onClick={() => setView('browse')}>
-                            <Sparkles className="fill-indigo-600 dark:fill-indigo-400 w-6 h-6" />
-                            <span className="hidden md:inline">Matchmaker</span>
+                <div className="max-w-5xl mx-auto px-3 sm:px-4">
+                    <div className="flex justify-between items-center h-14 sm:h-16">
+                        <h1 className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2 cursor-pointer" onClick={() => setView('browse')}>
+                            <Sparkles className="fill-indigo-600 dark:fill-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
+                            <span className="hidden sm:inline">Matchmaker</span>
+                            <span className="sm:hidden">MMU Match</span>
                         </h1>
 
                         <div className="flex items-center gap-2">
@@ -191,27 +212,29 @@ export default function Matchmaker() {
                         </div>
                     </div>
 
-                    <div className="flex space-x-6">
+                    <div className="flex space-x-6 overflow-x-auto no-scrollbar">
                         <button
                             onClick={() => setView('browse')}
-                            className={`pb-3 px-2 text-sm font-bold border-b-2 transition-colors relative ${view === 'browse' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
+                            className={`pb-3 px-2 text-sm font-bold border-b-2 transition-colors relative whitespace-nowrap ${view === 'browse' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
                         >
                             Find Love
                         </button>
                         <button
                             onClick={() => { setView('connections'); setIncomingCount(0); }}
-                            className={`pb-3 px-2 text-sm font-bold border-b-2 transition-colors relative ${view === 'connections' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
+                            className={`pb-3 px-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${view === 'connections' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
                         >
                             Connections
                             {incomingCount > 0 && (
-                                <span className="absolute top-0 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] h-5 flex items-center justify-center animate-pulse leading-none shadow-sm">
+                                    {incomingCount > 99 ? '99+' : incomingCount}
+                                </span>
                             )}
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 py-6">
+            <div className="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
                 {view === 'browse' && <MatchmakerBrowse user={user} userProfile={profile} />}
                 {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} />}
                 {view === 'profile' && (

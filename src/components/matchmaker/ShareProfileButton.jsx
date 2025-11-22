@@ -1,7 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Share2, X, Check, Download } from 'lucide-react';
+import { Share2, X, Check, Download, MapPin, Heart, Flag, Hash, Search, User } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
+import QRCode from "react-qr-code";
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -59,7 +60,7 @@ export default function ShareProfileButton({ profile }) {
         try {
             const dataUrl = await toJpeg(cardRef.current, {
                 quality: 0.95,
-                backgroundColor: '#ffffff',
+                backgroundColor: '#1f2937',
                 cacheBust: true,
                 pixelRatio: 2,
                 style: {
@@ -70,7 +71,7 @@ export default function ShareProfileButton({ profile }) {
             });
 
             const link = document.createElement('a');
-            link.download = `MMU-Matchmaker-${profile.nickname}.jpg`;
+            link.download = `MMU Matchmaker-${profile.nickname}.jpg`;
             link.href = dataUrl;
 
             document.body.appendChild(link);
@@ -93,7 +94,7 @@ export default function ShareProfileButton({ profile }) {
             />
 
             <div
-                className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full flex flex-col pointer-events-auto max-h-[90vh]"
+                className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 md:p-6 max-w-md w-[95%] md:w-full flex flex-col pointer-events-auto max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -102,75 +103,117 @@ export default function ShareProfileButton({ profile }) {
                     </h3>
                     <button
                         onClick={() => setShowModal(false)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
+                        className="p-2 md:p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
                     >
                         <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                     </button>
                 </div>
 
-                <div className="overflow-y-auto flex-1 pr-1 -mr-1 mb-4">
+                <div className="overflow-y-auto flex-1 pr-1 -mr-1 mb-4 no-scrollbar">
                     <div
                         ref={cardRef}
-                        className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white relative overflow-hidden flex flex-col gap-4"
+                        className="bg-gray-800 rounded-3xl overflow-hidden shadow-lg w-full relative flex flex-col border border-gray-700"
+                        style={{ minWidth: '300px' }}
                     >
-                        <div className="absolute inset-0 opacity-10 pointer-events-none">
-                            {[...Array(20)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="absolute w-1 h-1 bg-white rounded-full"
-                                    style={{
-                                        left: `${Math.random() * 100}%`,
-                                        top: `${Math.random() * 100}%`
-                                    }}
-                                />
-                            ))}
+                        <div className={`p-6 md:p-8 text-center relative bg-gradient-to-br ${profile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
+                            <div className="w-24 h-24 md:w-32 md:h-32 mx-auto bg-gray-200 rounded-full border-4 border-white/10 mb-4 overflow-hidden shadow-xl">
+                                <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+                            </div>
+                            <h2 className="text-2xl md:text-3xl font-black text-gray-100 leading-tight break-words drop-shadow-sm">
+                                {profile.nickname}, {profile.age}
+                            </h2>
+                            <div className="flex justify-center items-center gap-2 text-indigo-100 font-medium text-sm mt-1">
+                                <MapPin className="w-4 h-4" /> {profile.city || 'Unknown City'}
+                            </div>
                         </div>
 
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-4 pb-4 border-b border-white/20">
-                                <div className="w-16 h-16 rounded-full bg-white overflow-hidden flex-shrink-0 border-2 border-white/30 shadow-sm">
-                                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
-                                </div>
-                                <div>
-                                    <h2 className="font-black text-2xl leading-tight drop-shadow-sm">{profile.nickname}</h2>
-                                    <p className="text-sm text-indigo-100 opacity-90 font-medium flex items-center gap-2">
-                                        <span className="px-2 py-0.5 bg-white/20 rounded-md text-xs capitalize">{profile.gender}</span>
-                                        <span>{profile.age} years old</span>
-                                    </p>
-                                    <p className="text-xs text-indigo-200 mt-1 font-mono">
-                                        {profile.city}
-                                    </p>
-                                </div>
+                        <div className="p-5 md:p-6 space-y-4 md:space-y-5 text-gray-200">
+                            <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+                                {profile.zodiac && (
+                                    <span className="px-3 py-1.5 bg-purple-900/40 text-purple-200 text-xs font-bold rounded-xl border border-purple-700/50 shadow-sm">
+                                        {profile.zodiac}
+                                    </span>
+                                )}
+                                {profile.mbti && (
+                                    <span className="px-3 py-1.5 bg-blue-900/40 text-blue-200 text-xs font-bold rounded-xl border border-blue-700/50 shadow-sm">
+                                        {profile.mbti}
+                                    </span>
+                                )}
                             </div>
 
-                            <div className="mt-4">
-                                <h4 className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-1">About Me</h4>
-                                <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/10">
-                                    <p className="leading-relaxed text-sm whitespace-pre-wrap">
-                                        {profile.self_intro}
+                            <div>
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <User className="w-4 h-4" /> About Me
+                                </h3>
+                                <div className="bg-gray-700/40 p-4 rounded-2xl border border-gray-600 text-left shadow-sm">
+                                    <p className="text-sm text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                                        {profile.self_intro || "No intro provided."}
                                     </p>
                                 </div>
                             </div>
 
                             {profile.looking_for && (
                                 <div>
-                                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-1">Looking For</h4>
-                                    <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/10">
-                                        <p className="leading-relaxed text-sm whitespace-pre-wrap">
+                                    <h3 className="text-xs font-black text-pink-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Search className="w-4 h-4" /> Looking For
+                                    </h3>
+                                    <div className="bg-pink-900/10 p-4 rounded-2xl border border-pink-900/30 text-left shadow-sm">
+                                        <p className="text-sm text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
                                             {profile.looking_for}
                                         </p>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="mt-2 pt-4 border-t border-white/20">
-                                <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-200 mb-2 block">Interests</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {profile.interests && profile.interests.map(interest => (
-                                        <span key={interest} className="bg-white/20 px-2 py-1 rounded-md text-[10px] font-medium">
-                                            {interest}
-                                        </span>
-                                    ))}
+                            {profile.interests && profile.interests.length > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Hash className="w-4 h-4" /> Interests
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {profile.interests.map(tag => (
+                                            <span key={tag} className="px-3 py-1.5 bg-gray-700 text-gray-300 text-xs font-bold rounded-lg border border-gray-600 shadow-sm">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {profile.red_flags && profile.red_flags.length > 0 && (
+                                <div className="bg-red-900/10 p-4 rounded-2xl border border-red-900/30 text-left">
+                                    <h3 className="text-xs font-black text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Flag className="w-4 h-4" /> Red Flags
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {profile.red_flags.map((flag, idx) => (
+                                            <span key={idx} className="px-3 py-1.5 bg-red-900/20 text-red-300 text-xs font-bold rounded-lg border border-red-800/50 shadow-sm">
+                                                {flag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-6 pt-6 border-t border-gray-700 flex justify-between items-center">
+                                <div className="flex flex-col justify-center">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Scan to Match</span>
+                                    <div className="flex items-center gap-1.5 text-pink-500 font-bold text-xs">
+                                        <Heart className="w-3.5 h-3.5 fill-current" />
+                                        <span>MMU Matchmaker</span>
+                                    </div>
+                                    <span className="text-[9px] text-gray-500 mt-1">mmuconfessions.fun</span>
+                                </div>
+
+                                <div className="bg-gray-300 p-2 rounded-xl border border-gray-400 shadow-sm">
+                                    <QRCode
+                                        value="https://mmuconfessions.fun/matchmaker"
+                                        size={48}
+                                        fgColor="#111827"
+                                        bgColor="transparent"
+                                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                        viewBox={`0 0 256 256`}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -182,7 +225,7 @@ export default function ShareProfileButton({ profile }) {
                         onClick={handleDownloadImage}
                         disabled={downloaded}
                         className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-medium transition-all shadow-md hover:shadow-lg active:scale-95
-                        ${downloaded ? 'bg-green-600' : 'bg-gray-900 dark:bg-indigo-600 hover:bg-gray-800 dark:hover:bg-indigo-700'}`}
+    ${downloaded ? 'bg-green-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                     >
                         {downloaded ? <Check className="w-5 h-5" /> : <Download className="w-5 h-5" />}
                         <span>{downloaded ? 'Saved to Gallery' : 'Download Image'}</span>

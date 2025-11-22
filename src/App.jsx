@@ -69,7 +69,7 @@ function App() {
           <Route path="/policy" element={<PolicyPage />} />
           <Route path="/analytics" element={<UserAnalytics />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-          {/* <Route path="/matchmaker" element={<Matchmaker />} /> */}
+          <Route path="/matchmaker" element={<Matchmaker />} />
         </Routes>
 
         <FloatingActionMenu />

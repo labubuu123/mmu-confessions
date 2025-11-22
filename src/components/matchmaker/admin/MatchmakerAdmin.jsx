@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, Siren } from 'lucide-react';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -179,11 +179,26 @@ export default function MatchmakerAdmin() {
                     <AvatarGenerator nickname={p.nickname} gender={p.gender} />
                 </div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white break-words w-full">{p.nickname}</h3>
-                <div className="flex flex-wrap justify-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+
+                <div className="flex flex-wrap justify-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">
                     <span className="capitalize px-2 py-0.5 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">{p.gender}, {p.age}</span>
                     <span className="flex items-center justify-center gap-1 px-2 py-0.5"><MapPin className="w-3 h-3" /> {p.city}</span>
                 </div>
-                <div className="mt-4 md:mt-6 w-full p-3 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+
+                <div className="flex flex-wrap justify-center gap-2 mb-4">
+                    {p.zodiac && (
+                        <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 text-[10px] font-bold rounded border border-purple-200 dark:border-purple-800">
+                            {p.zodiac.split(' ')[0]} {p.zodiac.split(' ')[1]}
+                        </span>
+                    )}
+                    {p.mbti && (
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-[10px] font-bold rounded border border-blue-200 dark:border-blue-800">
+                            {p.mbti}
+                        </span>
+                    )}
+                </div>
+
+                <div className="w-full p-3 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
                     <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"> Contact</div>
                     <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400 break-all text-sm select-all">
                         {p.contact_info}
@@ -192,6 +207,21 @@ export default function MatchmakerAdmin() {
             </div>
 
             <div className="flex-1 p-5 md:p-6 space-y-4 md:space-y-6 min-w-0">
+                {p.red_flags && p.red_flags.length > 0 && (
+                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30">
+                        <h4 className="text-xs font-bold text-red-500 uppercase mb-2 flex items-center gap-2">
+                            <Flag className="w-4 h-4" /> Red Flags
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                            {p.red_flags.map(flag => (
+                                <span key={flag} className="px-2 py-1 bg-white dark:bg-gray-900 text-red-600 dark:text-red-300 text-xs font-bold rounded border border-red-200 dark:border-red-800">
+                                    {flag}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><User className="w-4 h-4" /> About User</h4>
                     <ExpandableText text={p.self_intro} />

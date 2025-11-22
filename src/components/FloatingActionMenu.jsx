@@ -133,8 +133,8 @@ export default function FloatingActionMenu() {
 
     const handleMatchmakerClick = () => {
         setIsOpen(true);
-        //navigate('/matchmaker');
-        alert("传说中的「月老功能」即将上线... Stay tuned ❤️");
+        navigate('/matchmaker');
+        //alert("传说中的「月老功能」即将上线... Stay tuned ❤️");
     };
 
     const handleContactAdminClick = () => {
