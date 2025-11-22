@@ -1,4 +1,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://mmuconfessions.fun//sitemap.xml
+Sitemap: https://mmuconfessions.fun/sitemap.xml
