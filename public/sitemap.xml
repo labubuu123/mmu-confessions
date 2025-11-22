@@ -4,13 +4,41 @@
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
-
 
 <url>
   <loc>https://mmuconfessions.fun/</loc>
-  <lastmod>2025-11-17T14:46:49+00:00</lastmod>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>1.00</priority>
 </url>
 
+<url>
+  <loc>https://mmuconfessions.fun/top</loc>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+
+<url>
+  <loc>https://mmuconfessions.fun/search</loc>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+
+<url>
+  <loc>https://mmuconfessions.fun/analytics</loc>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+
+<url>
+  <loc>https://mmuconfessions.fun/policy</loc>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>0.50</priority>
+</url>
+
+<!-- <url>
+  <loc>https://mmuconfessions.fun/matchmaker</loc>
+  <lastmod>2025-11-22T00:00:00+00:00</lastmod>
+  <priority>0.70</priority>
+</url> -->
 
 </urlset>
