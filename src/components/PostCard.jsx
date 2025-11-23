@@ -151,7 +151,7 @@ export default function PostCard({ post, onOpen }) {
         <>
             <div
                 onClick={() => onOpen && onOpen(post)}
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative"
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-clip group relative"
             >
                 <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-4rem)]">
                     {postAge && (
