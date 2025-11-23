@@ -132,12 +132,12 @@ export default function ShareButton({ post }) {
         <>
             <div
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-                style={{ zIndex: 99998 }}
+                style={{ zIndex: 10000 }}
                 onClick={handleCloseModal}
             />
             <div 
                 className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
-                style={{ zIndex: 99999 }}
+                style={{ zIndex: 10001 }}
             >
                 <div
                     className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full pointer-events-auto max-h-[90vh] overflow-y-auto"
