@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Calendar, Info } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
-const AvatarGenerator = ({ nickname, gender }) => {
+// Optimized: Memoized to prevent re-drawing SVG on every parent render
+const AvatarGenerator = memo(({ nickname, gender }) => {
     const seed = useMemo(() => {
         const str = (nickname || 'User') + gender;
         let hash = 0;
@@ -38,9 +39,9 @@ const AvatarGenerator = ({ nickname, gender }) => {
             {gender === 'male' ? (<path d="M25 40 Q50 15 75 40" fill="#1f2937" opacity="0.1" />) : (<path d="M20 45 Q50 10 80 45" fill="#1f2937" opacity="0.1" />)}
         </svg>
     );
-};
+});
 
-const ExpandableText = ({ text, limit = 150 }) => {
+const ExpandableText = memo(({ text, limit = 150 }) => {
     const [expanded, setExpanded] = useState(false);
     if (!text) return null;
 
@@ -57,7 +58,7 @@ const ExpandableText = ({ text, limit = 150 }) => {
             </button>
         </div>
     );
-};
+});
 
 export default function MatchmakerBrowse({ user, userProfile }) {
     const [profiles, setProfiles] = useState([]);
@@ -91,13 +92,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         fetchProfiles();
 
         const channel = supabase.channel('browse_realtime')
-            .on('postgres_changes', {
-                event: 'DELETE',
-                schema: 'public',
-                table: 'matchmaker_loves'
-            }, () => {
-                fetchProfiles();
-            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'matchmaker_loves' }, () => fetchProfiles())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -144,59 +139,62 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     );
 
     return (
-        <div className="pb-20 min-h-screen">
-            <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/50 dark:border-gray-700 shadow-sm sticky top-0 z-30">
+        <div className="pb-24 min-h-screen">
+            {/* Filter Bar - Optimized for dense mobile layout */}
+            <div className="mb-4 flex flex-col gap-2 sm:gap-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl p-2 sm:p-4 rounded-b-2xl sm:rounded-2xl border-b sm:border border-white/50 dark:border-gray-700 shadow-sm sticky top-0 z-30">
                 <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 w-full">
                     {['all', 'male', 'female'].map(g => (
                         <button key={g} onClick={() => setFilters(prev => ({ ...prev, gender: g }))}
-                            className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-[10px] sm:text-xs font-bold capitalize transition-all ${filters.gender === g ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
+                            className={`flex-1 px-2 py-1.5 sm:py-2 rounded-md text-[10px] sm:text-xs font-bold capitalize transition-all ${filters.gender === g ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
                             {g}
                         </button>
                     ))}
                 </div>
                 
-                <div className="flex flex-col xs:flex-row gap-3 w-full">
-                    <div className="flex items-center gap-2 flex-1">
-                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">Age: {filters.maxAge}</span>
-                        <input type="range" min="18" max="50" value={filters.maxAge} onChange={(e) => setFilters(prev => ({ ...prev, maxAge: parseInt(e.target.value) }))} className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg accent-indigo-600 cursor-pointer" />
+                <div className="grid grid-cols-2 gap-3 w-full">
+                    <div className="flex flex-col justify-center px-1">
+                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">Max Age: {filters.maxAge}</span>
+                        <input type="range" min="18" max="50" value={filters.maxAge} onChange={(e) => setFilters(prev => ({ ...prev, maxAge: parseInt(e.target.value) }))} className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg accent-indigo-600 cursor-pointer" />
                     </div>
-                    <div className="flex items-center gap-2 flex-1 xs:border-l xs:border-gray-200 xs:dark:border-gray-700 xs:pl-3">
-                        <div className="flex flex-col flex-1">
-                            <span className="text-[10px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 whitespace-nowrap">
-                                <MapPin className="w-3 h-3" />
-                                {filters.radius === 0 ? "Global" : `< ${filters.radius} km`}
+                    <div className="flex flex-col justify-center px-1 border-l border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> {filters.radius === 0 ? "Global" : `< ${filters.radius}km`}
                             </span>
-                            {!filters.userLat && <span className="text-[9px] sm:text-[10px] text-red-400">No GPS</span>}
+                            {!filters.userLat && <span className="text-[8px] text-red-400 font-medium">No GPS</span>}
                         </div>
-                        <input type="range" min="0" max="100" step="5" disabled={!filters.userLat} value={filters.radius} onChange={(e) => setFilters(prev => ({ ...prev, radius: parseInt(e.target.value) }))} className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg accent-pink-500 cursor-pointer disabled:opacity-50" />
+                        <input type="range" min="0" max="100" step="5" disabled={!filters.userLat} value={filters.radius} onChange={(e) => setFilters(prev => ({ ...prev, radius: parseInt(e.target.value) }))} className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg accent-pink-500 cursor-pointer disabled:opacity-50" />
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+            {/* Profile Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 px-2 sm:px-0">
                 {filteredProfiles.map(profile => (
-                    <div key={profile.author_id} onClick={() => setSelectedProfile(profile)} className="relative group bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 dark:border-gray-700">
-                        <div className={`h-14 sm:h-16 md:h-20 bg-gradient-to-br ${profile.gender === 'male' ? 'from-indigo-400 to-blue-500' : 'from-pink-400 to-rose-500'}`}>
-                            <div className="absolute top-5 sm:top-6 md:top-8 left-1/2 -translate-x-1/2 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 sm:border-4 border-white dark:border-gray-800 shadow-md bg-white overflow-hidden transition-all">
+                    <div key={profile.author_id} onClick={() => setSelectedProfile(profile)} className="relative group bg-white dark:bg-gray-800 rounded-xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 dark:border-gray-700 flex flex-col">
+                        <div className={`h-14 sm:h-16 md:h-20 bg-gradient-to-br ${profile.gender === 'male' ? 'from-indigo-400 to-blue-500' : 'from-pink-400 to-rose-500'} relative`}>
+                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-sm bg-white overflow-hidden">
                                 <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
                             </div>
                         </div>
 
-                        <div className="pt-8 sm:pt-9 md:pt-10 pb-2 sm:pb-3 px-2 sm:px-3 md:px-4 text-center">
-                            <h3 className="text-xs sm:text-sm md:text-lg font-black text-gray-900 dark:text-white truncate">{profile.nickname}, {profile.age}</h3>
-                            <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center justify-center gap-1 mb-2">
-                                <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {profile.distance_km ? `${profile.distance_km.toFixed(1)} km` : profile.city}
+                        <div className="pt-7 sm:pt-9 md:pt-10 pb-3 px-2 sm:px-4 text-center flex-1 flex flex-col">
+                            <h3 className="text-xs sm:text-sm md:text-lg font-black text-gray-900 dark:text-white leading-tight mb-0.5 break-words">{profile.nickname}, {profile.age}</h3>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center justify-center gap-1 mb-2 whitespace-nowrap">
+                                <MapPin className="w-2.5 h-2.5" /> {profile.distance_km ? `${profile.distance_km.toFixed(1)} km` : profile.city}
                             </p>
 
                             <div className="flex flex-wrap justify-center gap-1 mb-2">
-                                {profile.mbti && <span className="px-1 sm:px-1.5 md:px-2 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-md border dark:border-gray-600">{profile.mbti}</span>}
-                                {profile.zodiac && <span className="px-1 sm:px-1.5 md:px-2 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-md border dark:border-gray-600">{profile.zodiac.split(' ')[1]}</span>}
+                                {profile.mbti && <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded border dark:border-gray-600">{profile.mbti}</span>}
+                                {profile.zodiac && <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded border dark:border-gray-600">{profile.zodiac.split(' ')[1]}</span>}
                             </div>
 
-                            <CompatibilityBadge myProfile={userProfile} theirProfile={profile} />
+                            <div className="w-full">
+                                <CompatibilityBadge myProfile={userProfile} theirProfile={profile} />
+                            </div>
 
-                            <button onClick={(e) => handleLove(e, profile.author_id)} disabled={profile.hasSentLove} className={`mt-2 sm:mt-3 w-full py-1.5 sm:py-2 md:py-3 rounded-xl font-bold text-[10px] sm:text-xs md:text-sm flex items-center justify-center gap-1 transition-all active:scale-95 shadow-md hover:shadow-lg ${profile.hasSentLove ? 'bg-green-50 text-green-600 border border-green-200 cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                                {profile.hasSentLove ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" /> : <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current" />}
+                            <button onClick={(e) => handleLove(e, profile.author_id)} disabled={profile.hasSentLove} className={`mt-auto pt-2 w-full py-2 rounded-lg font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1 transition-all active:scale-95 ${profile.hasSentLove ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md'}`}>
+                                {profile.hasSentLove ? <Check className="w-3 h-3" /> : <Heart className="w-3 h-3 fill-current" />}
                                 {profile.hasSentLove ? 'Sent' : 'Connect'}
                             </button>
                         </div>
@@ -204,92 +202,100 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 ))}
             </div>
 
+            {/* Modal - Optimized for mobile viewport height (dvh) */}
             {selectedProfile && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedProfile(null)}>
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedProfile(null)}>
                     <div
-                        className="bg-white dark:bg-gray-900 w-full h-[92vh] sm:h-auto sm:max-h-[90vh] sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300"
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
                         onClick={e => e.stopPropagation()}
                     >
+                        {/* Modal Header */}
                         <div className={`p-4 sm:p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
-                            <button onClick={() => setSelectedProfile(null)} className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-black/20 hover:bg-black/30 p-1.5 sm:p-2 rounded-full text-white transition-colors"><X className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                            <div className="absolute top-3 sm:top-4 left-3 sm:left-4"><ShareProfileButton profile={selectedProfile} /></div>
+                            {/* Close button with larger touch target */}
+                            <button onClick={() => setSelectedProfile(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10">
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div className="absolute top-3 left-3 sm:top-4 sm:left-4"><ShareProfileButton profile={selectedProfile} /></div>
 
-                            <div className="w-20 h-20 sm:w-28 sm:h-28 mx-auto bg-white dark:bg-gray-800 rounded-full border-4 border-white/20 mb-2 sm:mb-3 overflow-hidden shadow-xl">
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-white dark:bg-gray-800 rounded-full border-4 border-white/20 mb-2 sm:mb-3 overflow-hidden shadow-xl mt-4 sm:mt-0">
                                 <AvatarGenerator nickname={selectedProfile.nickname} gender={selectedProfile.gender} />
                             </div>
-                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{selectedProfile.nickname}</h2>
-                            <div className="flex items-center justify-center gap-2 mt-2">
-                                <span className="px-2 sm:px-3 py-1 bg-black/20 text-white text-[10px] sm:text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
-                                    <User className="w-3 h-3" /> {selectedProfile.age} Years
+                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">{selectedProfile.nickname}</h2>
+                            <div className="flex items-center justify-center gap-2 mt-3">
+                                <span className="px-2.5 py-1 bg-black/20 text-white text-[10px] sm:text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
+                                    <User className="w-3 h-3" /> {selectedProfile.age}
                                 </span>
-                                <CompatibilityBadge myProfile={userProfile} theirProfile={selectedProfile} compact />
+                                <div className="max-w-[180px]">
+                                    <CompatibilityBadge myProfile={userProfile} theirProfile={selectedProfile} />
+                                </div>
                             </div>
                         </div>
 
+                        {/* Modal Scrollable Content */}
                         <div className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth">
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800">
-                                <div className="bg-gray-50 dark:bg-gray-800 p-2 sm:p-3 rounded-xl flex flex-col items-center text-center">
-                                    <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Gender</span>
-                                    <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white capitalize flex items-center gap-1">
-                                        <User className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" /> {selectedProfile.gender}
+                            <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Gender</span>
+                                    <span className="text-xs font-bold text-gray-900 dark:text-white capitalize flex items-center gap-1">
+                                        <User className="w-3 h-3 text-indigo-500" /> {selectedProfile.gender}
                                     </span>
                                 </div>
-                                <div className="bg-gray-50 dark:bg-gray-800 p-2 sm:p-3 rounded-xl flex flex-col items-center text-center">
-                                    <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Location</span>
-                                    <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-full flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-pink-500" /> {selectedProfile.city}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Location</span>
+                                    <span className="text-xs font-bold text-gray-900 dark:text-white break-words w-full justify-center flex items-center gap-1 leading-tight">
+                                        <MapPin className="w-3 h-3 text-pink-500 flex-shrink-0" /> {selectedProfile.city}
                                     </span>
                                 </div>
                             </div>
 
-                            <div className="p-3 sm:p-5 space-y-4 sm:space-y-6 pb-24 sm:pb-8">
+                            <div className="p-4 space-y-5 pb-32 sm:pb-8">
                                 {(selectedProfile.zodiac || selectedProfile.mbti) && (
-                                    <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-                                        {selectedProfile.zodiac && <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs sm:text-sm font-bold rounded-2xl border border-purple-100 dark:border-purple-800">{selectedProfile.zodiac}</span>}
-                                        {selectedProfile.mbti && <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-bold rounded-2xl border border-blue-100 dark:border-blue-800">{selectedProfile.mbti}</span>}
+                                    <div className="flex flex-wrap justify-center gap-2">
+                                        {selectedProfile.zodiac && <span className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold rounded-xl border border-purple-100 dark:border-purple-800">{selectedProfile.zodiac}</span>}
+                                        {selectedProfile.mbti && <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-xl border border-blue-100 dark:border-blue-800">{selectedProfile.mbti}</span>}
                                     </div>
                                 )}
 
                                 <div>
-                                    <h3 className="text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
-                                        <Info className="w-3 h-3 sm:w-4 sm:h-4" /> About Me
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Info className="w-3 h-3" /> About Me
                                     </h3>
-                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 sm:p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-700">
                                         <ExpandableText text={selectedProfile.self_intro} />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] sm:text-xs font-black text-pink-400 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
-                                        <Search className="w-3 h-3 sm:w-4 sm:h-4" /> Looking For
+                                    <h3 className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Search className="w-3 h-3" /> Looking For
                                     </h3>
-                                    <div className="bg-pink-50 dark:bg-pink-900/10 p-3 sm:p-4 rounded-2xl border border-pink-100 dark:border-pink-900/30">
+                                    <div className="bg-pink-50 dark:bg-pink-900/10 p-3 rounded-2xl border border-pink-100 dark:border-pink-900/30">
                                         <ExpandableText text={selectedProfile.looking_for} />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
-                                        <Hash className="w-3 h-3 sm:w-4 sm:h-4" /> Interests
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Hash className="w-3 h-3" /> Interests
                                     </h3>
-                                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {selectedProfile.interests?.map(tag => (
-                                            <span key={tag} className="px-2 py-1 sm:px-3 sm:py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] sm:text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+                                            <span key={tag} className="px-2.5 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm whitespace-normal leading-tight">
                                                 {tag}
                                             </span>
                                         ))}
-                                        {!selectedProfile.interests?.length && <span className="text-gray-400 text-xs sm:text-sm italic">No interests listed.</span>}
+                                        {!selectedProfile.interests?.length && <span className="text-gray-400 text-xs italic">No interests listed.</span>}
                                     </div>
                                 </div>
 
                                 {selectedProfile.red_flags && selectedProfile.red_flags.length > 0 && (
-                                    <div className="bg-red-50 dark:bg-red-900/10 p-3 sm:p-5 rounded-2xl border border-red-100 dark:border-red-900/30">
-                                        <h3 className="text-[10px] sm:text-xs font-black text-red-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
-                                            <Flag className="w-3 h-3 sm:w-4 sm:h-4" /> My Red Flags
+                                    <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-2xl border border-red-100 dark:border-red-900/30">
+                                        <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                            <Flag className="w-3 h-3" /> My Red Flags
                                         </h3>
-                                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                        <div className="flex flex-wrap gap-1.5">
                                             {selectedProfile.red_flags.map((flag, idx) => (
-                                                <span key={idx} className="px-2 py-1 sm:px-3 sm:py-1.5 bg-white dark:bg-gray-800 text-red-600 dark:text-red-300 text-[10px] sm:text-xs font-bold rounded-lg border border-red-200 dark:border-red-800 shadow-sm">
+                                                <span key={idx} className="px-2.5 py-1 bg-white dark:bg-gray-800 text-red-600 dark:text-red-300 text-[10px] font-bold rounded-lg border border-red-200 dark:border-red-800 shadow-sm whitespace-normal leading-tight">
                                                     {flag}
                                                 </span>
                                             ))}
@@ -299,19 +305,20 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             </div>
                         </div>
 
-                        <div className="p-3 sm:p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-2 sm:gap-3 flex-shrink-0 pb-6 sm:pb-4 safe-area-pb z-20">
+                        {/* Sticky Action Footer */}
+                        <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0 pb-safe-area-bottom z-20">
                             <button
                                 onClick={(e) => handleLove(e, selectedProfile.author_id)}
                                 disabled={selectedProfile.hasSentLove}
-                                className={`flex-1 py-3 sm:py-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl active:scale-95 ${selectedProfile.hasSentLove ? 'bg-green-500 text-white cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                                className={`flex-1 py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${selectedProfile.hasSentLove ? 'bg-green-500 text-white cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                             >
-                                {selectedProfile.hasSentLove ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" /> Request Sent</> : <><Heart className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> Connect</>}
+                                {selectedProfile.hasSentLove ? <><Check className="w-5 h-5" /> Request Sent</> : <><Heart className="w-5 h-5 fill-current" /> Connect</>}
                             </button>
                             <button
                                 onClick={() => setReportTarget({ id: selectedProfile.author_id, name: selectedProfile.nickname })}
-                                className="px-4 sm:px-5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-2xl transition-colors flex items-center justify-center"
+                                className="px-4 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-xl transition-colors flex items-center justify-center"
                             >
-                                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <AlertTriangle className="w-6 h-6" />
                             </button>
                         </div>
                     </div>
@@ -319,13 +326,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             )}
 
             {reportTarget && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-4 sm:p-6 shadow-2xl">
-                        <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4 text-gray-900 dark:text-white">Report {reportTarget.name}?</h3>
-                        <textarea className="w-full p-2.5 sm:p-3 border border-gray-300 dark:border-gray-600 rounded-xl mb-3 sm:mb-4 bg-white dark:bg-gray-900 text-sm sm:text-base text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="Reason..." value={reportReason} onChange={e => setReportReason(e.target.value)} />
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+                        <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Report {reportTarget.name}?</h3>
+                        <textarea className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl mb-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="Reason..." value={reportReason} onChange={e => setReportReason(e.target.value)} />
                         <div className="flex gap-2">
-                            <button onClick={() => { setReportTarget(null); setReportReason(''); }} className="flex-1 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 rounded-lg font-bold text-sm sm:text-base text-gray-700 dark:text-gray-300">Cancel</button>
-                            <button onClick={handleReportSubmit} disabled={submittingReport || !reportReason.trim()} className="flex-1 py-2 sm:py-2.5 bg-red-500 text-white rounded-lg font-bold text-sm sm:text-base hover:bg-red-600">Report</button>
+                            <button onClick={() => { setReportTarget(null); setReportReason(''); }} className="flex-1 py-2.5 bg-gray-200 dark:bg-gray-700 rounded-lg font-bold text-gray-700 dark:text-gray-300">Cancel</button>
+                            <button onClick={handleReportSubmit} disabled={submittingReport || !reportReason.trim()} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600">Report</button>
                         </div>
                     </div>
                 </div>
