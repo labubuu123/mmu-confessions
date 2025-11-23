@@ -47,14 +47,13 @@ export default function ShareButton({ post }) {
     const CARD_TEXT_LIMIT = 100
     const cardText = getTruncatedText(post.text, CARD_TEXT_LIMIT)
 
-    // Prevent body scroll when modal is open
     useEffect(() => {
         if (showModal) {
             document.body.style.overflow = 'hidden'
         } else {
             document.body.style.overflow = 'unset'
         }
-        
+
         return () => {
             document.body.style.overflow = 'unset'
         }
@@ -135,7 +134,7 @@ export default function ShareButton({ post }) {
                 style={{ zIndex: 10000 }}
                 onClick={handleCloseModal}
             />
-            <div 
+            <div
                 className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
                 style={{ zIndex: 10001 }}
             >

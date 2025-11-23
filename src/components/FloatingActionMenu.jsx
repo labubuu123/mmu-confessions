@@ -151,7 +151,6 @@ export default function FloatingActionMenu() {
 
     return (
         <>
-            {/* Backdrop overlay when menu is open */}
             {isOpen && (
                 <div
                     className="fixed inset-0 z-40"
@@ -159,7 +158,6 @@ export default function FloatingActionMenu() {
                 />
             )}
 
-            {/* Menu items - positioned absolutely, appear above main button */}
             {isOpen && (
                 <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <button onClick={handleLiveActivityClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
@@ -185,7 +183,6 @@ export default function FloatingActionMenu() {
                 </div>
             )}
 
-            {/* Main floating button - ONLY this element is always visible */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center text-white rounded-full shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 ring-indigo-300 dark:ring-indigo-900 ${isOpen ? 'bg-gray-600 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
