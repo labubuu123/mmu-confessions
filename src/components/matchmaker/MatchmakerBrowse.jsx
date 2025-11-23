@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { calculateCompatibility } from '../../utils/compatibility'; // Imported to calculate score for the mini badge
+import { calculateCompatibility } from '../../utils/compatibility';
 import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
@@ -48,7 +48,6 @@ const ExpandableText = memo(({ text, limit = 150 }) => {
     );
 });
 
-// NEW: A cleaner, mini match indicator for the card view
 const MiniMatchPill = ({ myProfile, theirProfile }) => {
     const score = useMemo(() => {
         if (!myProfile || !theirProfile) return 0;
@@ -82,6 +81,12 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [submittingReport, setSubmittingReport] = useState(false);
     const [filters, setFilters] = useState({ gender: 'all', maxAge: 30, radius: 0, userLat: null, userLong: null });
 
+    // --- Drag to Close State ---
+    const [dragY, setDragY] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartY = useRef(0);
+    const scrollContentRef = useRef(null); // Ref for the scrollable content area
+
     const fetchProfiles = async () => {
         setLoading(true);
         try {
@@ -114,6 +119,12 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         return () => clearTimeout(timeout);
     }, [filters.gender, filters.maxAge, filters.radius]);
 
+    // Reset drag state when modal opens/closes
+    useEffect(() => {
+        setDragY(0);
+        setIsDragging(false);
+    }, [selectedProfile]);
+
     const filteredProfiles = useMemo(() => {
         return profiles.filter(profile => {
             if (filters.gender !== 'all' && profile.gender !== filters.gender) return false;
@@ -140,6 +151,40 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             setSelectedProfile(null);
         } catch (err) { alert("Failed to report."); }
         finally { setSubmittingReport(false); }
+    };
+
+    // --- Drag Handlers ---
+    const handleTouchStart = (e) => {
+        // Only allow dragging if the internal content is scrolled to the absolute top
+        if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
+        
+        setIsDragging(true);
+        dragStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        
+        const currentY = e.touches[0].clientY;
+        const delta = currentY - dragStartY.current;
+
+        // Only allow dragging downwards (positive delta)
+        if (delta > 0) {
+            e.preventDefault(); // Prevent body scroll
+            setDragY(delta);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+
+        // Threshold to close: 120px
+        if (dragY > 120) {
+            setSelectedProfile(null);
+        } else {
+            setDragY(0); // Snap back
+        }
     };
 
     if (loading && profiles.length === 0 && !selectedProfile) return (
@@ -217,7 +262,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                                 )}
                             </div>
 
-                            {/* REPLACEMENT: Mini Match Pill instead of heavy Component */}
                             <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
 
                             {/* Action Button */}
@@ -237,15 +281,32 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 ))}
             </div>
 
-            {/* Modal - Keeps full functionality */}
+            {/* Modal - Enhanced with Drag to Close */}
             {selectedProfile && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedProfile(null)}>
+                <div 
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+                    onClick={() => setSelectedProfile(null)}
+                >
                     <div
-                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300"
                         onClick={e => e.stopPropagation()}
+                        // Apply drag transform logic
+                        style={{ 
+                            transform: `translateY(${dragY}px)`,
+                            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' 
+                        }}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
                     >
+                        {/* Drag Handle Bar (Visible mainly on mobile) */}
+                        <div className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center z-50 pointer-events-none">
+                            <div className="w-12 h-1.5 bg-white/40 rounded-full shadow-sm backdrop-blur-md"></div>
+                        </div>
+
                         {/* Modal Header */}
                         <div className={`p-4 sm:p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
+                            
                             <button onClick={() => setSelectedProfile(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10">
                                 <X className="w-5 h-5" />
                             </button>
@@ -266,7 +327,10 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         </div>
 
                         {/* Modal Scrollable Content */}
-                        <div className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth">
+                        <div 
+                            ref={scrollContentRef}
+                            className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth"
+                        >
                             <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
                                 <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
                                     <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Gender</span>
