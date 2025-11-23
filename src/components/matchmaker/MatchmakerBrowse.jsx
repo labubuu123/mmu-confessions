@@ -81,11 +81,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [submittingReport, setSubmittingReport] = useState(false);
     const [filters, setFilters] = useState({ gender: 'all', maxAge: 30, radius: 0, userLat: null, userLong: null });
 
-    // --- Drag to Close State ---
-    const [dragY, setDragY] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const dragStartY = useRef(0);
+    // --- Performance Optimized Drag Refs ---
+    // We use refs instead of state for drag coordinates to prevent re-renders (60fps performance)
+    const modalRef = useRef(null);
     const scrollContentRef = useRef(null);
+    const isDragging = useRef(false);
+    const dragStartY = useRef(0);
+    const currentDragY = useRef(0);
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -119,12 +121,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         return () => clearTimeout(timeout);
     }, [filters.gender, filters.maxAge, filters.radius]);
 
-    // Reset drag state when modal opens/closes
-    useEffect(() => {
-        setDragY(0);
-        setIsDragging(false);
-    }, [selectedProfile]);
-
     const filteredProfiles = useMemo(() => {
         return profiles.filter(profile => {
             if (filters.gender !== 'all' && profile.gender !== filters.gender) return false;
@@ -153,45 +149,67 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         finally { setSubmittingReport(false); }
     };
 
-    // --- Drag Handlers (Mobile Only) ---
+    // --- High Performance Touch Handlers ---
+    
     const handleTouchStart = (e) => {
-        // 1. DISABLE ON DESKTOP: Check window width (768px is standard md breakpoint)
+        // Disable on desktop
         if (window.innerWidth >= 768) return;
-
-        // 2. Only allow dragging if we are at the very top of the scroll
-        if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
         
-        setIsDragging(true);
+        // Only allow drag if scrolled to top
+        if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
+
+        isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
+        
+        // Remove transition instantly so the modal follows finger 1:1 without lag
+        if (modalRef.current) {
+            modalRef.current.style.transition = 'none';
+        }
     };
 
     const handleTouchMove = (e) => {
-        if (!isDragging) return;
-        
-        // 1. DISABLE ON DESKTOP
+        if (!isDragging.current) return;
         if (window.innerWidth >= 768) return;
 
         const currentY = e.touches[0].clientY;
         const delta = currentY - dragStartY.current;
 
-        // 2. Only allow dragging downwards
         if (delta > 0) {
-            // 3. PREVENT REFRESH: This stops the browser's native "pull down to refresh"
-            if (e.cancelable) e.preventDefault(); 
-            setDragY(delta);
+            // Prevent browser refresh
+            if (e.cancelable) e.preventDefault();
+            
+            currentDragY.current = delta;
+            
+            // Direct DOM update (No React Render = 60fps)
+            if (modalRef.current) {
+                // Add a tiny bit of "damping" (0.9) to make it feel heavy/premium
+                modalRef.current.style.transform = `translateY(${delta}px)`;
+            }
         }
     };
 
     const handleTouchEnd = () => {
-        if (!isDragging) return;
-        setIsDragging(false);
+        if (!isDragging.current) return;
+        isDragging.current = false;
 
-        // Threshold to close: 120px
-        if (dragY > 120) {
-            setSelectedProfile(null);
+        // Threshold to close (120px)
+        if (currentDragY.current > 120) {
+            // Animate out quickly before unmounting (optional visual polish)
+            if (modalRef.current) {
+                modalRef.current.style.transition = 'transform 0.2s ease-out';
+                modalRef.current.style.transform = `translateY(100%)`;
+            }
+            // Close State
+            setTimeout(() => setSelectedProfile(null), 100); 
         } else {
-            setDragY(0); // Snap back
+            // Snap back
+            if (modalRef.current) {
+                // Cubic-bezier for that "iOS" snap feel
+                modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)'; 
+                modalRef.current.style.transform = 'translateY(0px)';
+            }
         }
+        currentDragY.current = 0;
     };
 
     if (loading && profiles.length === 0 && !selectedProfile) return (
@@ -295,14 +313,9 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                     onClick={() => setSelectedProfile(null)}
                 >
                     <div
-                        // ADDED: overscroll-y-contain to prevent pull-to-refresh bubbling
-                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain"
+                        ref={modalRef}
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain will-change-transform"
                         onClick={e => e.stopPropagation()}
-                        // Apply drag transform logic
-                        style={{ 
-                            transform: `translateY(${dragY}px)`,
-                            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' 
-                        }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -337,7 +350,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         {/* Modal Scrollable Content */}
                         <div 
                             ref={scrollContentRef}
-                            // ADDED: overscroll-y-contain
                             className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth overscroll-y-contain"
                         >
                             <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">

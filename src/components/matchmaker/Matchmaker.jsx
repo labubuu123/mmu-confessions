@@ -194,8 +194,8 @@ export default function Matchmaker() {
                     <div className="flex justify-between items-center h-14 sm:h-16">
                         <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2 cursor-pointer" onClick={() => setView('browse')}>
                             <Sparkles className="fill-indigo-600 dark:fill-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
-                            <span className="hidden xs:inline">MMU Match</span>
-                            <span className="xs:hidden">Match</span>
+                            <span className="hidden xs:inline">MMU Matchmaker</span>
+                            <span className="xs:hidden">MMU Matchmaker</span>
                         </h1>
 
                         <div className="flex items-center gap-1 sm:gap-2">
