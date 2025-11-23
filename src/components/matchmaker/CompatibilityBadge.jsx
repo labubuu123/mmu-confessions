@@ -41,7 +41,7 @@ export default function CompatibilityBadge({ myProfile, theirProfile }) {
     }
 
     return (
-        <div className={`mt-3 mb-1 p-3 rounded-xl border ${theme.border} ${theme.bg} flex items-center gap-3 transition-colors`}>
+        <div className={`mt-3 mb-1 p-2.5 w-full rounded-xl border ${theme.border} ${theme.bg} flex items-center gap-3 transition-colors`}>
             <div className="relative flex-shrink-0">
                 <svg className="w-12 h-12 transform -rotate-90">
                     <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-200 dark:text-gray-700" />
@@ -54,13 +54,13 @@ export default function CompatibilityBadge({ myProfile, theirProfile }) {
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                    <Zap className={`w-3.5 h-3.5 ${theme.icon} fill-current`} />
-                    <span className={`text-sm font-bold ${theme.text}`}>{result.summary}</span>
+                    <Zap className={`w-3.5 h-3.5 ${theme.icon} fill-current flex-shrink-0`} />
+                    <span className={`text-sm font-bold ${theme.text} truncate`}>{result.summary}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {result.reasons.length > 0 ? (
                         result.reasons.map((reason, idx) => (
-                            <span key={idx} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/50 dark:bg-black/20 border border-black/5 dark:border-white/10 truncate max-w-full">
+                            <span key={idx} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/50 dark:bg-black/20 border border-black/5 dark:border-white/10 whitespace-normal leading-tight break-words max-w-full">
                                 {reason}
                             </span>
                         ))
