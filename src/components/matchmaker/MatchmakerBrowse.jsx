@@ -20,7 +20,7 @@ const AvatarGenerator = memo(({ nickname, gender }) => {
     const skinColors = ['#f3d2c1', '#f5e0d7', '#e6c3b3', '#ffdfc4', '#dbb298'];
     const bg = pick(bgColors, 1);
     const skin = pick(skinColors);
-    
+
     return (
         <svg viewBox="0 0 100 100" className="w-full h-full transition-transform duration-500 group-hover:scale-110">
             <rect width="100" height="100" fill={bg} />
@@ -178,9 +178,9 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             {/* Profile Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 px-2 sm:px-0">
                 {filteredProfiles.map(profile => (
-                    <div 
-                        key={profile.author_id} 
-                        onClick={() => setSelectedProfile(profile)} 
+                    <div
+                        key={profile.author_id}
+                        onClick={() => setSelectedProfile(profile)}
                         className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 dark:border-gray-700 flex flex-col h-full"
                     >
                         {/* Banner */}
@@ -197,7 +197,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                                 {profile.nickname}, {profile.age}
                             </h3>
                             <p className="text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 mb-2">
-                                <MapPin className="w-3 h-3" /> 
+                                <MapPin className="w-3 h-3" />
                                 <span className="truncate max-w-[80px]">
                                     {profile.distance_km ? `${profile.distance_km.toFixed(1)} km` : profile.city}
                                 </span>
@@ -221,14 +221,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
 
                             {/* Action Button */}
-                            <button 
-                                onClick={(e) => handleLove(e, profile.author_id)} 
-                                disabled={profile.hasSentLove} 
-                                className={`mt-auto w-full py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                                    profile.hasSentLove 
-                                    ? 'bg-green-50 text-green-600 border border-green-200 cursor-default' 
-                                    : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
-                                }`}
+                            <button
+                                onClick={(e) => handleLove(e, profile.author_id)}
+                                disabled={profile.hasSentLove}
+                                className={`mt-auto w-full py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${profile.hasSentLove
+                                        ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
+                                        : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
+                                    }`}
                             >
                                 {profile.hasSentLove ? <Check className="w-3.5 h-3.5" /> : <Heart className="w-3.5 h-3.5 fill-current" />}
                                 {profile.hasSentLove ? 'Sent' : 'Connect'}
@@ -241,56 +240,120 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             {/* Modal - Keeps full functionality */}
             {selectedProfile && (
                 <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedProfile(null)}>
-                    <div className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 sm:zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                        
-                        <div className={`p-5 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-blue-600 to-indigo-600' : 'from-pink-600 to-rose-600'}`}>
-                            <button onClick={() => setSelectedProfile(null)} className="absolute top-3 right-3 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10"><X className="w-5 h-5" /></button>
-                            <div className="absolute top-3 left-3"><ShareProfileButton profile={selectedProfile} /></div>
-                            
-                            <div className="w-24 h-24 mx-auto bg-white dark:bg-gray-800 rounded-full border-4 border-white/20 mb-3 overflow-hidden shadow-xl mt-4">
+                    <div
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className={`p-4 sm:p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
+                            <button onClick={() => setSelectedProfile(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10">
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div className="absolute top-3 left-3 sm:top-4 sm:left-4"><ShareProfileButton profile={selectedProfile} /></div>
+
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-white dark:bg-gray-800 rounded-full border-4 border-white/20 mb-2 sm:mb-3 overflow-hidden shadow-xl mt-4 sm:mt-0">
                                 <AvatarGenerator nickname={selectedProfile.nickname} gender={selectedProfile.gender} />
                             </div>
-                            <h2 className="text-2xl font-black text-white tracking-tight leading-none">{selectedProfile.nickname}</h2>
+                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">{selectedProfile.nickname}</h2>
                             <div className="flex items-center justify-center gap-2 mt-3">
-                                <span className="px-2.5 py-1 bg-black/20 text-white text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
+                                <span className="px-2.5 py-1 bg-black/20 text-white text-[10px] sm:text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
                                     <User className="w-3 h-3" /> {selectedProfile.age}
                                 </span>
+                                <div className="max-w-[180px]">
+                                    <CompatibilityBadge myProfile={userProfile} theirProfile={selectedProfile} />
+                                </div>
                             </div>
                         </div>
 
+                        {/* Modal Scrollable Content */}
                         <div className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth">
-                            <div className="p-4 space-y-5 pb-32">
-                                {/* Use the Full Compatibility Badge Here in Modal */}
-                                <CompatibilityBadge myProfile={userProfile} theirProfile={selectedProfile} />
+                            <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Gender</span>
+                                    <span className="text-xs font-bold text-gray-900 dark:text-white capitalize flex items-center gap-1">
+                                        <User className="w-3 h-3 text-indigo-500" /> {selectedProfile.gender}
+                                    </span>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Location</span>
+                                    <span className="text-xs font-bold text-gray-900 dark:text-white break-words w-full justify-center flex items-center gap-1 leading-tight">
+                                        <MapPin className="w-3 h-3 text-pink-500 flex-shrink-0" /> {selectedProfile.city}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-4 space-y-5 pb-32 sm:pb-8">
+                                {(selectedProfile.zodiac || selectedProfile.mbti) && (
+                                    <div className="flex flex-wrap justify-center gap-2">
+                                        {selectedProfile.zodiac && <span className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold rounded-xl border border-purple-100 dark:border-purple-800">{selectedProfile.zodiac}</span>}
+                                        {selectedProfile.mbti && <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-xl border border-blue-100 dark:border-blue-800">{selectedProfile.mbti}</span>}
+                                    </div>
+                                )}
 
                                 <div>
-                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Info className="w-3 h-3" /> About Me</h3>
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Info className="w-3 h-3" /> About Me
+                                    </h3>
                                     <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-700">
                                         <ExpandableText text={selectedProfile.self_intro} />
                                     </div>
                                 </div>
+
                                 <div>
-                                    <h3 className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Search className="w-3 h-3" /> Looking For</h3>
+                                    <h3 className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Search className="w-3 h-3" /> Looking For
+                                    </h3>
                                     <div className="bg-pink-50 dark:bg-pink-900/10 p-3 rounded-2xl border border-pink-100 dark:border-pink-900/30">
                                         <ExpandableText text={selectedProfile.looking_for} />
                                     </div>
                                 </div>
+
                                 <div>
-                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Hash className="w-3 h-3" /> Interests</h3>
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Hash className="w-3 h-3" /> Interests
+                                    </h3>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedProfile.interests?.map(tag => (
-                                            <span key={tag} className="px-2.5 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm whitespace-normal leading-tight">{tag}</span>
+                                            <span key={tag} className="px-2.5 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm whitespace-normal leading-tight">
+                                                {tag}
+                                            </span>
                                         ))}
+                                        {!selectedProfile.interests?.length && <span className="text-gray-400 text-xs italic">No interests listed.</span>}
                                     </div>
                                 </div>
+
+                                {selectedProfile.red_flags && selectedProfile.red_flags.length > 0 && (
+                                    <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-2xl border border-red-100 dark:border-red-900/30">
+                                        <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                            <Flag className="w-3 h-3" /> My Red Flags
+                                        </h3>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {selectedProfile.red_flags.map((flag, idx) => (
+                                                <span key={idx} className="px-2.5 py-1 bg-white dark:bg-gray-800 text-red-600 dark:text-red-300 text-[10px] font-bold rounded-lg border border-red-200 dark:border-red-800 shadow-sm whitespace-normal leading-tight">
+                                                    {flag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
+                        {/* Sticky Action Footer */}
                         <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0 pb-safe-area-bottom z-20">
-                            <button onClick={(e) => handleLove(e, selectedProfile.author_id)} disabled={selectedProfile.hasSentLove} className={`flex-1 py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${selectedProfile.hasSentLove ? 'bg-green-500 text-white cursor-default' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
+                            <button
+                                onClick={(e) => handleLove(e, selectedProfile.author_id)}
+                                disabled={selectedProfile.hasSentLove}
+                                className={`flex-1 py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${selectedProfile.hasSentLove ? 'bg-green-500 text-white cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                            >
                                 {selectedProfile.hasSentLove ? <><Check className="w-5 h-5" /> Request Sent</> : <><Heart className="w-5 h-5 fill-current" /> Connect</>}
                             </button>
-                            <button onClick={() => setReportTarget({ id: selectedProfile.author_id, name: selectedProfile.nickname })} className="px-4 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 rounded-xl"><AlertTriangle className="w-6 h-6" /></button>
+                            <button
+                                onClick={() => setReportTarget({ id: selectedProfile.author_id, name: selectedProfile.nickname })}
+                                className="px-4 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-xl transition-colors flex items-center justify-center"
+                            >
+                                <AlertTriangle className="w-6 h-6" />
+                            </button>
                         </div>
                     </div>
                 </div>
