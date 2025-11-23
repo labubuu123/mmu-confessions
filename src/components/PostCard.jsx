@@ -150,10 +150,13 @@ export default function PostCard({ post, onOpen }) {
     return (
         <>
             <div
-                onClick={() => onOpen && onOpen(post)}
+                onClick={(e) => {
+                    if (e.target.closest('.no-open-zone')) return;
+                    onOpen && onOpen(post);
+                }}
                 className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-clip group relative"
             >
-                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-4rem)]">
+                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-4rem)] pointer-events-none">
                     {postAge && (
                         <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1 whitespace-nowrap">
                             <Clock className="w-3 h-3" />
@@ -323,7 +326,7 @@ export default function PostCard({ post, onOpen }) {
                     )}
 
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                        <div className="flex items-center gap-1 sm:gap-3">
+                        <div className="flex items-center gap-1 sm:gap-3 no-open-zone relative z-20">
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation()
