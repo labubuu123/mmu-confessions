@@ -150,17 +150,17 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     };
 
     // --- High Performance Touch Handlers ---
-    
+
     const handleTouchStart = (e) => {
         // Disable on desktop
         if (window.innerWidth >= 768) return;
-        
+
         // Only allow drag if scrolled to top
         if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
 
         isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
-        
+
         // Remove transition instantly so the modal follows finger 1:1 without lag
         if (modalRef.current) {
             modalRef.current.style.transition = 'none';
@@ -177,9 +177,9 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         if (delta > 0) {
             // Prevent browser refresh
             if (e.cancelable) e.preventDefault();
-            
+
             currentDragY.current = delta;
-            
+
             // Direct DOM update (No React Render = 60fps)
             if (modalRef.current) {
                 // Add a tiny bit of "damping" (0.9) to make it feel heavy/premium
@@ -200,12 +200,12 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 modalRef.current.style.transform = `translateY(100%)`;
             }
             // Close State
-            setTimeout(() => setSelectedProfile(null), 100); 
+            setTimeout(() => setSelectedProfile(null), 100);
         } else {
             // Snap back
             if (modalRef.current) {
                 // Cubic-bezier for that "iOS" snap feel
-                modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)'; 
+                modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
                 modalRef.current.style.transform = 'translateY(0px)';
             }
         }
@@ -294,8 +294,8 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                                 onClick={(e) => handleLove(e, profile.author_id)}
                                 disabled={profile.hasSentLove}
                                 className={`mt-auto w-full py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${profile.hasSentLove
-                                        ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
-                                        : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
+                                    ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
+                                    : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
                                     }`}
                             >
                                 {profile.hasSentLove ? <Check className="w-3.5 h-3.5" /> : <Heart className="w-3.5 h-3.5 fill-current" />}
@@ -308,13 +308,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
             {/* Modal */}
             {selectedProfile && (
-                <div 
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+                <div
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setSelectedProfile(null)}
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain will-change-transform"
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col"
                         onClick={e => e.stopPropagation()}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
@@ -327,7 +327,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
                         {/* Modal Header */}
                         <div className={`p-4 sm:p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
-                            
+
                             <button onClick={() => setSelectedProfile(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10">
                                 <X className="w-5 h-5" />
                             </button>
@@ -348,7 +348,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         </div>
 
                         {/* Modal Scrollable Content */}
-                        <div 
+                        <div
                             ref={scrollContentRef}
                             className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth overscroll-y-contain"
                         >
