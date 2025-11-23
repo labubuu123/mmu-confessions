@@ -251,7 +251,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                     <div
                         key={profile.author_id}
                         onClick={() => setSelectedProfile(profile)}
-                        className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 dark:border-gray-700 flex flex-col h-full"
+                        className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 dark:border-gray-700 flex flex-col h-full"
                     >
                         {/* Banner */}
                         <div className={`h-14 sm:h-16 bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-400 to-indigo-500' : 'from-pink-400 to-rose-500'} relative flex-shrink-0`}>
@@ -309,7 +309,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             {/* Modal */}
             {selectedProfile && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setSelectedProfile(null)}
                 >
                     <div
