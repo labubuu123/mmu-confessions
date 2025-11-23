@@ -159,6 +159,9 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     UNIQUE(from_user_id, to_user_id)
 );
 
+ALTER TABLE public.matchmaker_loves
+ADD COLUMN IF NOT EXISTS message TEXT;
+
 CREATE TABLE IF NOT EXISTS public.matchmaker_matches (
     id BIGSERIAL PRIMARY KEY,
     user1_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
@@ -1077,7 +1080,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION handle_love_action(
     target_user_id TEXT,
-    action_type TEXT
+    action_type TEXT,
+    message_in TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -1089,10 +1093,10 @@ BEGIN
     current_uid := auth.uid()::text;
 
     IF action_type = 'love' THEN
-        INSERT INTO public.matchmaker_loves (from_user_id, to_user_id, status)
-        VALUES (current_uid, target_user_id, 'pending')
+        INSERT INTO public.matchmaker_loves (from_user_id, to_user_id, status, message)
+        VALUES (current_uid, target_user_id, 'pending', message_in)
         ON CONFLICT (from_user_id, to_user_id)
-        DO UPDATE SET status = 'pending', updated_at = NOW();
+        DO UPDATE SET status = 'pending', updated_at = NOW(), message = EXCLUDED.message;
     
     ELSIF action_type = 'delete' THEN
         DELETE FROM public.matchmaker_loves
@@ -1225,7 +1229,8 @@ RETURNS TABLE (
     city TEXT,
     status TEXT,
     contact_info TEXT,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    message TEXT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1233,21 +1238,21 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'pending_sent'::text, NULL::text, l.updated_at
+        'pending_sent'::text, NULL::text, l.updated_at, l.message
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
     WHERE l.from_user_id = viewer_id AND l.status = 'pending';
 
     RETURN QUERY
     SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'pending_received'::text, NULL::text, l.updated_at
+        'pending_received'::text, NULL::text, l.updated_at, l.message
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.from_user_id = p.author_id
     WHERE l.to_user_id = viewer_id AND l.status = 'pending';
 
     RETURN QUERY
     SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'rejected'::text, NULL::text, l.updated_at
+        'rejected'::text, NULL::text, l.updated_at, l.message
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
     WHERE l.from_user_id = viewer_id AND l.status = 'rejected';
@@ -1258,7 +1263,8 @@ BEGIN
         p.nickname, p.avatar_seed, p.gender, p.city,
         'matched'::text,
         p.contact_info,
-        m.matched_at
+        m.matched_at,
+        NULL::text
     FROM public.matchmaker_matches m
     JOIN public.matchmaker_profiles p ON p.author_id = (CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END)
     WHERE m.user1_id = viewer_id OR m.user2_id = viewer_id;

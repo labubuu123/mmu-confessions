@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Heart, X, Instagram, MapPin, Trash2, Ban, Flag, User, Calendar, Search, Hash, Info, AlertTriangle, Check } from 'lucide-react';
+import { Heart, X, Instagram, MapPin, Trash2, Ban, Flag, User, Calendar, Search, Hash, Info, AlertTriangle, Check, MessageSquare } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
@@ -64,12 +64,14 @@ export default function MatchmakerConnections({ user, userProfile }) {
     const fetchConnections = async () => {
         setLoading(true);
         try {
+            // The get_my_connections RPC must be updated in schema.sql to return 'message'
             const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
             if (error) throw error;
             const formattedItems = (data || []).map(item => ({
                 id: item.connection_id,
                 status: item.status,
                 updated_at: item.updated_at,
+                message: item.message, // <--- PULL THE NEW MESSAGE FIELD
                 other_user: {
                     id: item.other_user_id,
                     nickname: item.nickname,
@@ -124,6 +126,7 @@ export default function MatchmakerConnections({ user, userProfile }) {
                     if (rpcError) throw rpcError;
                 }
             } else {
+                // IMPORTANT: The handle_love_action function for 'accept' or 'reject' does not need the message_in parameter.
                 const { error } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
                 if (error) throw error;
             }
@@ -168,8 +171,11 @@ export default function MatchmakerConnections({ user, userProfile }) {
             <div className="space-y-3">
                 {filteredItems.length === 0 && <div className="text-center py-10 text-gray-400 italic">No {activeTab} connections.</div>}
                 {filteredItems.map(item => (
-                    <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col xs:flex-row gap-3">
-                        <div className="flex items-center gap-3 w-full">
+                    // Changed outer container to flex-col and removed xs:flex-row to allow message to take full width
+                    <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
+                        
+                        {/* Header Row (Avatar, Name, Location, View Profile) */}
+                        <div className="flex items-center gap-3 w-full"> 
                             <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden flex-shrink-0" onClick={() => fetchFullProfile(item.other_user.id)}>
                                 <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
                             </div>
@@ -180,7 +186,20 @@ export default function MatchmakerConnections({ user, userProfile }) {
                             </div>
                         </div>
 
-                        <div className="flex gap-2 w-full xs:w-auto mt-1 xs:mt-0">
+                        {/* NEW: Display message in the 'received' tab */}
+                        {activeTab === 'received' && item.message && (
+                            <div className="w-full mt-2 p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl border border-pink-100 dark:border-pink-800 flex items-start gap-2">
+                                <MessageSquare className="w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300 italic whitespace-pre-wrap break-words">
+                                    "{item.message}"
+                                </span>
+                            </div>
+                        )}
+                        {/* END NEW */}
+
+                        {/* Action Buttons */}
+                        {/* This row is now full width below the header and optional message */}
+                        <div className="flex gap-2 w-full mt-1">
                             {activeTab === 'received' && (
                                 <>
                                     <button onClick={() => handleAction(item.other_user.id, item.id, 'reject')} className="flex-1 py-2 bg-gray-100 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500"><X className="w-5 h-5 mx-auto" /></button>
@@ -209,6 +228,7 @@ export default function MatchmakerConnections({ user, userProfile }) {
                 ))}
             </div>
 
+            {/* Viewing Profile Modal - Unchanged */}
             {viewingProfile && (
                 <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingProfile(null)}>
                     <div

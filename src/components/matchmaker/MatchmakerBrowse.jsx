@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { calculateCompatibility } from '../../utils/compatibility';
-import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info } from 'lucide-react';
+import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info, Loader2 } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
@@ -80,9 +80,14 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [reportReason, setReportReason] = useState('');
     const [submittingReport, setSubmittingReport] = useState(false);
     const [filters, setFilters] = useState({ gender: 'all', maxAge: 30, radius: 0, userLat: null, userLong: null });
+    
+    // START: MESSAGE MODAL STATES
+    const [messageTarget, setMessageTarget] = useState(null);
+    const [connectMessage, setConnectMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    // END: MESSAGE MODAL STATES
 
     // --- Performance Optimized Drag Refs ---
-    // We use refs instead of state for drag coordinates to prevent re-renders (60fps performance)
     const modalRef = useRef(null);
     const scrollContentRef = useRef(null);
     const isDragging = useRef(false);
@@ -128,13 +133,47 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             return true;
         });
     }, [profiles, filters]);
-
-    const handleLove = async (e, targetId) => {
-        e.stopPropagation();
-        setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
-        if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
-        try { await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: 'love' }); } catch (err) { alert("Failed to send love."); }
+    
+    // MODIFIED: handleLove to open the message modal
+    const handleLove = (e, targetId) => {
+        e?.stopPropagation();
+        const profile = profiles.find(p => p.author_id === targetId);
+        if (profile.hasSentLove) return;
+        setMessageTarget(profile);
     };
+
+    // NEW: sendLove function
+    const sendLove = async () => {
+        if (!messageTarget || isSending) return;
+
+        setIsSending(true);
+        const targetId = messageTarget.author_id;
+
+        try {
+            // Call the updated RPC function with the message_in parameter
+            await supabase.rpc('handle_love_action', {
+                target_user_id: targetId,
+                action_type: 'love',
+                message_in: connectMessage.trim() || null 
+            });
+
+            // Optimistically update UI
+            setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
+            if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
+            
+            // Close modal
+            setMessageTarget(null);
+            setConnectMessage('');
+        } catch (err) {
+            console.error("Failed to send love:", err);
+            alert("Failed to send connection request. Please try again.");
+            // Revert optimistic update on failure
+            setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: false } : p));
+        } finally {
+            setIsSending(false);
+        }
+    };
+
 
     const handleReportSubmit = async () => {
         if (!reportTarget || !reportReason.trim()) return;
@@ -156,7 +195,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         if (window.innerWidth >= 768) return;
 
         // Only allow drag if scrolled to top
-        //if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
+        if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
 
         isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
@@ -289,7 +328,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
                             <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
 
-                            {/* Action Button */}
+                            {/* Action Button - Uses updated handleLove */}
                             <button
                                 onClick={(e) => handleLove(e, profile.author_id)}
                                 disabled={profile.hasSentLove}
@@ -424,10 +463,10 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             </div>
                         </div>
 
-                        {/* Sticky Action Footer */}
+                        {/* Sticky Action Footer - Updated onClick to use handleLove which opens message modal */}
                         <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0 pb-safe-area-bottom z-20">
                             <button
-                                onClick={(e) => handleLove(e, selectedProfile.author_id)}
+                                onClick={() => handleLove(null, selectedProfile.author_id)}
                                 disabled={selectedProfile.hasSentLove}
                                 className={`flex-1 py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${selectedProfile.hasSentLove ? 'bg-green-500 text-white cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                             >
@@ -444,6 +483,43 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 </div>
             )}
 
+            {/* NEW: Message Modal */}
+            {messageTarget && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { if (!isSending) setMessageTarget(null); }}>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <h3 className="font-bold text-xl mb-4 text-gray-900 dark:text-white">Say Hi to {messageTarget.nickname}</h3>
+                        <textarea 
+                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl mb-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition" 
+                            rows={3} 
+                            placeholder="Write a message (optional, max 200 chars)..." 
+                            value={connectMessage} 
+                            onChange={e => setConnectMessage(e.target.value)} 
+                            maxLength={200}
+                            disabled={isSending}
+                        />
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{connectMessage.length}/200</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => { if (!isSending) setMessageTarget(null); setConnectMessage(''); }} 
+                                disabled={isSending} 
+                                className="flex-1 py-2.5 bg-gray-200 dark:bg-gray-700 rounded-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700/80 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={sendLove} 
+                                disabled={isSending} 
+                                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center transition"
+                            >
+                                {isSending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Heart className="w-4 h-4 mr-2 fill-white" />} Send Connect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Report Modal */}
             {reportTarget && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
