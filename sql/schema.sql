@@ -252,7 +252,6 @@ DROP POLICY IF EXISTS "Enable insert for users (matchmaker_verification)" ON sto
 DROP POLICY IF EXISTS "Enable read for admin (matchmaker_verification)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable delete for admin (matchmaker)" ON storage.objects;
 
-DROP FUNCTION IF EXISTS get_browse_profiles(TEXT);
 DROP FUNCTION IF EXISTS get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT);
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
@@ -1165,7 +1164,8 @@ RETURNS TABLE (
     looking_for TEXT,
     avatar_seed TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
-    distance_km FLOAT
+    distance_km FLOAT,
+    has_sent_love BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1197,7 +1197,13 @@ BEGIN
                     )
                 )
             ELSE NULL
-        END AS distance_km
+        END AS distance_km,
+        EXISTS(
+            SELECT 1 FROM public.matchmaker_loves l
+            WHERE l.from_user_id = viewer_id
+            AND l.to_user_id = p.author_id
+            AND l.status IN ('pending', 'accepted')
+        ) AS has_sent_love
     FROM public.matchmaker_profiles p
     WHERE p.status = 'approved'
         AND p.is_visible = true
@@ -1206,8 +1212,10 @@ BEGIN
         AND p.age <= filter_max_age
         AND NOT EXISTS (
             SELECT 1 FROM public.matchmaker_loves l
-            WHERE (l.from_user_id = viewer_id AND l.to_user_id = p.author_id)
+            WHERE (
+                (l.from_user_id = viewer_id AND l.to_user_id = p.author_id AND l.status IN ('pending', 'accepted'))
                 OR (l.to_user_id = viewer_id AND l.from_user_id = p.author_id AND l.status = 'accepted')
+            )
         )
         AND (
             filter_radius_km IS NULL
@@ -1374,4 +1382,5 @@ GRANT EXECUTE ON FUNCTION public.check_post_cooldown(TEXT) TO anon, authenticate
 GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_reaction(BIGINT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT) TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;

@@ -98,21 +98,65 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 filter_long: filters.radius > 0 ? filters.userLong : null,
                 filter_radius_km: filters.radius > 0 ? filters.radius : null
             });
-            if (error) throw error;
-            setProfiles(data || []);
-        } catch (err) { console.error(err); } finally { setLoading(false); }
+            if (error) {
+                console.error("Fetch profiles error:", error);
+                throw error;
+            }
+
+            const mappedProfiles = (data || []).map(profile => ({
+                ...profile,
+                hasSentLove: profile.has_sent_love || false
+            }));
+
+            setProfiles(mappedProfiles);
+        } catch (err) {
+            console.error("Failed to fetch profiles:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         if (userProfile?.lat && userProfile?.long) {
             setFilters(prev => ({ ...prev, userLat: userProfile.lat, userLong: userProfile.long }));
         }
+
         fetchProfiles();
-        const channel = supabase.channel('browse_realtime')
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'matchmaker_loves' }, () => fetchProfiles())
+
+        const channel = supabase
+            .channel('browse_realtime')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'matchmaker_loves',
+                filter: `from_user_id=eq.${user.id}`
+            }, () => {
+                console.log('Love sent, refreshing profiles');
+                fetchProfiles();
+            })
+            .on('postgres_changes', {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'matchmaker_loves'
+            }, () => {
+                console.log('Love deleted, refreshing profiles');
+                fetchProfiles();
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'matchmaker_loves',
+                filter: `to_user_id=eq.${user.id}`
+            }, () => {
+                console.log('Love status changed, refreshing profiles');
+                fetchProfiles();
+            })
             .subscribe();
-        return () => { supabase.removeChannel(channel); };
-    }, [userProfile]);
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userProfile, user.id]);
 
     useEffect(() => {
         const timeout = setTimeout(() => fetchProfiles(), 500);
@@ -130,32 +174,47 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const handleLove = (e, targetId) => {
         e?.stopPropagation();
         const profile = profiles.find(p => p.author_id === targetId);
-        if (profile.hasSentLove) return;
+
+        console.log('Handle Love clicked:', {
+            targetId,
+            profile,
+            hasSentLove: profile?.hasSentLove
+        });
+
+        if (profile?.hasSentLove) {
+            console.log('Already sent love to this profile');
+            return;
+        }
+
         setMessageTarget(profile);
     };
 
     const sendLove = async () => {
         if (!messageTarget || isSending) return;
-
         setIsSending(true);
         const targetId = messageTarget.author_id;
 
         try {
-            await supabase.rpc('handle_love_action', {
+            const { error } = await supabase.rpc('handle_love_action', {
                 target_user_id: targetId,
                 action_type: 'love',
                 message_in: connectMessage.trim() || null
             });
 
-            setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
-            if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
+            if (error) throw error;
+
+            setProfiles(prev => prev.filter(p => p.author_id !== targetId));
+
+            if (selectedProfile?.author_id === targetId) {
+                setSelectedProfile(null);
+            }
 
             setMessageTarget(null);
             setConnectMessage('');
+
         } catch (err) {
             console.error("Failed to send love:", err);
             alert("Failed to send connection request. Please try again.");
-            setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: false } : p));
         } finally {
             setIsSending(false);
         }
