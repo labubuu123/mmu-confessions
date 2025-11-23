@@ -55,23 +55,37 @@ const ExpandableText = ({ text, limit = 120 }) => {
     );
 };
 
-export default function MatchmakerConnections({ user, userProfile }) {
+export default function MatchmakerConnections({ user, userProfile, connectionCounts, setConnectionCounts }) {
     const [activeTab, setActiveTab] = useState('received');
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewingProfile, setViewingProfile] = useState(null);
 
+    // Helper to update Matchmaker.jsx count state
+    const updateLocalCounts = (data) => {
+        const counts = (data || []).reduce((acc, item) => {
+            if (item.status === 'pending_received') acc.received += 1;
+            else if (item.status === 'pending_sent') acc.sent += 1;
+            else if (item.status === 'matched') acc.matches += 1;
+            else if (item.status === 'rejected') acc.rejected += 1;
+            return acc;
+        }, { received: 0, sent: 0, matches: 0, rejected: 0 });
+        setConnectionCounts(counts);
+    };
+
     const fetchConnections = async () => {
         setLoading(true);
         try {
-            // The get_my_connections RPC must be updated in schema.sql to return 'message'
             const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
             if (error) throw error;
+
+            updateLocalCounts(data); // Update counts in parent component
+
             const formattedItems = (data || []).map(item => ({
                 id: item.connection_id,
                 status: item.status,
                 updated_at: item.updated_at,
-                message: item.message, // <--- PULL THE NEW MESSAGE FIELD
+                message: item.message,
                 other_user: {
                     id: item.other_user_id,
                     nickname: item.nickname,
@@ -93,6 +107,7 @@ export default function MatchmakerConnections({ user, userProfile }) {
 
     useEffect(() => {
         fetchConnections();
+        // Channel listener remains to trigger fetchConnections for all updates
         const channel = supabase.channel('connections_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, fetchConnections)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, fetchConnections)
@@ -126,7 +141,6 @@ export default function MatchmakerConnections({ user, userProfile }) {
                     if (rpcError) throw rpcError;
                 }
             } else {
-                // IMPORTANT: The handle_love_action function for 'accept' or 'reject' does not need the message_in parameter.
                 const { error } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
                 if (error) throw error;
             }
@@ -144,25 +158,40 @@ export default function MatchmakerConnections({ user, userProfile }) {
         if (activeTab === 'rejected') return i.status === 'rejected';
         return false;
     });
-
-    const getTabCount = (tab) => {
-        if (tab === 'received') return items.filter(i => i.status === 'pending_received').length;
-        if (tab === 'sent') return items.filter(i => i.status === 'pending_sent').length;
-        if (tab === 'matches') return items.filter(i => i.status === 'matched').length;
-        if (tab === 'rejected') return items.filter(i => i.status === 'rejected').length;
-        return 0;
+    
+    // RENDER HELPER FOR BADGES
+    const TabBadge = ({ tab }) => {
+        const count = connectionCounts[tab] || 0;
+        if (count === 0) return null;
+        
+        const isCritical = tab === 'received' || tab === 'matches';
+        const colors = isCritical ? 'bg-red-500 text-white' : 'bg-gray-500 text-white';
+        
+        return (
+            <span className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full min-w-[18px] h-4 flex items-center justify-center leading-none shadow-sm ${colors}`}>
+                {count > 99 ? '99+' : count}
+            </span>
+        );
     };
+
 
     if (loading && items.length === 0) return <div className="p-10 text-center text-gray-500">Loading...</div>;
 
     return (
         <div className="min-h-[60vh]">
+            {/* MODIFIED: Tab Navigation */}
             <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto no-scrollbar sticky top-0 z-10">
                 {['received', 'matches', 'sent', 'rejected'].map(tab => {
-                    const count = getTabCount(tab);
                     return (
-                        <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] py-2.5 px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
-                            {tab} {count > 0 && <span className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full ${tab === 'matches' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{count}</span>}
+                        <button 
+                            key={tab} 
+                            onClick={() => setActiveTab(tab)} 
+                            // ADDED: min-w-1/4 to enforce even distribution on small screens
+                            className={`flex-1 min-w-[25%] py-2.5 px-1 sm:px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap flex items-center justify-center ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            {tab} 
+                            {/* RENDER BADGE OUTSIDE OF TEXT */}
+                            <TabBadge tab={tab} />
                         </button>
                     )
                 })}
@@ -171,10 +200,8 @@ export default function MatchmakerConnections({ user, userProfile }) {
             <div className="space-y-3">
                 {filteredItems.length === 0 && <div className="text-center py-10 text-gray-400 italic">No {activeTab} connections.</div>}
                 {filteredItems.map(item => (
-                    // Changed outer container to flex-col and removed xs:flex-row to allow message to take full width
                     <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
                         
-                        {/* Header Row (Avatar, Name, Location, View Profile) */}
                         <div className="flex items-center gap-3 w-full"> 
                             <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden flex-shrink-0" onClick={() => fetchFullProfile(item.other_user.id)}>
                                 <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
@@ -186,7 +213,6 @@ export default function MatchmakerConnections({ user, userProfile }) {
                             </div>
                         </div>
 
-                        {/* NEW: Display message in the 'received' tab */}
                         {activeTab === 'received' && item.message && (
                             <div className="w-full mt-2 p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl border border-pink-100 dark:border-pink-800 flex items-start gap-2">
                                 <MessageSquare className="w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5" />
@@ -195,10 +221,7 @@ export default function MatchmakerConnections({ user, userProfile }) {
                                 </span>
                             </div>
                         )}
-                        {/* END NEW */}
 
-                        {/* Action Buttons */}
-                        {/* This row is now full width below the header and optional message */}
                         <div className="flex gap-2 w-full mt-1">
                             {activeTab === 'received' && (
                                 <>
@@ -209,7 +232,6 @@ export default function MatchmakerConnections({ user, userProfile }) {
                             {activeTab === 'sent' && (
                                 <button
                                     onClick={() => handleAction(item.other_user.id, item.id, 'delete')}
-                                    // Changed background and text colors to red
                                     className="w-full px-4 py-2 bg-red-50 dark:bg-red-900/40 rounded-xl text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 text-xs font-bold"
                                 >
                                     Withdraw
@@ -228,7 +250,6 @@ export default function MatchmakerConnections({ user, userProfile }) {
                 ))}
             </div>
 
-            {/* Viewing Profile Modal - Unchanged */}
             {viewingProfile && (
                 <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingProfile(null)}>
                     <div

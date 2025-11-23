@@ -12,9 +12,13 @@ export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();
     const [view, setView] = useState('browse');
     const [isAdmin, setIsAdmin] = useState(false);
-    const [incomingCount, setIncomingCount] = useState(0);
+    // MODIFIED: State to hold counts for all tabs
+    const [connectionCounts, setConnectionCounts] = useState({ received: 0, sent: 0, matches: 0, rejected: 0 });
     const [showWarning, setShowWarning] = useState(false);
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
+
+    // NEW: Calculate total count for navigation
+    const totalConnectionsCount = connectionCounts.received + connectionCounts.sent + connectionCounts.matches + connectionCounts.rejected;
 
     useEffect(() => {
         if (user?.email === 'admin@mmu.edu.my') setIsAdmin(true);
@@ -23,23 +27,33 @@ export default function Matchmaker() {
     useEffect(() => {
         if (!user?.id) return;
 
-        const fetchInitialCount = async () => {
+        const fetchAllCounts = async () => {
             try {
-                const { count, error } = await supabase
-                    .from('matchmaker_loves')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('to_user_id', user.id)
-                    .eq('action_type', 'love');
+                // Fetch the entire connection list to accurately count statuses
+                const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
+                if (error) throw error;
 
-                if (!error && count !== null) {
-                    setIncomingCount(count);
-                }
+                const counts = (data || []).reduce((acc, item) => {
+                    if (item.status === 'pending_received') acc.received += 1;
+                    else if (item.status === 'pending_sent') acc.sent += 1;
+                    else if (item.status === 'matched') acc.matches += 1;
+                    else if (item.status === 'rejected') acc.rejected += 1;
+                    return acc;
+                }, { received: 0, sent: 0, matches: 0, rejected: 0 });
+
+                setConnectionCounts(counts);
+
             } catch (err) {
-                console.error("Failed to fetch incoming count", err);
+                console.error("Failed to fetch connection counts", err);
             }
         };
 
-        fetchInitialCount();
+        // Function to handle real-time updates (re-fetch all counts on change)
+        const handleRealtimeUpdate = () => {
+            fetchAllCounts();
+        };
+
+        fetchAllCounts();
 
         const profileChannel = supabase.channel('public:matchmaker_profiles')
             .on('postgres_changes', {
@@ -52,17 +66,10 @@ export default function Matchmaker() {
             })
             .subscribe();
 
-        const lovesChannel = supabase.channel('public:matchmaker_loves')
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'matchmaker_loves',
-                filter: `to_user_id=eq.${user.id}`
-            }, (payload) => {
-                if (payload.new.action_type === 'love') {
-                    setIncomingCount(prev => prev + 1);
-                }
-            })
+        // Listen to any changes in loves or matches tables
+        const lovesChannel = supabase.channel('connections_realtime_count')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, handleRealtimeUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, handleRealtimeUpdate)
             .subscribe();
 
         return () => {
@@ -220,13 +227,14 @@ export default function Matchmaker() {
                             Find Love
                         </button>
                         <button
-                            onClick={() => { setView('connections'); setIncomingCount(0); }}
+                            onClick={() => setView('connections')}
                             className={`pb-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${view === 'connections' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
                         >
                             Connections
-                            {incomingCount > 0 && (
+                            {/* MODIFIED: Use the total connections count */}
+                            {totalConnectionsCount > 0 && (
                                 <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 flex items-center justify-center animate-pulse leading-none shadow-sm">
-                                    {incomingCount > 99 ? '99+' : incomingCount}
+                                    {totalConnectionsCount > 99 ? '99+' : totalConnectionsCount}
                                 </span>
                             )}
                         </button>
@@ -236,7 +244,8 @@ export default function Matchmaker() {
 
             <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6">
                 {view === 'browse' && <MatchmakerBrowse user={user} userProfile={profile} />}
-                {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} />}
+                {/* PASS connectionCounts to Connections component */}
+                {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} connectionCounts={connectionCounts} setConnectionCounts={setConnectionCounts} />}
                 {view === 'profile' && (
                     <MatchmakerProfileForm profile={profile} user={user} onSave={() => { refreshProfile(); setView('browse'); }} />
                 )}
