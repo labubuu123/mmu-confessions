@@ -151,6 +151,7 @@ export default function FloatingActionMenu() {
 
     return (
         <>
+            {/* Backdrop overlay when menu is open */}
             {isOpen && (
                 <div
                     className="fixed inset-0 z-40"
@@ -158,8 +159,9 @@ export default function FloatingActionMenu() {
                 />
             )}
 
-            <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
-                <div className={`flex flex-col gap-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+            {/* Menu items - positioned absolutely, appear above main button */}
+            {isOpen && (
+                <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <button onClick={handleLiveActivityClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
                         <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400">
                             <Activity className="w-5 h-5" />
@@ -181,14 +183,15 @@ export default function FloatingActionMenu() {
                         <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Matchmaker</span>
                     </button>
                 </div>
+            )}
 
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={`w-14 h-14 flex items-center justify-center text-white rounded-full shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 ring-indigo-300 dark:ring-indigo-900 ${isOpen ? 'bg-gray-600 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                >
-                    {isOpen ? <X className="w-8 h-8" /> : <Sparkles className="w-8 h-8" />}
-                </button>
-            </div>
+            {/* Main floating button - ONLY this element is always visible */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center text-white rounded-full shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 ring-indigo-300 dark:ring-indigo-900 ${isOpen ? 'bg-gray-600 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+            >
+                {isOpen ? <X className="w-8 h-8" /> : <Sparkles className="w-8 h-8" />}
+            </button>
 
             {isActivityOpen && (
                 <LiveActivityPanel onClose={() => setIsActivityOpen(false)} />
