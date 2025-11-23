@@ -129,6 +129,11 @@ export default function ReactionsBar({ postId }) {
 
             setTimeout(() => setAnimating(null), 300)
 
+            setTimeout(() => {
+                fetchReactions()
+                checkUserReaction()
+            }, 500)
+
             window.dispatchEvent(new CustomEvent('challengeProgress', {
                 detail: { action: { type: 'reaction' } }
             }))

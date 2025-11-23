@@ -377,6 +377,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
     old_emoji TEXT;
+    v_new_count INTEGER;
 BEGIN
     SELECT emoji INTO old_emoji
     FROM public.post_user_reactions
@@ -403,7 +404,13 @@ BEGIN
 
         UPDATE public.reactions
         SET count = GREATEST(0, count - 1)
-        WHERE post_id = post_id_in AND emoji = emoji_in;
+        WHERE post_id = post_id_in AND emoji = emoji_in
+        RETURNING count INTO v_new_count;
+
+        IF v_new_count = 0 THEN
+            DELETE FROM public.reactions
+            WHERE post_id = post_id_in AND emoji = emoji_in;
+        END IF;
 
         IF emoji_in = '👍' THEN
             UPDATE public.confessions
@@ -418,7 +425,13 @@ BEGIN
 
         UPDATE public.reactions
         SET count = GREATEST(0, count - 1)
-        WHERE post_id = post_id_in AND emoji = old_emoji;
+        WHERE post_id = post_id_in AND emoji = old_emoji
+        RETURNING count INTO v_new_count;
+
+        IF v_new_count = 0 THEN
+            DELETE FROM public.reactions
+            WHERE post_id = post_id_in AND emoji = old_emoji;
+        END IF;
 
         INSERT INTO public.reactions (post_id, emoji, count)
         VALUES (post_id_in, emoji_in, 1)
