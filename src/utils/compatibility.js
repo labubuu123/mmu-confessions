@@ -15,7 +15,7 @@ export function calculateCompatibility(userA, userB) {
         if (count === 1) score += 10;
         else if (count === 2) score += 20;
         else if (count === 3) score += 28;
-        else score += 35; 
+        else score += 35;
         reasons.push(`${count} Shared Interests`);
     }
 
@@ -100,7 +100,7 @@ export function calculateCompatibility(userA, userB) {
     if (ageGap <= 2) score += 5;
 
     // --- 5. BASELINE ---
-    score += 5; 
+    score += 5;
     score = Math.min(100, Math.max(10, score));
 
     // Generate Summary
