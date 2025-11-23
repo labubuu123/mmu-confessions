@@ -156,7 +156,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         if (window.innerWidth >= 768) return;
 
         // Only allow drag if scrolled to top
-        if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
+        //if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
 
         isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
