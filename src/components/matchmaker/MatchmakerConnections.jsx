@@ -188,7 +188,13 @@ export default function MatchmakerConnections({ user, userProfile }) {
                                 </>
                             )}
                             {activeTab === 'sent' && (
-                                <button onClick={() => handleAction(item.other_user.id, item.id, 'delete')} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:text-red-500 text-xs font-bold">Withdraw</button>
+                                <button
+                                    onClick={() => handleAction(item.other_user.id, item.id, 'delete')}
+                                    // Changed background and text colors to red
+                                    className="w-full px-4 py-2 bg-red-50 dark:bg-red-900/40 rounded-xl text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 text-xs font-bold"
+                                >
+                                    Withdraw
+                                </button>
                             )}
                             {activeTab === 'rejected' && (
                                 <button onClick={() => handleAction(item.other_user.id, item.id, 'delete')} className="w-full py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-500 hover:text-red-500"><Trash2 className="w-5 h-5 mx-auto" /></button>
