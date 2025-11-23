@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
     Check, Loader2, User, Heart, MapPin, AtSign, X, Sparkles,
     Trash2, ArrowRight, ArrowLeft, Flag, Navigation, Shield,
-    Plus, Minus, AlertCircle, Info, ShieldAlert, Siren
+    Plus, Minus, AlertCircle, Siren, ShieldAlert
 } from 'lucide-react';
 
 const INTEREST_OPTIONS = [
@@ -136,7 +136,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
     };
 
     const handleAddCustomInterest = (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         const trimmed = customInterest.trim();
         if (trimmed && !formData.interests.includes(trimmed)) {
             handleToggle('interests', trimmed);
@@ -145,7 +145,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
     };
 
     const handleAddCustomRedFlag = (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         const trimmed = customRedFlag.trim();
         if (trimmed && !formData.red_flags.includes(trimmed)) {
             if (formData.red_flags.length < 3) {
@@ -154,6 +154,13 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
             } else {
                 alert("Max 3 Red Flags allowed!");
             }
+        }
+    };
+
+    const handleKeyDown = (e, action) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            action();
         }
     };
 
@@ -488,6 +495,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                                         type="text"
                                         value={customRedFlag}
                                         onChange={(e) => setCustomRedFlag(e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(e, handleAddCustomRedFlag)}
                                         placeholder="Add custom red flag..."
                                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-base md:text-sm bg-gray-50 dark:bg-gray-900 focus:outline-none focus:border-red-400"
                                     />
@@ -553,6 +561,7 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                                         type="text"
                                         value={customInterest}
                                         onChange={(e) => setCustomInterest(e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(e, handleAddCustomInterest)}
                                         placeholder="Add custom interest..."
                                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-base md:text-sm bg-gray-50 dark:bg-gray-900 focus:outline-none focus:border-indigo-400"
                                     />

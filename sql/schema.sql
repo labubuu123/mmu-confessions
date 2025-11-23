@@ -159,8 +159,7 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     UNIQUE(from_user_id, to_user_id)
 );
 
-ALTER TABLE public.matchmaker_loves
-ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE public.matchmaker_loves ADD COLUMN IF NOT EXISTS message TEXT;
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_matches (
     id BIGSERIAL PRIMARY KEY,
@@ -359,10 +358,14 @@ ON public.support_messages
 FOR DELETE
 USING (true);
 
+DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
 ON public.matchmaker_loves
 FOR DELETE
-USING (from_user_id = (SELECT auth.uid()::text));
+USING (
+    from_user_id = (SELECT auth.uid()::text)
+    OR to_user_id = (SELECT auth.uid()::text)
+);
 
 CREATE OR REPLACE FUNCTION public.toggle_post_reaction(
     post_id_in BIGINT,
@@ -1090,7 +1093,9 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION handle_love_action(
+DROP FUNCTION IF EXISTS public.handle_love_action(text, text, text, bigint);
+DROP FUNCTION IF EXISTS public.handle_love_action(text, text, text);
+CREATE OR REPLACE FUNCTION public.handle_love_action(
     target_user_id TEXT,
     action_type TEXT,
     message_in TEXT DEFAULT NULL,
@@ -1099,36 +1104,35 @@ CREATE OR REPLACE FUNCTION handle_love_action(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     current_uid TEXT;
 BEGIN
     current_uid := auth.uid()::text;
 
+    IF NOT EXISTS (SELECT 1 FROM public.matchmaker_profiles WHERE author_id = current_uid) THEN
+        RAISE EXCEPTION 'Profile Error: Your user profile (ID: %) was not found. Please create a profile first.', current_uid;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM public.matchmaker_profiles WHERE author_id = target_user_id) THEN
+        RAISE EXCEPTION 'Target Error: The user you are trying to connect with (ID: %) does not exist.', target_user_id;
+    END IF;
+
     IF action_type = 'love' THEN
-        INSERT INTO public.matchmaker_loves (from_user_id, to_user_id, status, message)
-        VALUES (current_uid, target_user_id, 'pending', message_in)
-        ON CONFLICT (from_user_id, to_user_id)
-        DO UPDATE SET status = 'pending', updated_at = NOW(), message = EXCLUDED.message;
+        INSERT INTO public.matchmaker_loves (from_user_id, to_user_id, status, message, created_at, updated_at)
+        VALUES (current_uid, target_user_id, 'pending', message_in, NOW(), NOW())
+        ON CONFLICT (from_user_id, to_user_id) 
+        DO UPDATE SET status = 'pending', message = EXCLUDED.message, updated_at = NOW();
     
-    ELSIF action_type = 'delete' THEN
+    ELSIF action_type = 'delete' OR action_type = 'withdraw' THEN
         DELETE FROM public.matchmaker_loves
-        WHERE (from_user_id = current_uid AND to_user_id = target_user_id)
-            OR (from_user_id = target_user_id AND to_user_id = current_uid);
-
-        DELETE FROM public.matchmaker_matches
-        WHERE (user1_id = current_uid AND user2_id = target_user_id)
-            OR (user1_id = target_user_id AND user2_id = current_uid);
-
-    ELSIF action_type = 'withdraw' THEN
-        UPDATE public.matchmaker_loves
-        SET status = 'withdrawn', updated_at = NOW()
-        WHERE from_user_id = current_uid AND to_user_id = target_user_id;
+        WHERE (from_user_id = current_uid AND to_user_id = target_user_id);
 
     ELSIF action_type = 'accept' THEN
         UPDATE public.matchmaker_loves
         SET status = 'accepted', updated_at = NOW()
-        WHERE id = love_id_in AND to_user_id = current_uid AND status = 'pending';
+        WHERE id = love_id_in;
         
         INSERT INTO public.matchmaker_matches (user1_id, user2_id)
         VALUES (LEAST(current_uid, target_user_id), GREATEST(current_uid, target_user_id))
@@ -1137,7 +1141,7 @@ BEGIN
     ELSIF action_type = 'reject' THEN
         UPDATE public.matchmaker_loves
         SET status = 'rejected', updated_at = NOW()
-        WHERE id = love_id_in AND to_user_id = current_uid AND status = 'pending';
+        WHERE id = love_id_in;
     END IF;
 END;
 $$;
@@ -1240,8 +1244,8 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS get_my_connections(text);
-CREATE OR REPLACE FUNCTION get_my_connections(viewer_id TEXT)
+DROP FUNCTION IF EXISTS public.get_my_connections(TEXT);
+CREATE OR REPLACE FUNCTION public.get_my_connections(viewer_id TEXT)
 RETURNS TABLE (
     connection_id BIGINT,
     other_user_id TEXT,
@@ -1256,37 +1260,72 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'pending_sent'::text, NULL::text, l.updated_at, l.message
-    FROM public.matchmaker_loves l
-    JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
-    WHERE l.from_user_id = viewer_id AND l.status = 'pending';
-
-    RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'pending_received'::text, NULL::text, l.updated_at, l.message
+    SELECT
+        l.id as connection_id,
+        p.author_id as other_user_id,
+        p.nickname,
+        p.avatar_seed,
+        p.gender,
+        p.city,
+        'pending_received'::text as status,
+        NULL::text as contact_info,
+        l.updated_at,
+        l.message
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.from_user_id = p.author_id
-    WHERE l.to_user_id = viewer_id AND l.status = 'pending';
+    WHERE l.to_user_id = viewer_id AND l.status = 'pending'
 
-    RETURN QUERY
-    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.gender, p.city,
-        'rejected'::text, NULL::text, l.updated_at, l.message
+    UNION ALL
+
+    SELECT
+        l.id as connection_id,
+        p.author_id as other_user_id,
+        p.nickname,
+        p.avatar_seed,
+        p.gender,
+        p.city,
+        'pending_sent'::text as status,
+        NULL::text as contact_info,
+        l.updated_at,
+        l.message
     FROM public.matchmaker_loves l
     JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
-    WHERE l.from_user_id = viewer_id AND l.status = 'rejected';
+    WHERE l.from_user_id = viewer_id AND l.status = 'pending'
 
-    RETURN QUERY
-    SELECT m.id,
-        CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END,
-        p.nickname, p.avatar_seed, p.gender, p.city,
-        'matched'::text,
+    UNION ALL
+
+    SELECT
+        l.id as connection_id,
+        p.author_id as other_user_id,
+        p.nickname,
+        p.avatar_seed,
+        p.gender,
+        p.city,
+        'rejected'::text as status,
+        NULL::text as contact_info,
+        l.updated_at,
+        l.message
+    FROM public.matchmaker_loves l
+    JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
+    WHERE l.from_user_id = viewer_id AND l.status = 'rejected'
+
+    UNION ALL
+
+    SELECT
+        m.id as connection_id,
+        CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END as other_user_id,
+        p.nickname,
+        p.avatar_seed,
+        p.gender,
+        p.city,
+        'matched'::text as status,
         p.contact_info,
-        m.matched_at,
-        NULL::text
+        m.matched_at as updated_at,
+        NULL::text as message
     FROM public.matchmaker_matches m
     JOIN public.matchmaker_profiles p ON p.author_id = (CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END)
     WHERE m.user1_id = viewer_id OR m.user2_id = viewer_id;
@@ -1383,4 +1422,9 @@ GRANT EXECUTE ON FUNCTION public.vote_on_poll(BIGINT, TEXT, INTEGER) TO anon, au
 GRANT EXECUTE ON FUNCTION public.get_user_poll_vote(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_reaction(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_my_connections(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_love_action(text, text, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_love_action(text, text, text, bigint) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;

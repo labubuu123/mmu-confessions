@@ -15,10 +15,11 @@ export default function Matchmaker() {
     const [connectionCounts, setConnectionCounts] = useState({ received: 0, sent: 0, matches: 0, rejected: 0 });
     const [showWarning, setShowWarning] = useState(false);
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
+
     const totalConnectionsCount = connectionCounts.received + connectionCounts.sent + connectionCounts.matches + connectionCounts.rejected;
 
     useEffect(() => {
-        if (user?.email === 'admin@mmu.edu.my') setIsAdmin(true);
+        if (user?.email === 'admin@mmu.edu') setIsAdmin(true);
     }, [user]);
 
     useEffect(() => {
