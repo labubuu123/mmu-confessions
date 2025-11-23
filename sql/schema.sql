@@ -287,13 +287,13 @@ CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Send Love" ON public.matchmaker_loves FOR INSERT WITH CHECK (from_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Update Love" ON public.matchmaker_loves FOR UPDATE USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Read Own Matches" ON public.matchmaker_matches FOR SELECT USING (user1_id = (SELECT auth.uid()::text) OR user2_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu.my');
+CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Insert Reports" ON public.matchmaker_reports FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports FOR SELECT USING (true);
 

@@ -17,6 +17,7 @@ import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
 dayjs.extend(relativeTime)
 
 const POSTS_PER_PAGE = 10
+const ADMIN_EMAIL = 'admin@mmu.edu';
 
 export default function AdminPanel() {
     const [user, setUser] = useState(null)
@@ -150,9 +151,15 @@ export default function AdminPanel() {
     async function checkSession() {
         const { data } = await supabase.auth.getSession()
         const session = data?.session
-        if (session) {
+        if (session && session.user.email === ADMIN_EMAIL) {
             setUser(session.user)
             fetchPosts(true)
+        } else {
+            if (session) {
+                console.warn("Session found, but user is not the Admin. Forcing sign out.");
+                supabase.auth.signOut();
+            }
+            setUser(null)
         }
     }
 
@@ -170,6 +177,12 @@ export default function AdminPanel() {
 
         if (error) {
             setError('Sign-in error: ' + error.message)
+            return
+        }
+
+        if (data.user && data.user.email !== ADMIN_EMAIL) {
+            setError('Access Denied: This account is not authorized as an administrator.')
+            supabase.auth.signOut();
             return
         }
     }
