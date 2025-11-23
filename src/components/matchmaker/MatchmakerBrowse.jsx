@@ -309,12 +309,12 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             {/* Modal */}
             {selectedProfile && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
                     onClick={() => setSelectedProfile(null)}
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain will-change-transform"
                         onClick={e => e.stopPropagation()}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
