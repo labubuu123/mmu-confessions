@@ -60,8 +60,6 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewingProfile, setViewingProfile] = useState(null);
-
-    // Helper to update Matchmaker.jsx count state
     const updateLocalCounts = (data) => {
         const counts = (data || []).reduce((acc, item) => {
             if (item.status === 'pending_received') acc.received += 1;
@@ -79,7 +77,7 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
             const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
             if (error) throw error;
 
-            updateLocalCounts(data); // Update counts in parent component
+            updateLocalCounts(data);
 
             const formattedItems = (data || []).map(item => ({
                 id: item.connection_id,
@@ -107,7 +105,6 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
 
     useEffect(() => {
         fetchConnections();
-        // Channel listener remains to trigger fetchConnections for all updates
         const channel = supabase.channel('connections_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, fetchConnections)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, fetchConnections)
@@ -126,6 +123,7 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
             if (action === 'delete') {
                 let deleteError = null;
                 let deleteCount = 0;
+
                 if (connectionId) {
                     const res = await supabase.from('matchmaker_loves').delete().eq('id', connectionId).select();
                     deleteError = res.error;
@@ -140,7 +138,16 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
                     const { error: rpcError } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: 'delete' });
                     if (rpcError) throw rpcError;
                 }
-            } else {
+            }
+            else if (action === 'accept' || action === 'reject') {
+                const { error } = await supabase.rpc('handle_love_action', {
+                    target_user_id: targetId,
+                    action_type: action,
+                    love_id_in: connectionId
+                });
+                if (error) throw error;
+            }
+            else {
                 const { error } = await supabase.rpc('handle_love_action', { target_user_id: targetId, action_type: action });
                 if (error) throw error;
             }
@@ -158,15 +165,14 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
         if (activeTab === 'rejected') return i.status === 'rejected';
         return false;
     });
-    
-    // RENDER HELPER FOR BADGES
+
     const TabBadge = ({ tab }) => {
         const count = connectionCounts[tab] || 0;
         if (count === 0) return null;
-        
+
         const isCritical = tab === 'received' || tab === 'matches';
         const colors = isCritical ? 'bg-red-500 text-white' : 'bg-gray-500 text-white';
-        
+
         return (
             <span className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full min-w-[18px] h-4 flex items-center justify-center leading-none shadow-sm ${colors}`}>
                 {count > 99 ? '99+' : count}
@@ -179,18 +185,15 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
 
     return (
         <div className="min-h-[60vh]">
-            {/* MODIFIED: Tab Navigation */}
             <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto no-scrollbar sticky top-0 z-10">
                 {['received', 'matches', 'sent', 'rejected'].map(tab => {
                     return (
-                        <button 
-                            key={tab} 
-                            onClick={() => setActiveTab(tab)} 
-                            // ADDED: min-w-1/4 to enforce even distribution on small screens
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
                             className={`flex-1 min-w-[25%] py-2.5 px-1 sm:px-2 text-sm font-bold rounded-lg capitalize transition-all whitespace-nowrap flex items-center justify-center ${activeTab === tab ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
                         >
-                            {tab} 
-                            {/* RENDER BADGE OUTSIDE OF TEXT */}
+                            {tab}
                             <TabBadge tab={tab} />
                         </button>
                     )
@@ -201,8 +204,8 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
                 {filteredItems.length === 0 && <div className="text-center py-10 text-gray-400 italic">No {activeTab} connections.</div>}
                 {filteredItems.map(item => (
                     <div key={item.other_user.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
-                        
-                        <div className="flex items-center gap-3 w-full"> 
+
+                        <div className="flex items-center gap-3 w-full">
                             <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden flex-shrink-0" onClick={() => fetchFullProfile(item.other_user.id)}>
                                 <AvatarGenerator nickname={item.other_user.nickname} gender={item.other_user.gender} />
                             </div>

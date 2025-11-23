@@ -12,12 +12,9 @@ export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();
     const [view, setView] = useState('browse');
     const [isAdmin, setIsAdmin] = useState(false);
-    // MODIFIED: State to hold counts for all tabs
     const [connectionCounts, setConnectionCounts] = useState({ received: 0, sent: 0, matches: 0, rejected: 0 });
     const [showWarning, setShowWarning] = useState(false);
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
-
-    // NEW: Calculate total count for navigation
     const totalConnectionsCount = connectionCounts.received + connectionCounts.sent + connectionCounts.matches + connectionCounts.rejected;
 
     useEffect(() => {
@@ -29,7 +26,6 @@ export default function Matchmaker() {
 
         const fetchAllCounts = async () => {
             try {
-                // Fetch the entire connection list to accurately count statuses
                 const { data, error } = await supabase.rpc('get_my_connections', { viewer_id: user.id });
                 if (error) throw error;
 
@@ -48,7 +44,6 @@ export default function Matchmaker() {
             }
         };
 
-        // Function to handle real-time updates (re-fetch all counts on change)
         const handleRealtimeUpdate = () => {
             fetchAllCounts();
         };
@@ -66,7 +61,6 @@ export default function Matchmaker() {
             })
             .subscribe();
 
-        // Listen to any changes in loves or matches tables
         const lovesChannel = supabase.channel('connections_realtime_count')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_loves' }, handleRealtimeUpdate)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matchmaker_matches' }, handleRealtimeUpdate)
@@ -231,7 +225,6 @@ export default function Matchmaker() {
                             className={`pb-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${view === 'connections' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
                         >
                             Connections
-                            {/* MODIFIED: Use the total connections count */}
                             {totalConnectionsCount > 0 && (
                                 <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 flex items-center justify-center animate-pulse leading-none shadow-sm">
                                     {totalConnectionsCount > 99 ? '99+' : totalConnectionsCount}
@@ -244,7 +237,6 @@ export default function Matchmaker() {
 
             <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6">
                 {view === 'browse' && <MatchmakerBrowse user={user} userProfile={profile} />}
-                {/* PASS connectionCounts to Connections component */}
                 {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} connectionCounts={connectionCounts} setConnectionCounts={setConnectionCounts} />}
                 {view === 'profile' && (
                     <MatchmakerProfileForm profile={profile} user={user} onSave={() => { refreshProfile(); setView('browse'); }} />

@@ -1081,7 +1081,8 @@ $$;
 CREATE OR REPLACE FUNCTION handle_love_action(
     target_user_id TEXT,
     action_type TEXT,
-    message_in TEXT DEFAULT NULL
+    message_in TEXT DEFAULT NULL,
+    love_id_in BIGINT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -1115,7 +1116,7 @@ BEGIN
     ELSIF action_type = 'accept' THEN
         UPDATE public.matchmaker_loves
         SET status = 'accepted', updated_at = NOW()
-        WHERE from_user_id = target_user_id AND to_user_id = current_uid;
+        WHERE id = love_id_in AND to_user_id = current_uid AND status = 'pending';
         
         INSERT INTO public.matchmaker_matches (user1_id, user2_id)
         VALUES (LEAST(current_uid, target_user_id), GREATEST(current_uid, target_user_id))
@@ -1124,7 +1125,7 @@ BEGIN
     ELSIF action_type = 'reject' THEN
         UPDATE public.matchmaker_loves
         SET status = 'rejected', updated_at = NOW()
-        WHERE from_user_id = target_user_id AND to_user_id = current_uid;
+        WHERE id = love_id_in AND to_user_id = current_uid AND status = 'pending';
     END IF;
 END;
 $$;

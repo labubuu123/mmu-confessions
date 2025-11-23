@@ -5,8 +5,6 @@ import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, F
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
-// --- Components ---
-
 const AvatarGenerator = memo(({ nickname, gender }) => {
     const seed = useMemo(() => {
         const str = (nickname || 'User') + gender;
@@ -80,14 +78,9 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [reportReason, setReportReason] = useState('');
     const [submittingReport, setSubmittingReport] = useState(false);
     const [filters, setFilters] = useState({ gender: 'all', maxAge: 30, radius: 0, userLat: null, userLong: null });
-
-    // START: MESSAGE MODAL STATES
     const [messageTarget, setMessageTarget] = useState(null);
     const [connectMessage, setConnectMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
-    // END: MESSAGE MODAL STATES
-
-    // --- Performance Optimized Drag Refs ---
     const modalRef = useRef(null);
     const scrollContentRef = useRef(null);
     const isDragging = useRef(false);
@@ -134,7 +127,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         });
     }, [profiles, filters]);
 
-    // MODIFIED: handleLove to open the message modal
     const handleLove = (e, targetId) => {
         e?.stopPropagation();
         const profile = profiles.find(p => p.author_id === targetId);
@@ -142,7 +134,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         setMessageTarget(profile);
     };
 
-    // NEW: sendLove function
     const sendLove = async () => {
         if (!messageTarget || isSending) return;
 
@@ -150,24 +141,20 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         const targetId = messageTarget.author_id;
 
         try {
-            // Call the updated RPC function with the message_in parameter
             await supabase.rpc('handle_love_action', {
                 target_user_id: targetId,
                 action_type: 'love',
                 message_in: connectMessage.trim() || null
             });
 
-            // Optimistically update UI
             setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
             if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
 
-            // Close modal
             setMessageTarget(null);
             setConnectMessage('');
         } catch (err) {
             console.error("Failed to send love:", err);
             alert("Failed to send connection request. Please try again.");
-            // Revert optimistic update on failure
             setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: false } : p));
         } finally {
             setIsSending(false);
@@ -188,19 +175,14 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         finally { setSubmittingReport(false); }
     };
 
-    // --- High Performance Touch Handlers ---
-
     const handleTouchStart = (e) => {
-        // Disable on desktop
         if (window.innerWidth >= 768) return;
 
-        // Only allow drag if scrolled to top
         if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
 
         isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
 
-        // Remove transition instantly so the modal follows finger 1:1 without lag
         if (modalRef.current) {
             modalRef.current.style.transition = 'none';
         }
@@ -214,14 +196,11 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         const delta = currentY - dragStartY.current;
 
         if (delta > 0) {
-            // Prevent browser refresh
             if (e.cancelable) e.preventDefault();
 
             currentDragY.current = delta;
 
-            // Direct DOM update (No React Render = 60fps)
             if (modalRef.current) {
-                // Add a tiny bit of "damping" (0.9) to make it feel heavy/premium
                 modalRef.current.style.transform = `translateY(${delta}px)`;
             }
         }
@@ -231,19 +210,14 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         if (!isDragging.current) return;
         isDragging.current = false;
 
-        // Threshold to close (120px)
         if (currentDragY.current > 120) {
-            // Animate out quickly before unmounting (optional visual polish)
             if (modalRef.current) {
                 modalRef.current.style.transition = 'transform 0.2s ease-out';
                 modalRef.current.style.transform = `translateY(100%)`;
             }
-            // Close State
             setTimeout(() => setSelectedProfile(null), 100);
         } else {
-            // Snap back
             if (modalRef.current) {
-                // Cubic-bezier for that "iOS" snap feel
                 modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
                 modalRef.current.style.transform = 'translateY(0px)';
             }
@@ -260,7 +234,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
     return (
         <div className="pb-24 min-h-screen">
-            {/* Filter Header */}
             <div className="mb-4 flex flex-col gap-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl p-3 sm:p-4 rounded-b-2xl sm:rounded-2xl border-b sm:border border-white/50 dark:border-gray-700 shadow-sm sticky top-0 z-30">
                 <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 w-full">
                     {['all', 'male', 'female'].map(g => (
@@ -284,7 +257,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 </div>
             </div>
 
-            {/* Profile Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 px-2 sm:px-0">
                 {filteredProfiles.map(profile => (
                     <div
@@ -292,16 +264,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         onClick={() => setSelectedProfile(profile)}
                         className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 dark:border-gray-700 flex flex-col h-full"
                     >
-                        {/* Banner */}
                         <div className={`h-14 sm:h-16 bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-400 to-indigo-500' : 'from-pink-400 to-rose-500'} relative flex-shrink-0`}>
                             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-[3px] border-white dark:border-gray-800 shadow-sm bg-white overflow-hidden">
                                 <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
                             </div>
                         </div>
 
-                        {/* Card Content */}
                         <div className="pt-9 pb-3 px-2 flex-1 flex flex-col text-center">
-                            {/* Header Info */}
                             <h3 className="text-sm font-black text-gray-900 dark:text-white leading-tight mb-0.5 truncate px-1">
                                 {profile.nickname}, {profile.age}
                             </h3>
@@ -312,7 +281,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                                 </span>
                             </p>
 
-                            {/* Tags */}
                             <div className="flex flex-wrap justify-center gap-1 mb-1 px-1">
                                 {profile.mbti && (
                                     <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full border dark:border-gray-600">
@@ -328,7 +296,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
                             <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
 
-                            {/* Action Button - Uses updated handleLove */}
                             <button
                                 onClick={(e) => handleLove(e, profile.author_id)}
                                 disabled={profile.hasSentLove}
@@ -345,7 +312,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 ))}
             </div>
 
-            {/* Modal */}
             {selectedProfile && (
                 <div
                     className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
@@ -359,12 +325,10 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
-                        {/* Drag Handle Bar (Hidden on Desktop 'md:hidden') */}
                         <div className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center z-50 pointer-events-none md:hidden">
                             <div className="w-12 h-1.5 bg-white/40 rounded-full shadow-sm backdrop-blur-md"></div>
                         </div>
 
-                        {/* Modal Header */}
                         <div className={`p-4 sm:p-6 text-center relative flex-shrink-0 bg-gradient-to-br ${selectedProfile.gender === 'male' ? 'from-indigo-600 to-blue-600' : 'from-pink-600 to-rose-600'}`}>
 
                             <button onClick={() => setSelectedProfile(null)} className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/20 hover:bg-black/30 p-2 rounded-full text-white transition-colors z-10">
@@ -386,7 +350,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             </div>
                         </div>
 
-                        {/* Modal Scrollable Content */}
                         <div
                             ref={scrollContentRef}
                             className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth overscroll-y-contain"
@@ -463,7 +426,6 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             </div>
                         </div>
 
-                        {/* Sticky Action Footer - Updated onClick to use handleLove which opens message modal */}
                         <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0 pb-safe-area-bottom z-20">
                             <button
                                 onClick={() => handleLove(null, selectedProfile.author_id)}
@@ -483,14 +445,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 </div>
             )}
 
-            {/* NEW: Message Modal */}
             {messageTarget && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { if (!isSending) setMessageTarget(null); }}>
                     <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         <h3 className="font-bold text-xl mb-4 text-gray-900 dark:text-white">Say Hi to {messageTarget.nickname}</h3>
                         <textarea
                             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-xl mb-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition"
-                            rows={4} // Increased rows for better mobile input space
+                            rows={4}
                             placeholder="Write a message (optional, max 200 chars)..."
                             value={connectMessage}
                             onChange={e => setConnectMessage(e.target.value)}
@@ -513,14 +474,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                                 disabled={isSending}
                                 className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center transition"
                             >
-                                {isSending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Heart className="w-4 h-4 mr-2 fill-white" />} Send Connect
+                                {isSending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : null} Send Connect
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Report Modal */}
             {reportTarget && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
