@@ -329,7 +329,7 @@ export default function PostCard({ post, onOpen }) {
                                     e.stopPropagation()
                                     onOpen && onOpen(post)
                                 }}
-                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all relative z-10"
+                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                             >
                                 <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
                                 <span className="font-medium">React</span>
@@ -339,20 +339,18 @@ export default function PostCard({ post, onOpen }) {
                                     e.stopPropagation()
                                     onOpen && onOpen(post)
                                 }}
-                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all relative z-10"
+                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                             >
                                 <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                                 <span className="font-medium">{post.comments_count || 0}</span>
                             </button>
-                            <div className="relative z-10">
-                                <ShareButton post={post} />
-                            </div>
+                            <ShareButton post={post} />
                         </div>
-                        <div className="flex items-center gap-1 relative z-10">
+                        <div className="flex items-center gap-1">
                             <button
                                 onClick={handleReport}
                                 disabled={isReported}
-                                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all relative z-10 ${isReported
+                                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all ${isReported
                                     ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                     : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
                                     }`}
