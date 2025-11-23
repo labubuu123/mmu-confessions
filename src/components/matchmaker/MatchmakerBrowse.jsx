@@ -85,7 +85,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const dragStartY = useRef(0);
-    const scrollContentRef = useRef(null); // Ref for the scrollable content area
+    const scrollContentRef = useRef(null);
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -153,9 +153,12 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         finally { setSubmittingReport(false); }
     };
 
-    // --- Drag Handlers ---
+    // --- Drag Handlers (Mobile Only) ---
     const handleTouchStart = (e) => {
-        // Only allow dragging if the internal content is scrolled to the absolute top
+        // 1. DISABLE ON DESKTOP: Check window width (768px is standard md breakpoint)
+        if (window.innerWidth >= 768) return;
+
+        // 2. Only allow dragging if we are at the very top of the scroll
         if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
         
         setIsDragging(true);
@@ -165,12 +168,16 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const handleTouchMove = (e) => {
         if (!isDragging) return;
         
+        // 1. DISABLE ON DESKTOP
+        if (window.innerWidth >= 768) return;
+
         const currentY = e.touches[0].clientY;
         const delta = currentY - dragStartY.current;
 
-        // Only allow dragging downwards (positive delta)
+        // 2. Only allow dragging downwards
         if (delta > 0) {
-            e.preventDefault(); // Prevent body scroll
+            // 3. PREVENT REFRESH: This stops the browser's native "pull down to refresh"
+            if (e.cancelable) e.preventDefault(); 
             setDragY(delta);
         }
     };
@@ -281,14 +288,15 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 ))}
             </div>
 
-            {/* Modal - Enhanced with Drag to Close */}
+            {/* Modal */}
             {selectedProfile && (
                 <div 
                     className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
                     onClick={() => setSelectedProfile(null)}
                 >
                     <div
-                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300"
+                        // ADDED: overscroll-y-contain to prevent pull-to-refresh bubbling
+                        className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain"
                         onClick={e => e.stopPropagation()}
                         // Apply drag transform logic
                         style={{ 
@@ -299,8 +307,8 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
-                        {/* Drag Handle Bar (Visible mainly on mobile) */}
-                        <div className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center z-50 pointer-events-none">
+                        {/* Drag Handle Bar (Hidden on Desktop 'md:hidden') */}
+                        <div className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center z-50 pointer-events-none md:hidden">
                             <div className="w-12 h-1.5 bg-white/40 rounded-full shadow-sm backdrop-blur-md"></div>
                         </div>
 
@@ -329,7 +337,8 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         {/* Modal Scrollable Content */}
                         <div 
                             ref={scrollContentRef}
-                            className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth"
+                            // ADDED: overscroll-y-contain
+                            className="overflow-y-auto flex-1 bg-white dark:bg-gray-900 scroll-smooth overscroll-y-contain"
                         >
                             <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
                                 <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-xl flex flex-col items-center text-center">
