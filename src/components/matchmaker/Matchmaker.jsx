@@ -6,7 +6,7 @@ import MatchmakerProfileForm from './MatchmakerProfileForm';
 import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
-import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check } from 'lucide-react';
+import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Trash2 } from 'lucide-react';
 
 export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();
@@ -92,9 +92,14 @@ export default function Matchmaker() {
         localStorage.setItem(storageKey, profile.warning_count.toString());
         setShowWarning(false);
     };
-
+    const handleLogout = async () => {
+        if (window.confirm("Are you sure you want to log out?")) {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+    };
     const handleResetIdentity = async () => {
-        if (confirm("This will wipe your current profile and identity from this device. You cannot recover it. Are you sure?")) {
+        if (confirm("This will PERMANENTLY DELETE your profile/identity. Use 'Log Out' if you just want to switch accounts. Are you sure you want to DELETE?")) {
             const { error } = await supabase.from('matchmaker_profiles').delete().eq('author_id', user.id);
             if (error) {
                 alert("Failed to delete profile. Please try again.");
@@ -133,9 +138,14 @@ export default function Matchmaker() {
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold mb-1">Reason</p>
                         <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 italic">"{profile.rejection_reason || 'Violation of community standards'}"</p>
                     </div>
-                    <button onClick={handleResetIdentity} className="px-6 py-3 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl font-bold w-full text-sm sm:text-base">
-                        Create New Identity
-                    </button>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={handleLogout} className="px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm sm:text-base">
+                            Log Out
+                        </button>
+                        <button onClick={handleResetIdentity} className="px-6 py-3 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl font-bold text-sm sm:text-base">
+                            Delete Identity
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -179,9 +189,12 @@ export default function Matchmaker() {
     if (!profile || (profile.status !== 'approved' && view !== 'admin')) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8 px-3 sm:px-4">
-                <div className="flex justify-end max-w-2xl mx-auto mb-4">
+                <div className="flex justify-end max-w-2xl mx-auto mb-4 gap-4">
+                    <button onClick={handleLogout} className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors font-bold">
+                        <LogOut className="w-3 h-3" /> Log Out
+                    </button>
                     <button onClick={handleResetIdentity} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
-                        <LogOut className="w-3 h-3" /> New Identity
+                        <Sparkles className="w-3 h-3" /> New Identity
                     </button>
                 </div>
                 <MatchmakerProfileForm profile={profile} user={user} onSave={refreshProfile} />
@@ -210,6 +223,9 @@ export default function Matchmaker() {
                             <button onClick={() => setView('profile')}
                                 className={`p-2 rounded-xl transition-all ${view === 'profile' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                                 <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
+                            <button onClick={handleLogout} className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all" title="Log Out">
+                                <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
                         </div>
                     </div>

@@ -187,6 +187,13 @@ CREATE TABLE IF NOT EXISTS public.support_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.matchmaker_credentials (
+    username TEXT PRIMARY KEY,
+    password TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -230,6 +237,7 @@ ALTER TABLE public.matchmaker_loves ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_credentials ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -356,6 +364,18 @@ USING (true);
 CREATE POLICY "Admins can delete messages"
 ON public.support_messages
 FOR DELETE
+USING (true);
+
+CREATE POLICY "Public Read Credentials"
+ON public.matchmaker_credentials FOR SELECT
+USING (true);
+
+CREATE POLICY "Public Insert Credentials"
+ON public.matchmaker_credentials FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Update Own Credentials"
+ON public.matchmaker_credentials FOR UPDATE
 USING (true);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
@@ -1406,6 +1426,7 @@ GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
+GRANT ALL ON public.matchmaker_credentials TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.toggle_post_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.toggle_comment_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_comment_count(BIGINT) TO anon, authenticated;

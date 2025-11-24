@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, Siren } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, Siren, KeyRound } from 'lucide-react';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -70,6 +70,7 @@ export default function MatchmakerAdmin() {
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
     const [activeTab, setActiveTab] = useState('pending');
+    const [usernames, setUsernames] = useState({});
 
     useEffect(() => { refreshAll(); }, []);
 
@@ -83,10 +84,23 @@ export default function MatchmakerAdmin() {
                 fetchLoves(),
                 fetchReports()
             ]);
+            await fetchUsernames();
         } catch (error) {
             console.error("Error refreshing admin data:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchUsernames = async () => {
+        const { data } = await supabase
+            .from('matchmaker_credentials')
+            .select('user_id, username');
+
+        if (data) {
+            const map = {};
+            data.forEach(u => { map[u.user_id] = u.username });
+            setUsernames(map);
         }
     };
 
@@ -180,7 +194,14 @@ export default function MatchmakerAdmin() {
                 </div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white break-words w-full">{p.nickname}</h3>
 
-                <div className="flex flex-wrap justify-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">
+                <div className="mt-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-full border border-indigo-100 dark:border-indigo-800 flex items-center gap-1.5">
+                    <KeyRound className="w-3 h-3 text-indigo-500" />
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 font-mono">
+                        {usernames[p.author_id] || 'No Username'}
+                    </span>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-1 mt-3 text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">
                     <span className="capitalize px-2 py-0.5 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">{p.gender}, {p.age}</span>
                     <span className="flex items-center justify-center gap-1 px-2 py-0.5"><MapPin className="w-3 h-3" /> {p.city}</span>
                 </div>

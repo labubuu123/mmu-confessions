@@ -21,7 +21,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                             <ScrollText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-gray-900 dark:text-white">Matchmaker Rules</h2>
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white">MMU Matchmaker Rules</h2>
                             <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold">交友功能守则</p>
                         </div>
                     </div>
