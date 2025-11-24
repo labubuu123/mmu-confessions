@@ -13,7 +13,7 @@ import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.0.1";
 
 function App() {
   const [theme, setTheme] = useState(() => {

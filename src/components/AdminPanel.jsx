@@ -149,18 +149,8 @@ export default function AdminPanel() {
     }, [activeTab])
 
     async function checkSession() {
-        const { data } = await supabase.auth.getSession()
-        const session = data?.session
-        if (session && session.user.email === ADMIN_EMAIL) {
-            setUser(session.user)
-            fetchPosts(true)
-        } else {
-            if (session) {
-                console.warn("Session found, but user is not the Admin. Forcing sign out.");
-                supabase.auth.signOut();
-            }
-            setUser(null)
-        }
+        await supabase.auth.signOut()
+        setUser(null)
     }
 
     async function signIn(e) {
