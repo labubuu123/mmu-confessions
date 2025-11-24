@@ -39,7 +39,6 @@ export default function MatchmakerAuth({ onAuthSuccess, onCancel }) {
             throw new Error("Username part must be at least 3 characters long.");
         }
 
-        // 4. Return Data
         return {
             dbUsername: cleanName,
             authEmail: `${namePart}@example.com`
@@ -47,14 +46,16 @@ export default function MatchmakerAuth({ onAuthSuccess, onCancel }) {
     };
 
     const handleAuthError = (err) => {
-        if (err.message && err.message.includes("Password should be")) {
-            setError("Password is too weak. It must be at least 6 characters long.");
-        } else if (err.message === "User already registered") {
+        const msg = err.message || "";
+
+        if (msg.includes("Password should be") || msg.includes("Password should contain")) {
+            setError("Password too weak. Use 6+ chars, uppercase, lowercase & numbers.");
+        } else if (msg === "User already registered") {
             setError("This username is already taken. Please try another.");
-        } else if (err.message.includes("valid email")) {
+        } else if (msg.includes("valid email")) {
             setError("System Error: Format rejected. Please try a simpler username.");
         } else {
-            setError(err.message);
+            setError(msg);
         }
     };
 
@@ -206,7 +207,7 @@ export default function MatchmakerAuth({ onAuthSuccess, onCancel }) {
                     {error && (
                         <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-300 text-sm font-bold shadow-sm animate-in slide-in-from-top-2">
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                            <span className="break-words leading-snug">{error}</span>
+                            <span className="break-words break-all leading-snug flex-1">{error}</span>
                         </div>
                     )}
 
