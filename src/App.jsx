@@ -13,6 +13,8 @@ import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
 
+const APP_VERSION = "1.1.0";
+
 function App() {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -26,6 +28,47 @@ function App() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch(`/version.json?t=${new Date().getTime()}`);
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const serverVersion = data.version;
+
+        if (serverVersion !== APP_VERSION) {
+          console.log(`New version found: ${serverVersion}. Reloading...`);
+
+          if ('caches' in window) {
+            try {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+            } catch (err) {
+              console.error("Error clearing cache", err);
+            }
+          }
+
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error("Failed to check version:", error);
+      }
+    };
+
+    checkVersion();
+
+    const interval = setInterval(checkVersion, 2 * 60 * 1000);
+    const handleFocus = () => checkVersion();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   useEffect(() => {
     const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -42,6 +85,11 @@ function App() {
       const newState = channel.presenceState();
       const count = Object.keys(newState).length;
       setOnlineCount(count);
+    });
+
+    channel.on('broadcast', { event: 'force_refresh' }, () => {
+      console.log("Force refresh signal received");
+      window.location.reload();
     });
 
     channel.subscribe(async (status) => {
