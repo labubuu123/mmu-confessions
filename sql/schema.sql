@@ -302,81 +302,24 @@ CREATE POLICY "Read Own Matches" ON public.matchmaker_matches FOR SELECT USING (
 CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Insert Reports" ON public.matchmaker_reports FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports FOR SELECT USING (true);
-
-CREATE POLICY "Admin Select Profiles"
-ON public.matchmaker_profiles
-FOR SELECT USING (true);
-
-CREATE POLICY "Read Approved Profiles"
-ON public.matchmaker_profiles
-FOR SELECT USING (true);
-
-CREATE POLICY "Admin Update Profiles"
-ON public.matchmaker_profiles
-FOR SELECT USING (true);
-
-CREATE POLICY "Admin Delete Profiles"
-ON public.matchmaker_profiles
-FOR SELECT USING (true);
-
-CREATE POLICY "Admin full access to all profiles"
-ON public.matchmaker_profiles
-FOR ALL
-USING (true);
-
-CREATE POLICY "Admin Delete Reports"
-ON public.matchmaker_reports
-FOR DELETE
-USING (true);
-
-CREATE POLICY "Users can view own support messages"
-ON public.support_messages FOR SELECT
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can send support messages"
-ON public.support_messages FOR INSERT
-WITH CHECK (auth.uid() = user_id AND sender_role = 'user');
-
-CREATE POLICY "Admins can view all messages"
-ON public.support_messages FOR SELECT
-USING (true);
-
-CREATE POLICY "Admins can reply"
-ON public.support_messages FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Admins can update messages"
-ON public.support_messages FOR UPDATE
-USING (true);
-
-CREATE POLICY "Anyone can insert messages"
-ON public.support_messages FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Public Insert"
-ON public.support_messages FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Public Read"
-ON public.support_messages FOR SELECT
-USING (true);
-
-CREATE POLICY "Admins can delete messages"
-ON public.support_messages
-FOR DELETE
-USING (true);
-
-CREATE POLICY "Public Read Credentials"
-ON public.matchmaker_credentials FOR SELECT
-USING (true);
-
-CREATE POLICY "Public Insert Credentials"
-ON public.matchmaker_credentials FOR INSERT
-WITH CHECK (true);
-
-CREATE POLICY "Update Own Credentials"
-ON public.matchmaker_credentials FOR UPDATE
-USING (true);
+CREATE POLICY "Admin Select Profiles" ON public.matchmaker_profiles FOR SELECT USING (true);
+CREATE POLICY "Read Approved Profiles" ON public.matchmaker_profiles FOR SELECT USING (true);
+CREATE POLICY "Admin Update Profiles" ON public.matchmaker_profiles FOR SELECT USING (true);
+CREATE POLICY "Admin Delete Profiles" ON public.matchmaker_profiles FOR SELECT USING (true);
+CREATE POLICY "Admin full access to all profiles" ON public.matchmaker_profiles FOR ALL USING (true);
+CREATE POLICY "Admin Delete Reports" ON public.matchmaker_reports FOR DELETE USING (true);
+CREATE POLICY "Users can view own support messages" ON public.support_messages FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can send support messages" ON public.support_messages FOR INSERT WITH CHECK (auth.uid() = user_id AND sender_role = 'user');
+CREATE POLICY "Admins can view all messages" ON public.support_messages FOR SELECT USING (true);
+CREATE POLICY "Admins can reply" ON public.support_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can update messages" ON public.support_messages FOR UPDATE USING (true);
+CREATE POLICY "Anyone can insert messages" ON public.support_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Insert" ON public.support_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Read" ON public.support_messages FOR SELECT USING (true);
+CREATE POLICY "Admins can delete messages" ON public.support_messages FOR DELETE USING (true);
+CREATE POLICY "Public Read Credentials" ON public.matchmaker_credentials FOR SELECT USING (true);
+CREATE POLICY "Public Insert Credentials" ON public.matchmaker_credentials FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update Own Credentials" ON public.matchmaker_credentials FOR UPDATE USING (true);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -1376,6 +1319,28 @@ BEGIN
     END IF;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.force_admin_name()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.author_name = 'Admin' THEN
+        IF (SELECT email FROM auth.users WHERE id = auth.uid()) != 'admin@mmu.edu' THEN
+            NEW.author_name := NULL;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
+CREATE TRIGGER enforce_admin_author_confessions
+BEFORE INSERT OR UPDATE ON public.confessions
+FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
+
+DROP TRIGGER IF EXISTS enforce_admin_author_comments ON public.comments;
+CREATE TRIGGER enforce_admin_author_comments
+BEFORE INSERT OR UPDATE ON public.comments
+FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
 
 DROP TRIGGER IF EXISTS on_new_confession ON public.confessions;
 CREATE TRIGGER on_new_confession

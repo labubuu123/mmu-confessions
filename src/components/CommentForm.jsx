@@ -29,7 +29,8 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
         if (!text.trim() || loading) return
 
         setLoading(true)
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await supabase.auth.getSession();
+        const isAdmin = session?.user?.email === 'admin@mmu.edu';
         const anonId = getAnonId()
 
         try {
@@ -40,7 +41,7 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                     parent_id: parentId,
                     text: text.trim(),
                     author_id: anonId,
-                    author_name: session ? 'Admin' : null,
+                    author_name: isAdmin ? 'Admin' : null,
                     reactions: {}
                 }])
                 .select()
