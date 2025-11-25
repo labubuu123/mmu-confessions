@@ -73,7 +73,7 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-          <Route path="/matchmaker" element={<Matchmaker />} />
+          {/* <Route path="/matchmaker" element={<Matchmaker />} /> */}
         </Routes>
 
         <FloatingActionMenu />
