@@ -36,49 +36,49 @@ export default function ToolsPage() {
             bg: 'bg-slate-100'
         },
         {
-            name: 'Past Year Paper',
+            name: 'Past Year Paper (Need VPN)',
             icon: FileText,
             url: 'https://erep.mmu.edu.my/',
             color: 'text-amber-600',
             bg: 'bg-amber-100'
         },
         {
-            name: 'Melaka Map',
+            name: 'MMU Melaka Map',
             icon: Map,
             url: 'https://winprogramme.mmu.edu.my/wp-content/uploads/2020/11/melaka.pdf',
             color: 'text-red-600',
             bg: 'bg-red-100'
         },
         {
-            name: 'Cyberjaya Map',
+            name: 'MMU Cyberjaya Map',
             icon: MapPin,
             url: 'https://winprogramme.mmu.edu.my/wp-content/uploads/2020/11/cyberjaya.pdf',
             color: 'text-cyan-600',
             bg: 'bg-cyan-100'
         },
         {
-            name: 'Melaka VR',
+            name: 'MMU Melaka VR',
             icon: Monitor,
             url: 'https://360vr.my/mmumelaka/',
             color: 'text-purple-600',
             bg: 'bg-purple-100'
         },
         {
-            name: 'Cyberjaya VR',
+            name: 'MMU Cyberjaya VR',
             icon: Monitor,
             url: 'https://360vr.my/mmucyberjaya/',
             color: 'text-fuchsia-600',
             bg: 'bg-fuchsia-100'
         },
         {
-            name: 'Contact Info',
+            name: 'MMU Contact Info',
             icon: Phone,
             url: 'https://www.mmu.edu.my/contact-info/',
             color: 'text-green-600',
             bg: 'bg-green-100'
         },
         {
-            name: 'Security Hotline',
+            name: 'MMU Security Hotline',
             icon: Siren,
             url: null,
             specialData: [
@@ -89,14 +89,14 @@ export default function ToolsPage() {
             bg: 'bg-rose-100'
         },
         {
-            name: 'Expertise Dir.',
+            name: 'MMU Expertise Directory',
             icon: Users,
             url: 'https://mmuexpert.mmu.edu.my/',
             color: 'text-teal-600',
             bg: 'bg-teal-100'
         },
         {
-            name: 'SSC Login',
+            name: 'Student Service Centre (SSC)',
             icon: Headphones,
             url: 'https://ssc.mmu.edu.my/login',
             color: 'text-sky-600',
@@ -121,7 +121,7 @@ export default function ToolsPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                     {universityTools.map((tool, index) => {
-                        const isHotline = tool.name === 'Security Hotline';
+                        const isHotline = tool.name === 'MMU Security Hotline';
                         const cardClasses = `
                             relative overflow-hidden group
                             flex flex-col sm:flex-row items-center sm:items-start
@@ -183,11 +183,11 @@ export default function ToolsPage() {
                                 </div>
 
                                 <div className="flex-1 min-w-0 text-center sm:text-left w-full">
-                                    <div className="flex items-center justify-center sm:justify-between gap-1 mb-0.5 sm:mb-1">
-                                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base leading-tight truncate px-1">
+                                    <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-1 mb-1">
+                                        <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm sm:text-base leading-tight px-1 h-10 flex items-center justify-center sm:justify-start w-full sm:w-auto">
                                             {tool.name}
                                         </h3>
-                                        <ExternalLink className="hidden sm:block w-3.5 h-3.5 text-gray-300 group-hover:text-cyan-500 transition-colors opacity-0 group-hover:opacity-100" />
+                                        <ExternalLink className="hidden sm:block w-3.5 h-3.5 text-gray-300 group-hover:text-cyan-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0" />
                                     </div>
 
                                     <p className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors font-medium">
