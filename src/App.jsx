@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, useParams, useNavigate } from "react-router-dom";
+import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
 import Feed from "./components/Feed";
 import AdminPanel from "./components/AdminPanel";
 import TopConfessions from "./components/TopConfessions";
@@ -8,6 +8,7 @@ import PostModal from "./components/PostModal";
 import PolicyPage from "./components/PolicyPage";
 import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
+import AboutUs from "./components/AboutUs";
 import { NotificationProvider } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
@@ -68,6 +69,7 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/policy" element={<PolicyPage />} />
           <Route path="/analytics" element={<UserAnalytics />} />
+          <Route path="/about" element={<AboutUs />} /> {/* Added Route */}
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
           {/* <Route path="/matchmaker" element={<Matchmaker />} /> */}
         </Routes>
@@ -80,6 +82,16 @@ function App() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 Made by MMU Students
               </p>
+
+              <div className="flex justify-center space-x-4 mb-4 text-sm">
+                <Link to="/about" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                  About Us
+                </Link>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <Link to="/policy" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                  Privacy Policy
+                </Link>
+              </div>
 
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
                 © {new Date().getFullYear()} Zyora Lab. All rights reserved.
