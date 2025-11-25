@@ -2,7 +2,7 @@ import React from 'react';
 import {
     MousePointer2, BookOpen, LayoutDashboard, Lock, FileText, Map, MapPin,
     Monitor, Phone, Siren, Users, Headphones, ExternalLink, Wrench, ArrowLeft,
-    QrCode
+    QrCode, Banknote
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -49,6 +49,13 @@ export default function ToolsPage() {
             url: 'https://play.google.com/store/apps/details?id=com.exam.autoqrcode',
             color: 'text-orange-600',
             bg: 'bg-orange-100'
+        },
+        {
+            name: 'MMU Financial Info',
+            icon: Banknote,
+            url: 'https://www.mmu.edu.my/financial-info/',
+            color: 'text-lime-600',
+            bg: 'bg-lime-100'
         },
         {
             name: 'MMU Melaka Map',
