@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity } from 'lucide-react';
+import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
@@ -149,6 +149,11 @@ export default function FloatingActionMenu() {
         setIsChatOpen(false);
     };
 
+    const handleToolsClick = () => {
+        setIsOpen(false);
+        navigate('/tools');
+    };
+
     return (
         <>
             {isOpen && (
@@ -160,6 +165,13 @@ export default function FloatingActionMenu() {
 
             {isOpen && (
                 <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <button onClick={handleToolsClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
+                        <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/50 rounded-full flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                            <Wrench className="w-5 h-5" />
+                        </div>
+                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Tools</span>
+                    </button>
+
                     <button onClick={handleLiveActivityClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
                         <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400">
                             <Activity className="w-5 h-5" />

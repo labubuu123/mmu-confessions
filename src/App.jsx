@@ -8,6 +8,7 @@ import PostModal from "./components/PostModal";
 import PolicyPage from "./components/PolicyPage";
 import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
+import ToolsPage from "./components/ToolsPage";
 import AboutUs from "./components/AboutUs";
 import { NotificationProvider } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
@@ -69,7 +70,8 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/policy" element={<PolicyPage />} />
           <Route path="/analytics" element={<UserAnalytics />} />
-          <Route path="/about" element={<AboutUs />} /> {/* Added Route */}
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/tools" element={<ToolsPage />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
           {/* <Route path="/matchmaker" element={<Matchmaker />} /> */}
         </Routes>
