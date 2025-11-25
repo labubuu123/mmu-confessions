@@ -1,7 +1,8 @@
 import React from 'react';
 import {
     MousePointer2, BookOpen, LayoutDashboard, Lock, FileText, Map, MapPin,
-    Monitor, Phone, Siren, Users, Headphones, ExternalLink, Wrench, ArrowLeft
+    Monitor, Phone, Siren, Users, Headphones, ExternalLink, Wrench, ArrowLeft,
+    QrCode
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -41,6 +42,13 @@ export default function ToolsPage() {
             url: 'https://erep.mmu.edu.my/',
             color: 'text-amber-600',
             bg: 'bg-amber-100'
+        },
+        {
+            name: 'Attendance Pro Max',
+            icon: QrCode,
+            url: 'https://play.google.com/store/apps/details?id=com.exam.autoqrcode',
+            color: 'text-orange-600',
+            bg: 'bg-orange-100'
         },
         {
             name: 'MMU Melaka Map',
