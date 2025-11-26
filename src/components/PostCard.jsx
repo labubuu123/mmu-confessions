@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -68,6 +68,14 @@ export default function PostCard({ post, onOpen }) {
         currentTotalReactions > 20 || (post.comments_count || 0) > 10,
         [currentTotalReactions, post.comments_count]
     )
+
+    const moodData = useMemo(() => {
+        try {
+            return post.mood ? JSON.parse(post.mood) : null;
+        } catch (e) {
+            return null;
+        }
+    }, [post.mood]);
 
     useEffect(() => {
         fetchReactions()
@@ -208,7 +216,7 @@ export default function PostCard({ post, onOpen }) {
                                     }`}>
                                     {post.author_name || 'Anonymous'}
                                 </div>
-                                {post.mood && <MoodBadge mood={JSON.parse(post.mood)} />}
+                                {moodData && <MoodBadge mood={moodData} />}
                             </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -276,8 +284,17 @@ export default function PostCard({ post, onOpen }) {
                                 <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
                                     Voice Message
+                                    {moodData?.voice_effect && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border flex items-center gap-1 ${moodData.voice_effect === 'chipmunk'
+                                                ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
+                                                : 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800'
+                                            }`}>
+                                            {moodData.voice_effect === 'chipmunk' ? <Zap className="w-3 h-3" /> : <Ghost className="w-3 h-3" />}
+                                            {moodData.voice_effect}
+                                        </span>
+                                    )}
                                 </p>
                                 <audio
                                     controls

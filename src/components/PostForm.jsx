@@ -65,6 +65,7 @@ export default function PostForm({ onPosted }) {
     const [images, setImages] = useState([]);
     const [video, setVideo] = useState(null);
     const [audio, setAudio] = useState(null);
+    const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
     const [originalAudio, setOriginalAudio] = useState(null);
     const [voiceEffect, setVoiceEffect] = useState('normal');
     const [isProcessingAudio, setIsProcessingAudio] = useState(false);
@@ -90,6 +91,18 @@ export default function PostForm({ onPosted }) {
     const [selectedMood, setSelectedMood] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
     const [loadingSeries, setLoadingSeries] = useState(false);
+
+    useEffect(() => {
+        if (audio) {
+            const url = URL.createObjectURL(audio);
+            setAudioPreviewUrl(url);
+            return () => {
+                URL.revokeObjectURL(url);
+            };
+        } else {
+            setAudioPreviewUrl(null);
+        }
+    }, [audio]);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -221,6 +234,14 @@ export default function PostForm({ onPosted }) {
             info('Posting...');
             const tags = extractTags(text);
 
+            let moodData = null;
+            if (selectedMood || (voiceEffect && voiceEffect !== 'normal')) {
+                moodData = {
+                    ...(selectedMood || {}),
+                    voice_effect: voiceEffect !== 'normal' ? voiceEffect : null
+                };
+            }
+
             const { data, error: insertError } = await supabase.from('confessions')
                 .insert([{
                     text: text.trim(),
@@ -234,7 +255,7 @@ export default function PostForm({ onPosted }) {
                     likes_count: 0,
                     comments_count: 0,
                     reported: false,
-                    mood: selectedMood ? JSON.stringify(selectedMood) : null,
+                    mood: moodData ? JSON.stringify(moodData) : null,
                     series_id: seriesData?.series_id || null,
                     series_name: seriesData?.series_name || null,
                     series_part: seriesData?.series_part || null,
@@ -662,23 +683,28 @@ export default function PostForm({ onPosted }) {
 
                     {audio && (
                         <div className="my-3 sm:my-4 space-y-3">
-                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
-                                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                        {audio.name}
-                                    </p>
-                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                        {(audio.size / 1024 / 1024).toFixed(2)} MB {voiceEffect !== 'normal' && <span className="text-indigo-500 font-bold">• {voiceEffect.toUpperCase()} Effect</span>}
-                                    </p>
+                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl relative">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                            {audio.name}
+                                        </p>
+                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                            {(audio.size / 1024 / 1024).toFixed(2)} MB {voiceEffect !== 'normal' && <span className="text-indigo-500 font-bold">• {voiceEffect.toUpperCase()} Effect</span>}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={removeAudio}
+                                        className="text-red-500 hover:text-red-600"
+                                    >
+                                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={removeAudio}
-                                    className="text-red-500 hover:text-red-600"
-                                >
-                                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </button>
+                                {audioPreviewUrl && (
+                                    <audio controls src={audioPreviewUrl} className="w-full h-8 mt-2" />
+                                )}
                             </div>
 
                             <div className="flex flex-wrap gap-2">

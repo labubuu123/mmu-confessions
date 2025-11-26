@@ -13,6 +13,7 @@ import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
 import UserManagement from './UserManagement'
 import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
+import PostModal from './PostModal'
 
 dayjs.extend(relativeTime)
 
@@ -45,6 +46,7 @@ export default function AdminPanel() {
     const selectedUserRef = useRef(null)
     const [announcements, setAnnouncements] = useState([])
     const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', type: 'info' })
+    const [selectedPost, setSelectedPost] = useState(null)
 
     useEffect(() => {
         checkSession()
@@ -320,11 +322,16 @@ export default function AdminPanel() {
                         <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300"><Menu className="w-6 h-6" /></button>
                         <h1 className="text-xl font-bold text-gray-900 dark:text-white capitalize">{activeTab}</h1>
                     </div>
-                    {activeTab === 'moderation' && (
-                        <div className="flex gap-2">
-                            <button onClick={() => fetchPosts(true)} className="p-2 text-gray-500 hover:text-indigo-600 transition"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
-                        </div>
-                    )}
+                    <div className="flex gap-2">
+                        {activeTab === 'moderation' && (
+                            <button onClick={() => fetchPosts(true)} className="p-2 text-gray-500 hover:text-indigo-600 transition" title="Refresh">
+                                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                            </button>
+                        )}
+                        <button onClick={signOut} className="p-2 text-gray-500 hover:text-red-600 transition" title="Sign Out">
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    </div>
                 </header>
 
                 <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -352,10 +359,16 @@ export default function AdminPanel() {
                                 {posts.map(p => {
                                     const isSelected = selectedPosts.has(p.id);
                                     return (
-                                        <div key={p.id} className={`group bg-white dark:bg-gray-800 rounded-xl border transition-all ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'}`}>
+                                        <div
+                                            key={p.id}
+                                            onClick={() => setSelectedPost(p)}
+                                            className={`group bg-white dark:bg-gray-800 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'}`}
+                                        >
                                             <div className="p-5">
                                                 <div className="flex items-start gap-4">
-                                                    <div className="pt-1"><input type="checkbox" checked={isSelected} onChange={() => { const s = new Set(selectedPosts); s.has(p.id) ? s.delete(p.id) : s.add(p.id); setSelectedPosts(s); }} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" /></div>
+                                                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                                                        <input type="checkbox" checked={isSelected} onChange={() => { const s = new Set(selectedPosts); s.has(p.id) ? s.delete(p.id) : s.add(p.id); setSelectedPosts(s); }} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                                                    </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                                                             <div className="flex items-center gap-3">
@@ -381,7 +394,7 @@ export default function AdminPanel() {
                                                         </div>
 
                                                         {(p.media_url || polls[p.id] || p.events?.length > 0) && (
-                                                            <div className="mb-4 p-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700/50">
+                                                            <div className="mb-4 p-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700/50" onClick={(e) => e.stopPropagation()}>
                                                                 {p.media_url && (
                                                                     <div className="rounded-lg overflow-hidden max-h-64 bg-black/5 flex justify-center">
                                                                         {p.media_type === 'video' ? <video controls src={p.media_url} className="h-full" /> :
@@ -394,7 +407,7 @@ export default function AdminPanel() {
                                                             </div>
                                                         )}
 
-                                                        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                                        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
                                                             {!p.approved && <Button size="sm" variant="success" icon={CheckCircle} onClick={() => handleApprove(p.id)} loading={actionLoading[p.id] === 'approve'}>Approve</Button>}
                                                             <Button size="sm" variant="secondary" icon={p.pinned ? PinOff : Pin} onClick={() => handleTogglePin(p.id, p.pinned)} loading={actionLoading[p.id] === 'pin'}>{p.pinned ? 'Unpin' : 'Pin'}</Button>
                                                             <Button size="sm" variant="secondary" icon={Infinity} onClick={() => handleTogglePermanent(p.id, p.is_permanent)} loading={actionLoading[p.id] === 'permanent'}>{p.is_permanent ? 'Make Temporary' : 'Make Permanent'}</Button>
@@ -411,7 +424,7 @@ export default function AdminPanel() {
                                                         </div>
 
                                                         {visibleComments[p.id] && (
-                                                            <div className="mt-4 pl-4 border-l-2 border-indigo-100 dark:border-indigo-900 space-y-3">
+                                                            <div className="mt-4 pl-4 border-l-2 border-indigo-100 dark:border-indigo-900 space-y-3" onClick={(e) => e.stopPropagation()}>
                                                                 {commentsLoading[p.id] && (
                                                                     <div className="text-center py-2">
                                                                         <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" />
@@ -573,6 +586,12 @@ export default function AdminPanel() {
                     )}
                 </div>
             </main>
+            {selectedPost && (
+                <PostModal
+                    postId={selectedPost.id}
+                    onClose={() => setSelectedPost(null)}
+                />
+            )}
         </div>
     )
 }
