@@ -194,6 +194,15 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_credentials (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    type TEXT DEFAULT 'info',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -238,6 +247,7 @@ ALTER TABLE public.matchmaker_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_credentials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -320,6 +330,8 @@ CREATE POLICY "Admins can delete messages" ON public.support_messages FOR DELETE
 CREATE POLICY "Public Read Credentials" ON public.matchmaker_credentials FOR SELECT USING (true);
 CREATE POLICY "Public Insert Credentials" ON public.matchmaker_credentials FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Own Credentials" ON public.matchmaker_credentials FOR UPDATE USING (true);
+CREATE POLICY "Public Read Announcements" ON public.announcements FOR SELECT USING (true);
+CREATE POLICY "Admin Manage Announcements" ON public.announcements FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

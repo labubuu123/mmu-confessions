@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
-    ShieldOff, BarChart3, Calendar, User, Clock, Heart, Users, Menu, Infinity,
-    MessageSquare, Send, X, ArrowLeft
+    ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
+    Megaphone, Search, Menu, X, ArrowLeft, Infinity
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -23,1076 +23,563 @@ export default function AdminPanel() {
     const [user, setUser] = useState(null)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
-    const [actionLoading, setActionLoading] = useState({})
+    const [posts, setPosts] = useState([])
+    const [polls, setPolls] = useState({})
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
+    const [activeTab, setActiveTab] = useState('moderation')
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [actionLoading, setActionLoading] = useState({})
+    const [selectedPosts, setSelectedPosts] = useState(new Set())
+    const [bulkLoading, setBulkLoading] = useState(false)
     const [comments, setComments] = useState({})
     const [commentsLoading, setCommentsLoading] = useState({})
     const [visibleComments, setVisibleComments] = useState({})
-    const [selectedPosts, setSelectedPosts] = useState(new Set())
-    const [bulkLoading, setBulkLoading] = useState(false)
-    const [polls, setPolls] = useState({})
-    const [activeTab, setActiveTab] = useState('moderation')
     const [supportUsers, setSupportUsers] = useState([])
     const [selectedSupportUser, setSelectedSupportUser] = useState(null)
     const [adminChatHistory, setAdminChatHistory] = useState([])
     const [adminMessageInput, setAdminMessageInput] = useState('')
     const adminChatEndRef = useRef(null)
     const selectedUserRef = useRef(null)
+    const [announcements, setAnnouncements] = useState([])
+    const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', type: 'info' })
 
     useEffect(() => {
         checkSession()
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === 'SIGNED_OUT') {
-                    setUser(null)
-                    setPosts([])
-                    setSelectedPosts(new Set())
-                    setComments({})
-                    setVisibleComments({})
-                    setError(null)
-                    setPolls({})
-                    setPage(0)
-                    setHasMore(true)
-                    setActiveTab('moderation')
+                    setUser(null); setPosts([]); setSelectedPosts(new Set());
                 } else if (event === 'SIGNED_IN') {
-                    setUser(session.user)
-                    fetchPosts(true)
+                    setUser(session.user); fetchPosts(true);
                 }
             }
         )
-
-        return () => {
-            subscription?.unsubscribe()
-        }
+        return () => subscription?.unsubscribe()
     }, [])
 
     useEffect(() => {
-        async function fetchPollsForPosts() {
-            if (posts.length === 0) {
-                setPolls({})
-                return
-            }
-            const postIds = posts.map(p => p.id)
-            const { data, error } = await supabase
-                .from('polls')
-                .select('*')
-                .in('confession_id', postIds)
-
-            if (error) {
-                console.error("Failed to fetch polls:", error)
-                return
-            }
-
-            if (data) {
-                const pollMap = {}
-                data.forEach(p => {
-                    pollMap[p.confession_id] = p
-                })
-                setPolls(prev => ({ ...prev, ...pollMap }))
-            }
-        }
-
-        if (activeTab === 'moderation') {
-            fetchPollsForPosts()
-        }
+        if (activeTab === 'moderation' && posts.length > 0) fetchPollsForPosts();
+        if (activeTab === 'support') fetchSupportUsers();
+        if (activeTab === 'announcements') fetchAnnouncements();
     }, [posts, activeTab])
 
     useEffect(() => {
         selectedUserRef.current = selectedSupportUser;
-        if (selectedSupportUser) {
-            setTimeout(() => adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-        }
-    }, [selectedSupportUser]);
-
-    useEffect(() => {
-        if (activeTab === 'support' && selectedSupportUser) {
-            setTimeout(() => adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-        }
-    }, [adminChatHistory, activeTab, selectedSupportUser])
+        if (selectedSupportUser) setTimeout(() => adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }, [selectedSupportUser, adminChatHistory])
 
     useEffect(() => {
         if (activeTab === 'support') {
-            fetchSupportUsers()
-
-            const channel = supabase
-                .channel('admin-support-global')
+            const channel = supabase.channel('admin-support-global')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, (payload) => {
                     fetchSupportUsers()
-
-                    const currentUser = selectedUserRef.current;
-
-                    if (currentUser && payload.new.user_id === currentUser) {
-                        setAdminChatHistory(prev => {
-                            if (prev.some(m => m.id === payload.new.id)) return prev;
-                            return [...prev, payload.new];
-                        });
-
-                        if (payload.new.sender_role === 'user') {
-                            supabase.from('support_messages')
-                                .update({ is_read: true })
-                                .eq('id', payload.new.id)
-                                .then()
-                        }
+                    if (selectedUserRef.current && payload.new.user_id === selectedUserRef.current) {
+                        setAdminChatHistory(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
+                        if (payload.new.sender_role === 'user') supabase.from('support_messages').update({ is_read: true }).eq('id', payload.new.id).then()
                     }
-                })
-                .subscribe()
-
-            return () => {
-                supabase.removeChannel(channel)
-            }
+                }).subscribe()
+            return () => supabase.removeChannel(channel)
         }
     }, [activeTab])
 
-    async function checkSession() {
-        await supabase.auth.signOut()
-        setUser(null)
-    }
-
+    async function checkSession() { await supabase.auth.signOut(); setUser(null); }
     async function signIn(e) {
-        e.preventDefault()
-        setLoading(true)
-        setError(null)
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        })
-
-        setLoading(false)
-
-        if (error) {
-            setError('Sign-in error: ' + error.message)
-            return
-        }
-
-        if (data.user && data.user.email !== ADMIN_EMAIL) {
-            setError('Access Denied: This account is not authorized as an administrator.')
-            supabase.auth.signOut();
-            return
-        }
+        e.preventDefault(); setLoading(true); setError(null);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        setLoading(false);
+        if (error) return setError('Sign-in error: ' + error.message);
+        if (data.user?.email !== ADMIN_EMAIL) { setError('Access Denied'); supabase.auth.signOut(); }
     }
-
     async function signOut() {
-        const confirmed = window.confirm('Are you sure you want to sign out?')
-        if (!confirmed) return
-
-        setLoading(true)
-        setError(null)
-        try {
-            const { error } = await supabase.auth.signOut()
-            if (error) throw error
-
-        } catch (err) {
-            console.error('Sign-out error:', err)
-            alert('Failed to sign out: ' + err.message)
-            setError('Sign-out error: ' + err.message)
-        } finally {
-            setLoading(false)
-        }
+        if (!window.confirm('Sign out?')) return;
+        setLoading(true);
+        await supabase.auth.signOut();
+        setLoading(false);
     }
 
     const fetchPosts = useCallback(async (isInitial = false) => {
-        if (loading && !isInitial) return
-
-        setLoading(true)
-        if (isInitial) setError(null)
-
-        const currentPage = isInitial ? 0 : page
-        const { data, error } = await supabase
-            .from('confessions')
-            .select('*, events(*)')
-            .order('created_at', { ascending: false })
-            .range(currentPage * POSTS_PER_PAGE, (currentPage + 1) * POSTS_PER_PAGE - 1)
-
-        setLoading(false)
-
-        if (error) {
-            setError('Could not fetch posts: ' + error.message)
-            return
-        }
-
-        if (data.length < POSTS_PER_PAGE) {
-            setHasMore(false)
-        } else {
-            setHasMore(true)
-        }
-
+        if (loading && !isInitial) return;
+        setLoading(true); if (isInitial) setError(null);
+        const currentPage = isInitial ? 0 : page;
+        const { data, error } = await supabase.from('confessions').select('*, events(*)').order('created_at', { ascending: false }).range(currentPage * POSTS_PER_PAGE, (currentPage + 1) * POSTS_PER_PAGE - 1);
+        setLoading(false);
+        if (error) return setError(error.message);
+        setHasMore(data.length === POSTS_PER_PAGE);
         setPosts(prev => {
-            const newPosts = data.filter(d => !prev.some(p => p.id === d.id))
-            return isInitial ? data : [...prev, ...newPosts]
-        })
-
-        if (!isInitial) {
-            setPage(currentPage + 1)
-        } else {
-            setPage(1)
-            setSelectedPosts(new Set())
-            setHasMore(data.length === POSTS_PER_PAGE)
-        }
+            const newPosts = data.filter(d => !prev.some(p => p.id === d.id));
+            return isInitial ? data : [...prev, ...newPosts];
+        });
+        setPage(isInitial ? 1 : currentPage + 1);
+        if (isInitial) setSelectedPosts(new Set());
     }, [page, loading])
 
-    async function handleDelete(postId) {
-        if (!window.confirm(`Are you sure you want to DELETE post ${postId}? This will delete the post, all comments, reactions, and associated media. This cannot be undone.`)) {
-            return
-        }
-
-        setActionLoading(prev => ({ ...prev, [postId]: 'delete-post' }))
-
-        try {
-            const { error } = await supabase.rpc('delete_post_and_storage', {
-                post_id_in: postId
-            })
-
-            if (error) throw error
-
-            alert('Post deleted successfully!')
-            setPosts(prev => prev.filter(p => p.id !== postId))
-            setSelectedPosts(prev => {
-                const newSet = new Set(prev)
-                newSet.delete(postId)
-                return newSet
-            })
-        } catch (err) {
-            console.error('Delete error:', err)
-            alert('Failed to delete: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function handleBulkDelete() {
-        const numSelected = selectedPosts.size
-        if (numSelected === 0) {
-            alert('No posts selected.')
-            return
-        }
-
-        if (!window.confirm(`Are you sure you want to DELETE ${numSelected} selected posts? This cannot be undone.`)) {
-            return
-        }
-
-        setBulkLoading(true)
-        const postIdsToDelete = Array.from(selectedPosts)
-        const results = []
-
-        for (const postId of postIdsToDelete) {
-            try {
-                const { error } = await supabase.rpc('delete_post_and_storage', {
-                    post_id_in: postId
-                })
-                if (error) throw error
-                results.push({ id: postId, status: 'success' })
-            } catch (err) {
-                console.error(`Failed to delete post ${postId}:`, err)
-                results.push({ id: postId, status: 'error', message: err.message })
-            }
-        }
-
-        const successfulDeletes = results.filter(r => r.status === 'success').map(r => r.id)
-        const failedDeletes = results.filter(r => r.status === 'error')
-
-        setPosts(prev => prev.filter(p => !successfulDeletes.includes(p.id)))
-        setSelectedPosts(new Set())
-        setBulkLoading(false)
-
-        alert(`Bulk delete complete:
-- Successfully deleted: ${successfulDeletes.length}
-- Failed to delete: ${failedDeletes.length}
-
-${failedDeletes.length > 0 ? 'Check console for error details on failed deletions.' : ''}`)
-    }
-
-    function togglePostSelection(postId) {
-        setSelectedPosts(prev => {
-            const newSet = new Set(prev)
-            if (newSet.has(postId)) {
-                newSet.delete(postId)
-            } else {
-                newSet.add(postId)
-            }
-            return newSet
-        })
-    }
-
-    function toggleSelectAll() {
-        if (selectedPosts.size === posts.length) {
-            setSelectedPosts(new Set())
-        } else {
-            setSelectedPosts(new Set(posts.map(p => p.id)))
-        }
-    }
-
-    async function handleApprove(postId) {
-        setActionLoading(prev => ({ ...prev, [postId]: 'approve' }))
-
-        try {
-            const { error } = await supabase
-                .from('confessions')
-                .update({ approved: true, reported: false, report_count: 0 })
-                .eq('id', postId)
-
-            if (error) throw error
-
-            alert('Post approved!')
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, approved: true, reported: false, report_count: 0 } : p))
-        } catch (err) {
-            console.error('Approve error:', err)
-            alert('Failed to approve: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function handleMarkReview(postId) {
-        setActionLoading(prev => ({ ...prev, [postId]: 'review' }))
-
-        try {
-            const { error } = await supabase
-                .from('confessions')
-                .update({ reported: true })
-                .eq('id', postId)
-
-            if (error) throw error
-
-            alert('Post marked for review!')
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, reported: true } : p))
-        } catch (err) {
-            console.error('Mark review error:', err)
-            alert('Failed to mark for review: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function handleTogglePin(postId, isPinned) {
-        setActionLoading(prev => ({ ...prev, [postId]: 'pin' }))
-
-        try {
-            const { error } = await supabase
-                .from('confessions')
-                .update({ pinned: !isPinned })
-                .eq('id', postId)
-
-            if (error) throw error
-
-            alert(isPinned ? 'Post unpinned!' : 'Post pinned!')
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, pinned: !isPinned } : p))
-        } catch (err) {
-            console.error('Pin error:', err)
-            alert('Failed to update pin: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function handleTogglePermanent(postId, isPermanent) {
-        setActionLoading(prev => ({ ...prev, [postId]: 'permanent' }))
-
-        try {
-            const { error } = await supabase
-                .from('confessions')
-                .update({ is_permanent: !isPermanent })
-                .eq('id', postId)
-
-            if (error) throw error
-
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, is_permanent: !isPermanent } : p))
-        } catch (err) {
-            console.error('Permanent toggle error:', err)
-            alert('Failed to update permanent status: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function handleClearReport(postId) {
-        setActionLoading(prev => ({ ...prev, [postId]: 'clear-report' }))
-
-        try {
-            const { error } = await supabase.rpc('clear_report_status', {
-                post_id_in: postId
-            })
-
-            if (error) throw error
-
-            alert('Report status cleared!')
-            setPosts(prev => prev.map(p => p.id === postId ? { ...p, reported: false, report_count: 0 } : p))
-        } catch (err) {
-            console.error('Clear report error:', err)
-            alert('Failed to clear report: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [postId]: null }))
-        }
-    }
-
-    async function toggleComments(postId) {
-        const isVisible = !!visibleComments[postId]
-        setVisibleComments(prev => ({ ...prev, [postId]: !isVisible }))
-
-        if (!isVisible && !comments[postId]) {
-            await fetchCommentsForPost(postId)
+    async function fetchPollsForPosts() {
+        const postIds = posts.map(p => p.id);
+        const { data } = await supabase.from('polls').select('*').in('confession_id', postIds);
+        if (data) {
+            const pollMap = {}; data.forEach(p => pollMap[p.confession_id] = p);
+            setPolls(prev => ({ ...prev, ...pollMap }));
         }
     }
 
     async function fetchCommentsForPost(postId) {
-        setCommentsLoading(prev => ({ ...prev, [postId]: true }))
-        try {
-            const { data, error } = await supabase
-                .from('comments')
-                .select('*')
-                .eq('post_id', postId)
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
-
-            setComments(prev => ({ ...prev, [postId]: data || [] }))
-        } catch (err) {
-            console.error('Fetch comments error:', err)
-        } finally {
-            setCommentsLoading(prev => ({ ...prev, [postId]: false }))
-        }
+        setCommentsLoading(prev => ({ ...prev, [postId]: true }));
+        const { data } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: false });
+        setComments(prev => ({ ...prev, [postId]: data || [] }));
+        setCommentsLoading(prev => ({ ...prev, [postId]: false }));
     }
 
+    async function handleDelete(postId) {
+        if (!window.confirm('Delete post? Cannot be undone.')) return;
+        setActionLoading(prev => ({ ...prev, [postId]: 'delete-post' }));
+        const { error } = await supabase.rpc('delete_post_and_storage', { post_id_in: postId });
+        if (!error) {
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            setSelectedPosts(prev => { const n = new Set(prev); n.delete(postId); return n; });
+        }
+        setActionLoading(prev => ({ ...prev, [postId]: null }));
+    }
+
+    async function handleBulkDelete() {
+        if (!window.confirm(`Delete ${selectedPosts.size} posts?`)) return;
+        setBulkLoading(true);
+        const ids = Array.from(selectedPosts);
+        const results = [];
+        for (const id of ids) {
+            const { error } = await supabase.rpc('delete_post_and_storage', { post_id_in: id });
+            results.push({ id, status: error ? 'error' : 'success' });
+        }
+        const success = results.filter(r => r.status === 'success').map(r => r.id);
+        setPosts(prev => prev.filter(p => !success.includes(p.id)));
+        setSelectedPosts(new Set());
+        setBulkLoading(false);
+        alert(`Deleted ${success.length} posts.`);
+    }
+
+    async function handleSingleAction(postId, actionType, dbAction) {
+        setActionLoading(prev => ({ ...prev, [postId]: actionType }));
+        try { await dbAction(); } catch (e) { console.error(e); alert(e.message); }
+        finally { setActionLoading(prev => ({ ...prev, [postId]: null })); }
+    }
+
+    const handleApprove = (id) => handleSingleAction(id, 'approve', async () => {
+        await supabase.from('confessions').update({ approved: true, reported: false, report_count: 0 }).eq('id', id);
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, approved: true, reported: false, report_count: 0 } : p));
+    });
+    const handleMarkReview = (id) => handleSingleAction(id, 'review', async () => {
+        await supabase.from('confessions').update({ reported: true }).eq('id', id);
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, reported: true } : p));
+    });
+    const handleTogglePin = (id, current) => handleSingleAction(id, 'pin', async () => {
+        await supabase.from('confessions').update({ pinned: !current }).eq('id', id);
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, pinned: !current } : p));
+    });
+    const handleTogglePermanent = (id, current) => handleSingleAction(id, 'permanent', async () => {
+        await supabase.from('confessions').update({ is_permanent: !current }).eq('id', id);
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, is_permanent: !current } : p));
+    });
+    const handleClearReport = (id) => handleSingleAction(id, 'clear-report', async () => {
+        await supabase.rpc('clear_report_status', { post_id_in: id });
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, reported: false, report_count: 0 } : p));
+    });
+
     async function handleDeleteComment(commentId, postId) {
-        if (!window.confirm(`Are you sure you want to DELETE comment ${commentId}? This cannot be undone.`)) {
-            return
+        if (!window.confirm('Delete comment?')) return;
+        setActionLoading(prev => ({ ...prev, [commentId]: 'delete-comment' }));
+        await supabase.rpc('delete_comment_as_admin', { comment_id_in: commentId });
+        await fetchCommentsForPost(postId);
+        setActionLoading(prev => ({ ...prev, [commentId]: null }));
+    }
+
+    async function fetchAnnouncements() {
+        const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+        setAnnouncements(data || []);
+    }
+    async function createAnnouncement(e) {
+        e.preventDefault();
+        const { error } = await supabase.from('announcements').insert([newAnnouncement]);
+        if (error) alert('Error creating announcement');
+        else {
+            setNewAnnouncement({ title: '', content: '', type: 'info' });
+            fetchAnnouncements();
         }
-
-        setActionLoading(prev => ({ ...prev, [commentId]: 'delete-comment' }))
-
-        try {
-            const { error } = await supabase.rpc('delete_comment_as_admin', {
-                comment_id_in: commentId
-            })
-
-            if (error) throw error
-
-            alert('Comment deleted successfully!')
-
-            await fetchCommentsForPost(postId)
-
-            const { data: updatedPost, error: postError } = await supabase
-                .from('confessions')
-                .select('*')
-                .eq('id', postId)
-                .single()
-
-            if (postError) console.error('Error re-fetching post:', postError)
-            if (updatedPost) {
-                setPosts(prev => prev.map(p => p.id === postId ? updatedPost : p))
-            }
-
-        } catch (err) {
-            console.error('Delete comment error:', err)
-            alert('Failed to delete comment: ' + err.message)
-        } finally {
-            setActionLoading(prev => ({ ...prev, [commentId]: null }))
-        }
+    }
+    async function toggleAnnouncement(id, currentState) {
+        await supabase.from('announcements').update({ is_active: !currentState }).eq('id', id);
+        fetchAnnouncements();
+    }
+    async function deleteAnnouncement(id) {
+        if (!window.confirm("Delete announcement?")) return;
+        await supabase.from('announcements').delete().eq('id', id);
+        fetchAnnouncements();
     }
 
     async function fetchSupportUsers() {
-        const { data, error } = await supabase
-            .from('support_messages')
-            .select('user_id, created_at, content, is_read, sender_role')
-            .order('created_at', { ascending: false })
-
+        const { data } = await supabase.from('support_messages').select('user_id, created_at, content, is_read, sender_role').order('created_at', { ascending: false });
         if (data) {
-            const uniqueUsers = {}
-            data.forEach(msg => {
-                if (!uniqueUsers[msg.user_id]) {
-                    uniqueUsers[msg.user_id] = {
-                        user_id: msg.user_id,
-                        last_message: msg.content,
-                        last_active: msg.created_at,
-                        has_unread: !msg.is_read && msg.sender_role === 'user'
-                    }
-                }
-            })
-            setSupportUsers(Object.values(uniqueUsers))
+            const unique = {};
+            data.forEach(m => { if (!unique[m.user_id]) unique[m.user_id] = { user_id: m.user_id, last_message: m.content, last_active: m.created_at, has_unread: !m.is_read && m.sender_role === 'user' }; });
+            setSupportUsers(Object.values(unique));
         }
     }
-
     async function fetchAdminChatHistory(userId) {
-        const { data } = await supabase
-            .from('support_messages')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: true })
-
-        setAdminChatHistory(data || [])
-
-        await supabase
-            .from('support_messages')
-            .update({ is_read: true })
-            .eq('user_id', userId)
-            .eq('sender_role', 'user')
-            .eq('is_read', false)
+        const { data } = await supabase.from('support_messages').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+        setAdminChatHistory(data || []);
+        await supabase.from('support_messages').update({ is_read: true }).eq('user_id', userId).eq('sender_role', 'user').eq('is_read', false);
     }
-
     async function sendAdminReply(e) {
-        e.preventDefault()
-        if (!adminMessageInput.trim() || !selectedSupportUser) return
-
-        const content = adminMessageInput.trim()
-        setAdminMessageInput('')
-
-        const { error } = await supabase.from('support_messages').insert({
-            user_id: selectedSupportUser,
-            sender_role: 'admin',
-            content: content
-        })
-
-        if (error) {
-            console.error("Failed to send reply", error)
-            alert("Failed to send reply")
-        } else {
-            fetchSupportUsers()
-        }
+        e.preventDefault();
+        if (!adminMessageInput.trim() || !selectedSupportUser) return;
+        await supabase.from('support_messages').insert({ user_id: selectedSupportUser, sender_role: 'admin', content: adminMessageInput.trim() });
+        setAdminMessageInput(''); fetchSupportUsers();
     }
-
     async function handleDeleteConversation() {
-        if (!selectedSupportUser) return
-        if (!window.confirm('Are you sure you want to DELETE this entire conversation? This cannot be undone.')) return
-
-        const { error } = await supabase
-            .from('support_messages')
-            .delete()
-            .eq('user_id', selectedSupportUser)
-
-        if (error) {
-            console.error('Error deleting conversation:', error)
-            alert('Failed to delete conversation. Check RLS policies.')
-        } else {
-            setSupportUsers(prev => prev.filter(u => u.user_id !== selectedSupportUser))
-            setSelectedSupportUser(null)
-            setAdminChatHistory([])
-        }
+        if (!selectedSupportUser || !window.confirm('Delete conversation?')) return;
+        await supabase.from('support_messages').delete().eq('user_id', selectedSupportUser);
+        setSupportUsers(prev => prev.filter(u => u.user_id !== selectedSupportUser));
+        setSelectedSupportUser(null);
     }
 
     if (!user) {
         return (
-            <div className="max-w-md mx-auto px-4 py-20">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                            <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex items-start justify-center bg-gray-50 dark:bg-gray-900 px-4 pt-10 md:pt-12">
+                <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
+                    <div className="text-center mb-8">
+                        <div className="inline-flex p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl mb-4">
+                            <Shield className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            Admin Login
-                        </h2>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Access</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Authorized personnel only</p>
                     </div>
-
-                    <form onSubmit={signIn} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="admin@example.com"
-                                className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                required
-                            />
+                    <form onSubmit={signIn} className="space-y-5">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
+                            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition" required />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Password
-                            </label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                            />
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Password</label>
+                            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition" required />
                         </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
-                        >
-                            {loading ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    Signing in...
-                                </>
-                            ) : (
-                                <>
-                                    <LogIn className="w-4 h-4" />
-                                    Sign in
-                                </>
-                            )}
+                        <button type="submit" disabled={loading} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2">
+                            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><LogIn className="w-5 h-5" /> Sign In</>}
                         </button>
-
-                        {error && (
-                            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-                            </div>
-                        )}
+                        {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium">{error}</div>}
                     </form>
                 </div>
             </div>
         )
     }
 
-    const allPostsSelected = posts.length > 0 && selectedPosts.size === posts.length;
+    const menuItems = [
+        { id: 'moderation', label: 'Moderation', icon: Shield },
+        { id: 'users', label: 'Users', icon: Users },
+        { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
+        { id: 'support', label: 'Support', icon: MessageSquare },
+        { id: 'announcements', label: 'Announcements', icon: Megaphone }
+    ];
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-4 md:py-8 pb-20">
-            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 md:p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                        <Shield className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 dark:text-indigo-400" />
+        <div className="min-30h-screen bg-gray-100 dark:bg-gray-900 flex">
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="h-full flex flex-col">
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-600 rounded-lg"><Shield className="w-5 h-5 text-white" /></div>
+                            <span className="font-bold text-lg dark:text-white">Admin</span>
+                        </div>
+                        <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-500"><X className="w-6 h-6" /></button>
                     </div>
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                            Admin Panel
-                        </h1>
-                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 break-all">
-                            {user.email}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex gap-2 w-full md:w-auto">
-                    <button
-                        onClick={() => fetchPosts(true)}
-                        disabled={loading || bulkLoading}
-                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 text-sm font-medium"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading && posts.length === 0 ? 'animate-spin' : ''}`} />
-                        <span className="md:inline hidden">Refresh</span>
-                    </button>
-
-                    <button
-                        onClick={signOut}
-                        disabled={loading || bulkLoading}
-                        className="flex-1 md:flex-none justify-center flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition disabled:opacity-50 text-sm font-medium"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="md:inline hidden">Log Out</span>
-                    </button>
-                </div>
-            </div>
-
-            <div className="mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 px-4 md:mx-0 md:px-0">
-                <nav className="flex space-x-6 overflow-x-auto no-scrollbar pb-1">
-                    {[
-                        { id: 'moderation', label: 'Moderation', icon: Shield },
-                        { id: 'users', label: 'Users', icon: Users },
-                        { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
-                        { id: 'support', label: 'Support', icon: MessageSquare }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === tab.id
-                                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                                }`}
-                        >
-                            <tab.icon className="w-4 h-4" />
-                            {tab.label}
+                    <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                        {menuItems.map(item => (
+                            <button key={item.id} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === item.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                                <item.icon className="w-5 h-5" /> {item.label}
+                            </button>
+                        ))}
+                    </nav>
+                    <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                        <div className="mb-4 px-4">
+                            <p className="text-xs font-bold text-gray-400 uppercase">Logged in as</p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title={user.email}>{user.email}</p>
+                        </div>
+                        <button onClick={signOut} className="w-full flex items-center gap-3 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition">
+                            <LogOut className="w-5 h-5" /> Sign Out
                         </button>
-                    ))}
-                </nav>
-            </div>
-
-            {activeTab === 'moderation' && (
-                <>
-                    {posts.length > 0 && (
-                        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                            <button
-                                onClick={toggleSelectAll}
-                                className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition disabled:opacity-50"
-                                disabled={bulkLoading}
-                            >
-                                {allPostsSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                                {allPostsSelected ? 'Deselect All' : 'Select All'}
-                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900">
-                                    {selectedPosts.size}
-                                </span>
-                            </button>
-
-                            <button
-                                onClick={handleBulkDelete}
-                                disabled={selectedPosts.size === 0 || bulkLoading}
-                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-bold shadow-sm"
-                            >
-                                {bulkLoading ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <Trash2 className="w-4 h-4" />
-                                )}
-                                Delete Selected
-                            </button>
-                        </div>
-                    )}
-
-                    {loading && posts.length === 0 ? (
-                        <div className="flex justify-center items-center py-20">
-                            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {posts.map(p => {
-                                const isSelected = selectedPosts.has(p.id);
-                                const poll = polls[p.id];
-                                const hasEvent = p.events && p.events.length > 0;
-                                const event = hasEvent ? p.events[0] : null;
-
-                                return (
-                                    <div
-                                        key={p.id}
-                                        className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-colors ${isSelected
-                                            ? 'border-indigo-500 ring-2 ring-indigo-500/50'
-                                            : 'border-gray-200 dark:border-gray-700'
-                                            } p-4 md:p-5`}
-                                    >
-                                        <div className="flex items-start gap-3 md:gap-4">
-                                            <div className="pt-1 shrink-0">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                                                    checked={isSelected}
-                                                    onChange={() => togglePostSelection(p.id)}
-                                                    disabled={bulkLoading}
-                                                />
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <AnonAvatar authorId={p.author_id} size="sm" />
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">
-                                                                    {p.author_name || 'Anonymous'}
-                                                                </span>
-                                                                <span className="text-xs text-gray-400 font-mono">
-                                                                    #{p.id}
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {new Date(p.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        {p.is_permanent && (
-                                                            <Tag icon={Infinity} label="Permanent" color="purple" />
-                                                        )}
-                                                        {poll && <Tag icon={BarChart3} label="Poll" color="indigo" />}
-                                                        {hasEvent && <Tag icon={Calendar} label="Event" color="orange" />}
-                                                        {p.pinned && <Tag icon={Pin} label="Pinned" color="blue" />}
-                                                        {p.approved ? (
-                                                            <Tag icon={CheckCircle} label="Approved" color="green" />
-                                                        ) : (
-                                                            <Tag icon={AlertTriangle} label="Pending" color="yellow" />
-                                                        )}
-                                                        {(p.reported || p.report_count > 0) && (
-                                                            <Tag icon={AlertTriangle} label={`Reported ${p.report_count > 0 ? `(${p.report_count})` : ''}`} color="red" />
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mb-3 text-sm md:text-base leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                                                    {p.text}
-                                                </p>
-
-                                                {poll && <div className="mb-3" onClick={(e) => e.stopPropagation()}><PollDisplay poll={poll} confessionId={p.id} isAdminReview={true} /></div>}
-                                                {event && <div className="mb-3" onClick={(e) => e.stopPropagation()}><EventDisplay eventName={event.event_name} description={event.description} startTime={event.start_time} endTime={event.end_time} location={event.location} /></div>}
-                                                {p.media_url && (
-                                                    <div className="mb-3">
-                                                        {p.media_type === 'images' ? <img src={p.media_url} className="max-h-48 rounded-lg object-cover w-full sm:w-auto" alt="media" /> :
-                                                            p.media_type === 'video' ? <video controls className="max-h-48 w-full rounded-lg"><source src={p.media_url} /></video> :
-                                                                p.media_type === 'audio' ? <audio controls className="w-full"><source src={p.media_url} /></audio> : null}
-                                                    </div>
-                                                )}
-
-                                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
-                                                    <ActionButton
-                                                        onClick={() => handleTogglePin(p.id, p.pinned)}
-                                                        disabled={actionLoading[p.id] || bulkLoading}
-                                                        isLoading={actionLoading[p.id] === 'pin'}
-                                                        icon={p.pinned ? PinOff : Pin}
-                                                        label={p.pinned ? 'Unpin' : 'Pin'}
-                                                        variant={p.pinned ? 'blue' : 'secondary'}
-                                                    />
-
-                                                    <ActionButton
-                                                        onClick={() => handleTogglePermanent(p.id, p.is_permanent)}
-                                                        disabled={actionLoading[p.id] || bulkLoading}
-                                                        isLoading={actionLoading[p.id] === 'permanent'}
-                                                        icon={Infinity}
-                                                        label={p.is_permanent ? 'Permanent' : 'Auto-Del'}
-                                                        variant={p.is_permanent ? 'purple' : 'secondary'}
-                                                        title={p.is_permanent ? "This post will NOT be auto-deleted" : "This post will be deleted after 15 days"}
-                                                    />
-
-                                                    <ActionButton
-                                                        onClick={() => handleDelete(p.id)}
-                                                        disabled={actionLoading[p.id] || bulkLoading}
-                                                        isLoading={actionLoading[p.id] === 'delete-post'}
-                                                        icon={Trash2}
-                                                        label="Delete"
-                                                        variant="danger"
-                                                    />
-
-                                                    {!p.approved && (
-                                                        <ActionButton
-                                                            onClick={() => handleApprove(p.id)}
-                                                            disabled={actionLoading[p.id] || bulkLoading}
-                                                            isLoading={actionLoading[p.id] === 'approve'}
-                                                            icon={CheckCircle}
-                                                            label="Approve"
-                                                            variant="success"
-                                                            className="col-span-2 sm:col-span-1"
-                                                        />
-                                                    )}
-
-                                                    {!p.reported && p.report_count > 0 && (
-                                                        <ActionButton
-                                                            onClick={() => handleMarkReview(p.id)}
-                                                            disabled={actionLoading[p.id] || bulkLoading}
-                                                            isLoading={actionLoading[p.id] === 'review'}
-                                                            icon={AlertTriangle}
-                                                            label="Mark Review"
-                                                            variant="warning"
-                                                        />
-                                                    )}
-
-                                                    {p.reported && (
-                                                        <ActionButton
-                                                            onClick={() => handleClearReport(p.id)}
-                                                            disabled={actionLoading[p.id] || bulkLoading}
-                                                            isLoading={actionLoading[p.id] === 'clear-report'}
-                                                            icon={ShieldOff}
-                                                            label="Clear Report"
-                                                            variant="warning_outline"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                                    <button
-                                                        onClick={() => toggleComments(p.id)}
-                                                        className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800 transition group"
-                                                    >
-                                                        <div className="flex items-center gap-2 text-sm">
-                                                            <MessageCircle className="w-4 h-4 text-indigo-500" />
-                                                            <span className="font-semibold text-gray-700 dark:text-gray-300">
-                                                                Comments
-                                                            </span>
-                                                            <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-md">
-                                                                {p.comments_count || 0}
-                                                            </span>
-                                                        </div>
-                                                        {visibleComments[p.id] ?
-                                                            <ChevronUp className="w-4 h-4 text-gray-400" /> :
-                                                            <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                        }
-                                                    </button>
-
-                                                    {visibleComments[p.id] && (
-                                                        <div className="mt-3 space-y-3 pl-1 md:pl-4">
-                                                            {commentsLoading[p.id] && (
-                                                                <div className="flex justify-center py-4"><div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>
-                                                            )}
-
-                                                            {!commentsLoading[p.id] && comments[p.id]?.length === 0 && (
-                                                                <p className="text-center text-xs text-gray-400 italic py-2">No comments</p>
-                                                            )}
-
-                                                            {!commentsLoading[p.id] && comments[p.id]?.map(c => (
-                                                                <div key={c.id} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-3 relative group">
-                                                                    <div className="flex justify-between items-start gap-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <AnonAvatar authorId={c.author_id} size="xs" />
-                                                                            <div className="text-xs">
-                                                                                <span className="font-bold text-gray-700 dark:text-gray-300">{c.author_name || 'Anon'}</span>
-                                                                                <span className="text-gray-400 mx-1">•</span>
-                                                                                <span className="text-gray-400">{dayjs(c.created_at).fromNow(true)}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <button
-                                                                            onClick={() => handleDeleteComment(c.id, p.id)}
-                                                                            disabled={actionLoading[c.id] === 'delete-comment'}
-                                                                            className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                                                                        >
-                                                                            {actionLoading[c.id] === 'delete-comment' ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                                                        </button>
-                                                                    </div>
-                                                                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-1 break-words">{c.text}</p>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-
-                    {!loading && hasMore && posts.length > 0 && (
-                        <div className="flex justify-center mt-8">
-                            <button
-                                onClick={() => fetchPosts()}
-                                disabled={loading || bulkLoading}
-                                className="px-6 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 font-medium shadow-sm w-full md:w-auto"
-                            >
-                                Load More Posts
-                            </button>
-                        </div>
-                    )}
-                </>
-            )}
-            {activeTab === 'users' && <UserManagement />}
-            {activeTab === 'matchmaker' && <MatchmakerAdmin />}
-
-            {activeTab === 'support' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[80vh] md:h-[600px]">
-                    <div className={`${selectedSupportUser ? 'hidden md:flex' : 'flex'} bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-col h-full`}>
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                            <h3 className="font-bold text-gray-700 dark:text-gray-200">Conversations</h3>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {supportUsers.length === 0 && (
-                                <div className="p-4 text-center text-sm text-gray-500">No messages yet.</div>
-                            )}
-                            {supportUsers.map(u => (
-                                <button
-                                    key={u.user_id}
-                                    onClick={() => { setSelectedSupportUser(u.user_id); fetchAdminChatHistory(u.user_id); }}
-                                    className={`w-full p-4 text-left border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${selectedSupportUser === u.user_id ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
-                                >
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="text-xs font-mono text-gray-500 truncate w-24">User: {u.user_id.slice(0, 8)}...</span>
-                                        {u.has_unread && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
-                                    </div>
-                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{u.last_message}</p>
-                                    <span className="text-xs text-gray-400">{dayjs(u.last_active).fromNow()}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className={`${selectedSupportUser ? 'flex' : 'hidden md:flex'} md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex-col overflow-hidden h-full`}>
-                        {selectedSupportUser ? (
-                            <>
-                                <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setSelectedSupportUser(null)} className="md:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg">
-                                            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                                        </button>
-                                        <span className="font-mono text-sm text-gray-500 truncate">Chatting with: {selectedSupportUser}</span>
-                                    </div>
-
-                                    <button
-                                        onClick={handleDeleteConversation}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 rounded-lg text-xs font-bold transition"
-                                        title="Delete entire conversation"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        <span className="hidden sm:inline">Delete Conversation</span>
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                    {adminChatHistory.map(msg => (
-                                        <div key={msg.id} className={`flex items-center gap-2 ${msg.sender_role === 'admin' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2 text-sm ${msg.sender_role === 'admin'
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                                                }`}>
-                                                {msg.content}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div ref={adminChatEndRef} />
-                                </div>
-
-                                <form onSubmit={sendAdminReply} className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                                    <input
-                                        className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                                        placeholder="Type a reply..."
-                                        value={adminMessageInput}
-                                        onChange={e => setAdminMessageInput(e.target.value)}
-                                    />
-                                    <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                                        <Send className="w-5 h-5" />
-                                    </button>
-                                </form>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center text-gray-400 p-8 text-center">
-                                Select a conversation to start chatting
-                            </div>
-                        )}
                     </div>
                 </div>
-            )}
+            </aside>
+
+            {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+
+            <main className="flex-1 lg:ml-64 min-w-0">
+                <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300"><Menu className="w-6 h-6" /></button>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white capitalize">{activeTab}</h1>
+                    </div>
+                    {activeTab === 'moderation' && (
+                        <div className="flex gap-2">
+                            <button onClick={() => fetchPosts(true)} className="p-2 text-gray-500 hover:text-indigo-600 transition"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
+                        </div>
+                    )}
+                </header>
+
+                <div className="p-4 md:p-6 max-w-7xl mx-auto">
+                    {activeTab === 'moderation' && (
+                        <div className="space-y-6">
+                            {posts.length > 0 && (
+                                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4 sticky top-20 z-20">
+                                    <div className="flex items-center gap-4">
+                                        <button onClick={() => setSelectedPosts(selectedPosts.size === posts.length ? new Set() : new Set(posts.map(p => p.id)))}
+                                            className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 transition">
+                                            {selectedPosts.size === posts.length ? <CheckSquare className="w-5 h-5 text-indigo-600" /> : <Square className="w-5 h-5" />}
+                                            Select All ({selectedPosts.size})
+                                        </button>
+                                    </div>
+                                    {selectedPosts.size > 0 && (
+                                        <button onClick={handleBulkDelete} disabled={bulkLoading} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-red-700 transition">
+                                            {bulkLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                            Delete Selected
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                {posts.map(p => {
+                                    const isSelected = selectedPosts.has(p.id);
+                                    return (
+                                        <div key={p.id} className={`group bg-white dark:bg-gray-800 rounded-xl border transition-all ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'}`}>
+                                            <div className="p-5">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="pt-1"><input type="checkbox" checked={isSelected} onChange={() => { const s = new Set(selectedPosts); s.has(p.id) ? s.delete(p.id) : s.add(p.id); setSelectedPosts(s); }} className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" /></div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <AnonAvatar authorId={p.author_id} size="sm" />
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-gray-900 dark:text-white text-sm">{p.author_name || 'Anonymous'}</span>
+                                                                        <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-xs rounded font-mono">#{p.id}</span>
+                                                                    </div>
+                                                                    <span className="text-xs text-gray-500">{dayjs(p.created_at).fromNow()}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                {p.approved ? <Badge color="green" icon={CheckCircle} label="Approved" /> : <Badge color="yellow" icon={AlertTriangle} label="Pending" />}
+                                                                {p.pinned && <Badge color="blue" icon={Pin} label="Pinned" />}
+                                                                {p.is_permanent && <Badge color="purple" icon={Infinity} label="Perm" />}
+                                                                {p.reported && <Badge color="red" icon={AlertTriangle} label="Reported" />}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="prose dark:prose-invert max-w-none mb-4 text-sm">
+                                                            <p className="whitespace-pre-wrap">{p.text}</p>
+                                                        </div>
+
+                                                        {(p.media_url || polls[p.id] || p.events?.length > 0) && (
+                                                            <div className="mb-4 p-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700/50">
+                                                                {p.media_url && (
+                                                                    <div className="rounded-lg overflow-hidden max-h-64 bg-black/5 flex justify-center">
+                                                                        {p.media_type === 'video' ? <video controls src={p.media_url} className="h-full" /> :
+                                                                            p.media_type === 'audio' ? <audio controls src={p.media_url} className="w-full mt-2" /> :
+                                                                                <img src={p.media_url} alt="content" className="object-contain h-full" />}
+                                                                    </div>
+                                                                )}
+                                                                {polls[p.id] && <div className="p-2"><PollDisplay poll={polls[p.id]} confessionId={p.id} isAdminReview={true} /></div>}
+                                                                {p.events?.[0] && <div className="p-2"><EventDisplay {...p.events[0]} /></div>}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                                            {!p.approved && <Button size="sm" variant="success" icon={CheckCircle} onClick={() => handleApprove(p.id)} loading={actionLoading[p.id] === 'approve'}>Approve</Button>}
+                                                            <Button size="sm" variant="secondary" icon={p.pinned ? PinOff : Pin} onClick={() => handleTogglePin(p.id, p.pinned)} loading={actionLoading[p.id] === 'pin'}>{p.pinned ? 'Unpin' : 'Pin'}</Button>
+                                                            <Button size="sm" variant="secondary" icon={Infinity} onClick={() => handleTogglePermanent(p.id, p.is_permanent)} loading={actionLoading[p.id] === 'permanent'}>{p.is_permanent ? 'Make Temp' : 'Make Perm'}</Button>
+                                                            <Button size="sm" variant="danger" icon={Trash2} onClick={() => handleDelete(p.id)} loading={actionLoading[p.id] === 'delete-post'}>Delete</Button>
+                                                            {p.reported ?
+                                                                <Button size="sm" variant="warning" icon={ShieldOff} onClick={() => handleClearReport(p.id)} loading={actionLoading[p.id] === 'clear-report'}>Clear Report</Button> :
+                                                                <Button size="sm" variant="ghost" icon={AlertTriangle} onClick={() => handleMarkReview(p.id)} loading={actionLoading[p.id] === 'review'} className="text-yellow-600">Flag</Button>
+                                                            }
+                                                            <div className="flex-1" />
+                                                            <button onClick={() => { setVisibleComments(prev => ({ ...prev, [p.id]: !prev[p.id] })); if (!visibleComments[p.id] && !comments[p.id]) fetchCommentsForPost(p.id); }}
+                                                                className="text-xs font-bold text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+                                                                <MessageCircle className="w-4 h-4" /> {p.comments_count} Comments {visibleComments[p.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                                            </button>
+                                                        </div>
+
+                                                        {visibleComments[p.id] && (
+                                                            <div className="mt-4 pl-4 border-l-2 border-indigo-100 dark:border-indigo-900 space-y-3">
+                                                                {commentsLoading[p.id] && <div className="text-center py-2"><div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" /></div>}
+                                                                {comments[p.id]?.map(c => (
+                                                                    <div key={c.id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm group/comment relative">
+                                                                        <div className="flex justify-between items-start mb-1">
+                                                                            <span className="font-bold text-gray-700 dark:text-gray-300">{c.author_name}</span>
+                                                                            <button onClick={() => handleDeleteComment(c.id, p.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover/comment:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                        </div>
+                                                                        <p className="text-gray-600 dark:text-gray-400">{c.text}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                                {hasMore && <button onClick={() => fetchPosts()} disabled={loading} className="w-full py-4 bg-white dark:bg-gray-800 text-indigo-600 font-bold rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition">{loading ? 'Loading...' : 'Load More Posts'}</button>}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'users' && <UserManagement />}
+                    {activeTab === 'matchmaker' && <MatchmakerAdmin />}
+
+                    {activeTab === 'support' && (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden h-[calc(100vh-8rem)] flex">
+                            <div className={`w-full md:w-80 border-r border-gray-100 dark:border-gray-700 flex flex-col ${selectedSupportUser ? 'hidden md:flex' : 'flex'}`}>
+                                <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"><h3 className="font-bold">Inbox</h3></div>
+                                <div className="flex-1 overflow-y-auto">
+                                    {supportUsers.map(u => (
+                                        <button key={u.user_id} onClick={() => { setSelectedSupportUser(u.user_id); fetchAdminChatHistory(u.user_id); }}
+                                            className={`w-full p-4 text-left border-b border-gray-50 dark:border-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition ${selectedSupportUser === u.user_id ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-l-indigo-500' : ''}`}>
+                                            <div className="flex justify-between mb-1"><span className="text-xs font-mono text-gray-500">{u.user_id.slice(0, 8)}</span>{u.has_unread && <span className="w-2 h-2 bg-red-500 rounded-full" />}</div>
+                                            <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200">{u.last_message}</p>
+                                            <span className="text-xs text-gray-400">{dayjs(u.last_active).fromNow()}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className={`flex-1 flex flex-col bg-gray-50 dark:bg-gray-900/50 ${!selectedSupportUser ? 'hidden md:flex' : 'flex'}`}>
+                                {selectedSupportUser ? (
+                                    <>
+                                        <div className="p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setSelectedSupportUser(null)} className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ArrowLeft className="w-5 h-5" /></button>
+                                                <span className="font-mono text-sm font-bold">{selectedSupportUser}</span>
+                                            </div>
+                                            <button onClick={handleDeleteConversation} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-5 h-5" /></button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                            {adminChatHistory.map(msg => (
+                                                <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${msg.sender_role === 'admin' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-bl-none shadow-sm'}`}>
+                                                        {msg.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div ref={adminChatEndRef} />
+                                        </div>
+                                        <form onSubmit={sendAdminReply} className="p-3 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex gap-2">
+                                            <input value={adminMessageInput} onChange={e => setAdminMessageInput(e.target.value)} placeholder="Type a reply..." className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-900 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                                            <button type="submit" disabled={!adminMessageInput.trim()} className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50"><Send className="w-5 h-5" /></button>
+                                        </form>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                        <MessageSquare className="w-12 h-12 mb-2 opacity-20" />
+                                        <p>Select a conversation</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'announcements' && (
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Megaphone className="w-5 h-5 text-indigo-500" /> Create Announcement</h3>
+                                <form onSubmit={createAnnouncement} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div className="md:col-span-3 space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Title</label>
+                                            <input type="text" value={newAnnouncement.title} onChange={e => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Server Maintenance" required />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
+                                            <select value={newAnnouncement.type} onChange={e => setNewAnnouncement({ ...newAnnouncement, type: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                <option value="info">Info (Blue)</option>
+                                                <option value="alert">Alert (Red)</option>
+                                                <option value="success">Success (Green)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Content</label>
+                                        <textarea value={newAnnouncement.content} onChange={e => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" placeholder="Announcement details..." required />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button type="submit" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">Post Announcement</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="font-bold text-gray-600 dark:text-gray-400 uppercase text-sm">Active Announcements</h3>
+                                {announcements.length === 0 && <p className="text-gray-400 italic">No announcements found.</p>}
+                                {announcements.map(a => (
+                                    <div key={a.id} className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 p-5 shadow-sm flex justify-between items-start gap-4 ${a.type === 'alert' ? 'border-red-500' : a.type === 'success' ? 'border-green-500' : 'border-indigo-500'}`}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-bold text-lg dark:text-white">{a.title}</h4>
+                                                {!a.is_active && <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded text-gray-600 dark:text-gray-400">Inactive</span>}
+                                            </div>
+                                            <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{a.content}</p>
+                                            <p className="text-xs text-gray-400 mt-2">{dayjs(a.created_at).format('MMM D, YYYY h:mm A')}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <button onClick={() => toggleAnnouncement(a.id, a.is_active)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title={a.is_active ? 'Deactivate' : 'Activate'}>
+                                                {a.is_active ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Square className="w-5 h-5" />}
+                                            </button>
+                                            <button onClick={() => deleteAnnouncement(a.id)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     )
 }
 
-function Tag({ icon: Icon, label, color }) {
+function Badge({ color, icon: Icon, label }) {
     const colors = {
-        indigo: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
-        orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-        blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
         green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
         yellow: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+        blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
         red: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
         purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
     }
     return (
-        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md flex items-center gap-1 ${colors[color] || colors.indigo}`}>
-            <Icon className="w-3 h-3" />
-            {label}
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${colors[color]}`}>
+            <Icon className="w-3 h-3" /> {label}
         </span>
     )
 }
 
-function ActionButton({ onClick, disabled, isLoading, icon: Icon, label, variant, className = '', title }) {
+function Button({ children, onClick, disabled, loading, icon: Icon, variant = 'primary', size = 'md', className = '' }) {
+    const base = "inline-flex items-center justify-center gap-1.5 font-bold transition rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+    const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm' }
     const variants = {
         primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
         secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600',
-        danger: 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50',
-        success: 'bg-green-600 text-white hover:bg-green-700',
-        blue: 'bg-blue-600 text-white hover:bg-blue-700',
-        warning: 'bg-yellow-500 text-white hover:bg-yellow-600',
-        warning_outline: 'border border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20',
-        purple: 'bg-purple-600 text-white hover:bg-purple-700',
+        danger: 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400',
+        success: 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400',
+        warning: 'bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400',
+        ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800'
     }
 
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            title={title}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant] || variants.secondary} ${className}`}
-        >
-            {isLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-                <Icon className="w-4 h-4" />
-            )}
-            {label}
+        <button onClick={onClick} disabled={disabled || loading} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
+            {loading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : Icon && <Icon className="w-3.5 h-3.5" />}
+            {children}
         </button>
     )
 }

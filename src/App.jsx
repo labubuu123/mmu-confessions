@@ -14,6 +14,7 @@ import { NotificationProvider } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
+import { Megaphone, X } from "lucide-react";
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -23,11 +24,42 @@ function App() {
   });
 
   const [onlineCount, setOnlineCount] = useState(0);
+  const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const fetchAnnouncement = async () => {
+      const { data } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) {
+        setAnnouncement(data);
+      } else {
+        setAnnouncement(null);
+      }
+    };
+
+    fetchAnnouncement();
+
+    const channel = supabase.channel('public-announcements')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+        fetchAnnouncement();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -61,7 +93,31 @@ function App() {
   return (
     <NotificationProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-        <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
+        <div className="sticky top-0 z-50 flex flex-col w-full">
+          {announcement && (
+            <div className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
+              announcement.type === 'success' ? 'bg-green-600 text-white' :
+                'bg-indigo-600 text-white'
+              }`}>
+              <div className="flex items-center gap-3 mx-auto max-w-5xl w-full">
+                <Megaphone className="w-5 h-5 shrink-0 animate-pulse" />
+                <div className="flex-1">
+                  <span className="font-bold mr-2 uppercase text-xs opacity-90 tracking-wider">{announcement.title}:</span>
+                  <span className="leading-tight">{announcement.content}</span>
+                </div>
+                <button
+                  onClick={() => setAnnouncement(null)}
+                  className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                  aria-label="Close announcement"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+          <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
+        </div>
+
         <Routes>
           <Route path="/" element={<Feed />} />
           <Route path="/post/:id" element={<Feed />} />
