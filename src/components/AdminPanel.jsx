@@ -94,7 +94,7 @@ export default function AdminPanel() {
         if (data.user?.email !== ADMIN_EMAIL) { setError('Access Denied'); supabase.auth.signOut(); }
     }
     async function signOut() {
-        if (!window.confirm('Are you sure want to sign out?')) return;
+        if (!window.confirm('Are you sure want sign out?')) return;
         setLoading(true);
         await supabase.auth.signOut();
         setLoading(false);
