@@ -94,7 +94,7 @@ export default function AdminPanel() {
         if (data.user?.email !== ADMIN_EMAIL) { setError('Access Denied'); supabase.auth.signOut(); }
     }
     async function signOut() {
-        if (!window.confirm('Are you sure want sign out?')) return;
+        if (!window.confirm('Are you sure want to sign out?')) return;
         setLoading(true);
         await supabase.auth.signOut();
         setLoading(false);
@@ -397,7 +397,7 @@ export default function AdminPanel() {
                                                         <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
                                                             {!p.approved && <Button size="sm" variant="success" icon={CheckCircle} onClick={() => handleApprove(p.id)} loading={actionLoading[p.id] === 'approve'}>Approve</Button>}
                                                             <Button size="sm" variant="secondary" icon={p.pinned ? PinOff : Pin} onClick={() => handleTogglePin(p.id, p.pinned)} loading={actionLoading[p.id] === 'pin'}>{p.pinned ? 'Unpin' : 'Pin'}</Button>
-                                                            <Button size="sm" variant="secondary" icon={Infinity} onClick={() => handleTogglePermanent(p.id, p.is_permanent)} loading={actionLoading[p.id] === 'permanent'}>{p.is_permanent ? 'Make Temp' : 'Make Perm'}</Button>
+                                                            <Button size="sm" variant="secondary" icon={Infinity} onClick={() => handleTogglePermanent(p.id, p.is_permanent)} loading={actionLoading[p.id] === 'permanent'}>{p.is_permanent ? 'Make Temporary' : 'Make Permanent'}</Button>
                                                             <Button size="sm" variant="danger" icon={Trash2} onClick={() => handleDelete(p.id)} loading={actionLoading[p.id] === 'delete-post'}>Delete</Button>
                                                             {p.reported ?
                                                                 <Button size="sm" variant="warning" icon={ShieldOff} onClick={() => handleClearReport(p.id)} loading={actionLoading[p.id] === 'clear-report'}>Clear Report</Button> :
@@ -412,14 +412,42 @@ export default function AdminPanel() {
 
                                                         {visibleComments[p.id] && (
                                                             <div className="mt-4 pl-4 border-l-2 border-indigo-100 dark:border-indigo-900 space-y-3">
-                                                                {commentsLoading[p.id] && <div className="text-center py-2"><div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" /></div>}
+                                                                {commentsLoading[p.id] && (
+                                                                    <div className="text-center py-2">
+                                                                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" />
+                                                                    </div>
+                                                                )}
+
+                                                                {comments[p.id]?.length === 0 && (
+                                                                    <p className="text-xs text-gray-400 italic">No comments yet.</p>
+                                                                )}
+
                                                                 {comments[p.id]?.map(c => (
-                                                                    <div key={c.id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm group/comment relative">
-                                                                        <div className="flex justify-between items-start mb-1">
-                                                                            <span className="font-bold text-gray-700 dark:text-gray-300">{c.author_name}</span>
-                                                                            <button onClick={() => handleDeleteComment(c.id, p.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover/comment:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                    <div key={c.id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm border border-gray-100 dark:border-gray-700/50">
+                                                                        <div className="flex justify-between items-start mb-2 gap-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-bold text-gray-900 dark:text-gray-100">
+                                                                                    {c.author_name || 'Anonymous'}
+                                                                                </span>
+                                                                                <span className="text-xs text-gray-400">
+                                                                                    • {dayjs(c.created_at).fromNow()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => handleDeleteComment(c.id, p.id)}
+                                                                                className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                                                                title="Delete Comment"
+                                                                            >
+                                                                                {actionLoading[c.id] === 'delete-comment' ? (
+                                                                                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                                                ) : (
+                                                                                    <Trash2 className="w-4 h-4" />
+                                                                                )}
+                                                                            </button>
                                                                         </div>
-                                                                        <p className="text-gray-600 dark:text-gray-400">{c.text}</p>
+                                                                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                                                                            {c.text}
+                                                                        </p>
                                                                     </div>
                                                                 ))}
                                                             </div>

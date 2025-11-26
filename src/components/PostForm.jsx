@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
@@ -24,11 +24,56 @@ function getAnonId() {
     return anonId;
 }
 
+const writeString = (view, offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+    }
+};
+
+const floatTo16BitPCM = (output, offset, input) => {
+    for (let i = 0; i < input.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, input[i]));
+        output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+};
+
+const encodeWAV = (samples, sampleRate) => {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, samples.length * 2, true);
+
+    floatTo16BitPCM(view, 44, samples);
+
+    return new Blob([view], { type: 'audio/wav' });
+};
+
 export default function PostForm({ onPosted }) {
     const [text, setText] = useState('');
     const [images, setImages] = useState([]);
     const [video, setVideo] = useState(null);
     const [audio, setAudio] = useState(null);
+    const [originalAudio, setOriginalAudio] = useState(null);
+    const [voiceEffect, setVoiceEffect] = useState('normal');
+    const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+    const [showAudioOptions, setShowAudioOptions] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const timerRef = useRef(null);
     const [previews, setPreviews] = useState([]);
     const [videoPreview, setVideoPreview] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -71,6 +116,16 @@ export default function PostForm({ onPosted }) {
 
         if (!policyAccepted) {
             warning('You must accept the policy to post.');
+            return;
+        }
+
+        if (isProcessingAudio) {
+            warning('Please wait for audio processing to finish.');
+            return;
+        }
+
+        if (isRecording) {
+            warning('Please stop recording before posting.');
             return;
         }
 
@@ -145,7 +200,7 @@ export default function PostForm({ onPosted }) {
 
             if (audio) {
                 info('Uploading audio...');
-                const ext = (audio.name || 'audio.mp3').split('.').pop();
+                const ext = (audio.name || 'audio.wav').split('.').pop();
                 const path = `public/${Date.now()}-${anonId.substring(0, 8)}.${ext}`;
 
                 const { data: uploadData, error: uploadError } = await supabase.storage
@@ -254,6 +309,8 @@ export default function PostForm({ onPosted }) {
             setImages([]);
             setVideo(null);
             setAudio(null);
+            setOriginalAudio(null);
+            setVoiceEffect('normal');
             setPreviews([]);
             setVideoPreview(null);
             setPolicyAccepted(false);
@@ -265,6 +322,7 @@ export default function PostForm({ onPosted }) {
             setShowSeriesManager(false);
             setSelectedMood(null);
             setUploadProgress(0);
+            setShowAudioOptions(false);
             success('Posted successfully!');
 
         } catch (err) {
@@ -274,6 +332,68 @@ export default function PostForm({ onPosted }) {
             setLoading(false);
         }
     }
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const audioFile = new File([audioBlob], `recording_${Date.now()}.wav`, { type: 'audio/wav' });
+
+                if (audioFile.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
+                    error(`Recording too large (>${MAX_AUDIO_SIZE_MB}MB)`);
+                    return;
+                }
+
+                setImages([]);
+                setPreviews([]);
+                setVideo(null);
+                setVideoPreview(null);
+
+                setAudio(audioFile);
+                setOriginalAudio(audioFile);
+                setVoiceEffect('normal');
+
+                stream.getTracks().forEach(track => track.stop());
+                setIsRecording(false);
+                setRecordingDuration(0);
+                setShowAudioOptions(false);
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+
+            timerRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error('Error accessing microphone:', err);
+            error('Could not access microphone. Check permissions.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            clearInterval(timerRef.current);
+        }
+    };
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     function handleImageChange(e) {
         const files = Array.from(e.target.files || []);
@@ -287,6 +407,9 @@ export default function PostForm({ onPosted }) {
         setVideo(null);
         setVideoPreview(null);
         setAudio(null);
+        setOriginalAudio(null);
+        setVoiceEffect('normal');
+        setShowAudioOptions(false);
 
         setImages(files);
 
@@ -316,6 +439,9 @@ export default function PostForm({ onPosted }) {
         setImages([]);
         setPreviews([]);
         setAudio(null);
+        setOriginalAudio(null);
+        setVoiceEffect('normal');
+        setShowAudioOptions(false);
 
         setVideo(file);
 
@@ -340,8 +466,61 @@ export default function PostForm({ onPosted }) {
         setPreviews([]);
         setVideo(null);
         setVideoPreview(null);
+        setShowAudioOptions(false);
 
         setAudio(file);
+        setOriginalAudio(file);
+        setVoiceEffect('normal');
+    }
+
+    async function applyVoiceEffect(type) {
+        if (!originalAudio) return;
+        if (type === voiceEffect) return;
+
+        setVoiceEffect(type);
+
+        if (type === 'normal') {
+            setAudio(originalAudio);
+            return;
+        }
+
+        setIsProcessingAudio(true);
+        info('Applying voice effect...');
+
+        try {
+            const arrayBuffer = await originalAudio.arrayBuffer();
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+            let rate = 1.0;
+            if (type === 'chipmunk') rate = 1.5;
+            else if (type === 'deep') rate = 0.75;
+
+            const newLength = Math.ceil(audioBuffer.length / rate);
+            const offlineCtx = new OfflineAudioContext(1, newLength, audioBuffer.sampleRate);
+
+            const source = offlineCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.playbackRate.value = rate;
+            source.connect(offlineCtx.destination);
+            source.start();
+
+            const renderedBuffer = await offlineCtx.startRendering();
+
+            const wavBlob = encodeWAV(renderedBuffer.getChannelData(0), renderedBuffer.sampleRate);
+
+            const newFile = new File([wavBlob], `processed_${originalAudio.name.replace(/\.[^/.]+$/, "")}.wav`, { type: 'audio/wav' });
+
+            setAudio(newFile);
+            success('Voice effect applied!');
+        } catch (err) {
+            console.error('Audio processing error:', err);
+            error('Failed to apply voice effect. Try a different file.');
+            setVoiceEffect('normal');
+            setAudio(originalAudio);
+        } finally {
+            setIsProcessingAudio(false);
+        }
     }
 
     function removeImage(index) {
@@ -356,6 +535,8 @@ export default function PostForm({ onPosted }) {
 
     function removeAudio() {
         setAudio(null);
+        setOriginalAudio(null);
+        setVoiceEffect('normal');
     }
 
     async function fetchExistingSeries() {
@@ -480,22 +661,97 @@ export default function PostForm({ onPosted }) {
                     )}
 
                     {audio && (
-                        <div className="my-3 sm:my-4 p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
-                            <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                    {audio.name}
-                                </p>
-                                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                    {(audio.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
+                        <div className="my-3 sm:my-4 space-y-3">
+                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl flex items-center gap-3">
+                                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                        {audio.name}
+                                    </p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                        {(audio.size / 1024 / 1024).toFixed(2)} MB {voiceEffect !== 'normal' && <span className="text-indigo-500 font-bold">• {voiceEffect.toUpperCase()} Effect</span>}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={removeAudio}
+                                    className="text-red-500 hover:text-red-600"
+                                >
+                                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    disabled={isProcessingAudio}
+                                    onClick={() => applyVoiceEffect('normal')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'normal'
+                                        ? 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    <Volume2 className="w-4 h-4" /> Normal
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isProcessingAudio}
+                                    onClick={() => applyVoiceEffect('chipmunk')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'chipmunk'
+                                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {isProcessingAudio && voiceEffect === 'chipmunk' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
+                                    Chipmunk
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isProcessingAudio}
+                                    onClick={() => applyVoiceEffect('deep')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'deep'
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {isProcessingAudio && voiceEffect === 'deep' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ghost className="w-4 h-4" />}
+                                    Deep
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {isRecording && (
+                        <div className="my-3 sm:my-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800 flex items-center justify-between animate-pulse">
+                            <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                                <span className="text-red-600 dark:text-red-400 font-bold font-mono">{formatTime(recordingDuration)}</span>
+                                <span className="text-xs text-red-500">Recording...</span>
                             </div>
                             <button
                                 type="button"
-                                onClick={removeAudio}
-                                className="text-red-500 hover:text-red-600"
+                                onClick={stopRecording}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
                             >
-                                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <StopCircle className="w-4 h-4" /> Stop
+                            </button>
+                        </div>
+                    )}
+
+                    {showAudioOptions && !audio && !isRecording && (
+                        <div className="my-3 sm:my-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
+                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
+                                <Upload className="w-6 h-6 text-gray-400 group-hover:text-indigo-500" />
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File</span>
+                                <input type="file" accept="audio/*" onChange={handleAudioChange} className="hidden" />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={startRecording}
+                                className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition group"
+                            >
+                                <Disc className="w-6 h-6 text-gray-400 group-hover:text-red-500" />
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Record Voice</span>
                             </button>
                         </div>
                     )}
@@ -608,19 +864,22 @@ export default function PostForm({ onPosted }) {
                                     />
                                 </label>
 
-                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!audio && !isRecording) setShowAudioOptions(!showAudioOptions);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${(audio || isRecording || showAudioOptions)
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || images.length > 0 || !!video}
+                                >
                                     <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
                                     <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                         Audio
                                     </span>
-                                    <input
-                                        type="file"
-                                        accept="audio/*"
-                                        onChange={handleAudioChange}
-                                        className="hidden"
-                                        disabled={loading || images.length > 0 || !!video}
-                                    />
-                                </label>
+                                </button>
 
                                 <button
                                     type="button"
@@ -686,7 +945,7 @@ export default function PostForm({ onPosted }) {
 
                         <button
                             type="submit"
-                            disabled={loading || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (
