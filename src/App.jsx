@@ -96,18 +96,31 @@ function App() {
         <div className="sticky top-0 z-50 flex flex-col w-full">
           {announcement && (
             <div className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
-              announcement.type === 'success' ? 'bg-green-600 text-white' :
-                'bg-indigo-600 text-white'
+                announcement.type === 'success' ? 'bg-green-600 text-white' :
+                  'bg-indigo-600 text-white'
               }`}>
-              <div className="flex items-center gap-3 mx-auto max-w-5xl w-full">
-                <Megaphone className="w-5 h-5 shrink-0 animate-pulse" />
-                <div className="flex-1">
-                  <span className="font-bold mr-2 uppercase text-xs opacity-90 tracking-wider">{announcement.title}:</span>
-                  <span className="leading-tight">{announcement.content}</span>
+              <div className="flex items-center gap-3 mx-auto max-w-5xl w-full overflow-hidden">
+                <Megaphone className="w-5 h-5 shrink-0 animate-pulse z-10 relative" />
+                <div className="flex-1 overflow-hidden relative">
+                  <style>{`
+                                @keyframes marquee {
+                                    0% { transform: translateX(0); }
+                                    100% { transform: translateX(-100%); }
+                                }
+                                .animate-marquee {
+                                    display: inline-block;
+                                    padding-left: 100%;
+                                    animation: marquee 20s linear infinite;
+                                }
+                            `}</style>
+                  <div className="animate-marquee whitespace-nowrap">
+                    <span className="font-bold mr-2 uppercase text-xs opacity-90 tracking-wider">{announcement.title}:</span>
+                    <span>{announcement.content}</span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setAnnouncement(null)}
-                  className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                  className="p-1 hover:bg-white/20 rounded-full transition-colors z-10 relative"
                   aria-label="Close announcement"
                 >
                   <X className="w-4 h-4" />

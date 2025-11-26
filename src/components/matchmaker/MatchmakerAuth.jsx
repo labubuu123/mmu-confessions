@@ -227,7 +227,7 @@ export default function MatchmakerAuth({ onAuthSuccess, onCancel }) {
                                 <input
                                     name="username"
                                     type="text"
-                                    placeholder={`e.g. example${REQUIRED_SUFFIX}`}
+                                    placeholder={`e.g. jason${REQUIRED_SUFFIX}`}
                                     className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition text-gray-900 dark:text-white placeholder-gray-400 text-sm"
                                     value={formData.username}
                                     onChange={handleChange}
