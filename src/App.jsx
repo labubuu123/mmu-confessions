@@ -114,7 +114,7 @@ function App() {
                                 }
                             `}</style>
                   <div className="animate-marquee whitespace-nowrap">
-                    <span className="font-bold mr-2 uppercase text-xs opacity-90 tracking-wider">{announcement.title}:</span>
+                    <span className="font-bold mr-2 text-sm opacity-90 tracking-wider">{announcement.title}:</span>
                     <span>{announcement.content}</span>
                   </div>
                 </div>
