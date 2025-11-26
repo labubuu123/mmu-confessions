@@ -94,7 +94,7 @@ export default function AdminPanel() {
         if (data.user?.email !== ADMIN_EMAIL) { setError('Access Denied'); supabase.auth.signOut(); }
     }
     async function signOut() {
-        if (!window.confirm('Sign out?')) return;
+        if (!window.confirm('Are you sure want to sign out?')) return;
         setLoading(true);
         await supabase.auth.signOut();
         setLoading(false);
@@ -306,7 +306,7 @@ export default function AdminPanel() {
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title={user.email}>{user.email}</p>
                         </div>
                         <button onClick={signOut} className="w-full flex items-center gap-3 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition">
-                            <LogOut className="w-5 h-5" /> Are you sure to sign out?
+                            <LogOut className="w-5 h-5" /> Sign Out
                         </button>
                     </div>
                 </div>
