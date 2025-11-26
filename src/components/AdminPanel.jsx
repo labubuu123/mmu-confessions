@@ -371,7 +371,7 @@ export default function AdminPanel() {
                                                             <div className="flex gap-2">
                                                                 {p.approved ? <Badge color="green" icon={CheckCircle} label="Approved" /> : <Badge color="yellow" icon={AlertTriangle} label="Pending" />}
                                                                 {p.pinned && <Badge color="blue" icon={Pin} label="Pinned" />}
-                                                                {p.is_permanent && <Badge color="purple" icon={Infinity} label="Perm" />}
+                                                                {p.is_permanent && <Badge color="purple" icon={Infinity} label="Permanent" />}
                                                                 {p.reported && <Badge color="red" icon={AlertTriangle} label="Reported" />}
                                                             </div>
                                                         </div>
