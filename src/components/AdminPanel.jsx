@@ -661,10 +661,8 @@ export default function AdminPanel() {
                                             </div>
                                         </div>
 
-                                        {/* PREVIEW AREA */}
                                         {sponsorPreviews.length > 0 && (
                                             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                                {/* Main Hero Preview */}
                                                 <div className="relative rounded-xl overflow-hidden h-48 w-full border border-gray-200 dark:border-gray-700 shadow-sm group/preview">
                                                     <img src={sponsorPreviews[0]} alt="Hero" className="w-full h-full object-cover" />
                                                     <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover/preview:opacity-100 transition-opacity">
@@ -675,7 +673,6 @@ export default function AdminPanel() {
                                                     </div>
                                                 </div>
 
-                                                {/* Gallery Thumbnails (if more than 1) */}
                                                 {sponsorPreviews.length > 1 && (
                                                     <div className="grid grid-cols-4 gap-2">
                                                         {sponsorPreviews.slice(1).map((src, idx) => (
@@ -684,7 +681,6 @@ export default function AdminPanel() {
                                                                 <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors" />
                                                             </div>
                                                         ))}
-                                                        {/* Visual indicator if there are too many images */}
                                                         {sponsorPreviews.length > 5 && (
                                                             <div className="h-16 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
                                                                 +{sponsorPreviews.length - 5}
