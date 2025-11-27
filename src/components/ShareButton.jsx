@@ -274,8 +274,8 @@ export default function ShareButton({ post }) {
                 className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
                 title="Share"
             >
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs sm:text-sm font-medium">Share</span>
+                <Share2 className="w-5 h-5 sm:w-5 sm:h-5" />
+                <span className="font-medium">Share</span>
             </button>
 
             {showModal && createPortal(modalContent, document.body)}
