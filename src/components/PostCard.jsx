@@ -202,7 +202,7 @@ export default function PostCard({ post, onOpen }) {
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                             {post.is_sponsored ? (
-                                <span className="uppercase tracking-widest font-bold text-[10px] opacity-80">
+                                <span className="tracking-widest font-bold text-[10px] opacity-80">
                                     Ads
                                 </span>
                             ) : dayjs(post.created_at).fromNow()}
