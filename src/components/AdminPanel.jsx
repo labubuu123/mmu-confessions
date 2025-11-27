@@ -4,7 +4,7 @@ import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
     ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
-    Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap, Image as ImageIcon, Link as LinkIcon, Palette
+    Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap, Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -260,7 +260,7 @@ export default function AdminPanel() {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        setSponsorForm(prev => ({ ...prev, images: files }));
+        setSponsorForm(prev => ({ ...prev, images: [...prev.images, ...files] }));
 
         const newPreviews = [];
         files.forEach(file => {
@@ -268,10 +268,34 @@ export default function AdminPanel() {
             reader.onloadend = () => {
                 newPreviews.push(reader.result);
                 if (newPreviews.length === files.length) {
-                    setSponsorPreviews(newPreviews);
+                    setSponsorPreviews(prev => [...prev, ...newPreviews]);
                 }
             };
             reader.readAsDataURL(file);
+        });
+    }
+
+    function removeSponsorImage(index) {
+        setSponsorForm(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+        setSponsorPreviews(prev => prev.filter((_, i) => i !== index));
+    }
+
+    function setSponsorHero(index) {
+        if (index === 0) return;
+
+        setSponsorForm(prev => {
+            const newImages = [...prev.images];
+            [newImages[0], newImages[index]] = [newImages[index], newImages[0]];
+            return { ...prev, images: newImages };
+        });
+
+        setSponsorPreviews(prev => {
+            const newPreviews = [...prev];
+            [newPreviews[0], newPreviews[index]] = [newPreviews[index], newPreviews[0]];
+            return newPreviews;
         });
     }
 
@@ -572,7 +596,7 @@ export default function AdminPanel() {
                         <div className="max-w-2xl mx-auto space-y-6">
                             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
                                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-                                    <Briefcase className="w-5 h-5" /> Create Premium Sponsored Post
+                                    <Briefcase className="w-5 h-5" /> Create Sponsored Post
                                 </h3>
                                 <form onSubmit={handleSponsorSubmit} className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -656,7 +680,7 @@ export default function AdminPanel() {
                                             <div className="flex flex-col items-center gap-2 text-gray-400 group-hover:text-yellow-600 dark:group-hover:text-yellow-500 transition-colors">
                                                 <ImageIcon className="w-8 h-8" />
                                                 <span className="text-sm font-medium">
-                                                    {sponsorForm.images.length > 0 ? 'Change Selection' : 'Upload Images'}
+                                                    {sponsorForm.images.length > 0 ? 'Add More Images' : 'Upload Images'}
                                                 </span>
                                             </div>
                                         </div>
@@ -665,27 +689,50 @@ export default function AdminPanel() {
                                             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                                 <div className="relative rounded-xl overflow-hidden h-48 w-full border border-gray-200 dark:border-gray-700 shadow-sm group/preview">
                                                     <img src={sponsorPreviews[0]} alt="Hero" className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover/preview:opacity-100 transition-opacity">
+                                                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover/preview:opacity-100 transition-opacity pointer-events-none">
                                                         <span className="text-xs font-bold uppercase tracking-widest border px-2 py-1 rounded">Main Display</span>
                                                     </div>
-                                                    <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeSponsorImage(0)}
+                                                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition z-20"
+                                                        title="Delete Hero"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm pointer-events-none">
                                                         HERO
                                                     </div>
                                                 </div>
 
                                                 {sponsorPreviews.length > 1 && (
                                                     <div className="grid grid-cols-4 gap-2">
-                                                        {sponsorPreviews.slice(1).map((src, idx) => (
-                                                            <div key={idx} className="relative h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group/thumb">
-                                                                <img src={src} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
-                                                                <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors" />
-                                                            </div>
-                                                        ))}
-                                                        {sponsorPreviews.length > 5 && (
-                                                            <div className="h-16 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
-                                                                +{sponsorPreviews.length - 5}
-                                                            </div>
-                                                        )}
+                                                        {sponsorPreviews.slice(1).map((src, idx) => {
+                                                            const realIndex = idx + 1;
+                                                            return (
+                                                                <div key={realIndex} className="relative h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group/thumb">
+                                                                    <img src={src} alt={`Gallery ${realIndex}`} className="w-full h-full object-cover" />
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setSponsorHero(realIndex)}
+                                                                            className="p-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                                                                            title="Make Hero"
+                                                                        >
+                                                                            <ArrowUp className="w-3 h-3" />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeSponsorImage(realIndex)}
+                                                                            className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>
