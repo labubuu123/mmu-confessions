@@ -1,4 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+SELECT cron.schedule(
+    'daily-cleanup-posts',
+    '0 0 * * *',
+    'SELECT public.auto_delete_expired_posts()'
+);
 
 CREATE TABLE IF NOT EXISTS public.confessions (
     id BIGSERIAL PRIMARY KEY,
