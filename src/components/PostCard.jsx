@@ -202,7 +202,7 @@ export default function PostCard({ post, onOpen }) {
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                             {post.is_sponsored ? (
-                                <span className="tracking-widest font-bold text-[10px] opacity-80">
+                                <span className="tracking-widest font-bold text-[12px] opacity-80">
                                     Ads
                                 </span>
                             ) : dayjs(post.created_at).fromNow()}
@@ -312,7 +312,7 @@ export default function PostCard({ post, onOpen }) {
                             )}
                         </div>
                     ) : (
-                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div>
                             {(currentTotalReactions > 0) && <div className="mb-2"><ReactionTooltip reactions={reactions} /></div>}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
