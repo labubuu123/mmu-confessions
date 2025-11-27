@@ -8,10 +8,7 @@ import CommentForm from './CommentForm'
 
 dayjs.extend(relativeTime)
 
-const COMMENT_EMOJIS = [
-    '👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐',
-    '🔥', '😆', '😎'
-]
+const COMMENT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐']
 
 export default function Comment({ comment, postId, depth = 0 }) {
     const [isReplying, setIsReplying] = useState(false)

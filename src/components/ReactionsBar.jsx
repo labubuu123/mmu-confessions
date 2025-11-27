@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-const EMOJIS = [
-    '👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐',
-    '🔥', '😆', '😎'
-]
+const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🧐']
 
 function getAnonId() {
     let anonId = localStorage.getItem('anonId')
