@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -17,12 +17,10 @@ dayjs.extend(relativeTime)
 
 const getOptimizedUrl = (url, quality = 40) => {
     if (!url || typeof url !== 'string') return url;
-
     if (url.includes('/storage/v1/object/public')) {
         let optimized = url.replace('/object/public', '/render/image/public');
         return `${optimized}?quality=${quality}`;
     }
-
     return url;
 };
 
@@ -32,26 +30,19 @@ export default function PostCard({ post, onOpen }) {
     const [poll, setPoll] = useState(null)
     const [event, setEvent] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
+    const [showHeartAnimation, setShowHeartAnimation] = useState(false)
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
         return Object.values(reactionsObj).reduce((sum, count) => sum + count, 0)
     }, [])
 
-    const excerpt = useMemo(() => {
-        return post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text
-    }, [post.text])
-
-    const renderedText = useMemo(() => {
-        return renderTextWithHashtags(excerpt)
-    }, [excerpt])
+    const excerpt = useMemo(() => post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text, [post.text])
+    const renderedText = useMemo(() => renderTextWithHashtags(excerpt), [excerpt])
 
     const displayImages = useMemo(() => {
-        if (Array.isArray(post.media_urls) && post.media_urls.length > 0) {
-            return post.media_urls
-        } else if (post.media_url) {
-            return [post.media_url]
-        }
+        if (Array.isArray(post.media_urls) && post.media_urls.length > 0) return post.media_urls
+        else if (post.media_url) return [post.media_url]
         return []
     }, [post.media_urls, post.media_url])
 
@@ -64,88 +55,39 @@ export default function PostCard({ post, onOpen }) {
     }, [post.created_at, post.comments_count, currentTotalReactions])
 
     const isHotPost = useMemo(() => getEngagementScore() > 5, [getEngagementScore])
-    const isTrendingPost = useMemo(() =>
-        currentTotalReactions > 20 || (post.comments_count || 0) > 10,
-        [currentTotalReactions, post.comments_count]
-    )
+    const isTrendingPost = useMemo(() => currentTotalReactions > 20 || (post.comments_count || 0) > 10, [currentTotalReactions, post.comments_count])
 
-    const moodData = useMemo(() => {
-        try {
-            return post.mood ? JSON.parse(post.mood) : null;
-        } catch (e) {
-            return null;
-        }
-    }, [post.mood]);
+    const moodData = useMemo(() => { try { return post.mood ? JSON.parse(post.mood) : null; } catch (e) { return null; } }, [post.mood]);
 
-    useEffect(() => {
-        fetchReactions()
-        fetchPollAndEvent()
-    }, [post.id])
+    useEffect(() => { fetchReactions(); fetchPollAndEvent(); }, [post.id])
 
     async function fetchReactions() {
-        const { data } = await supabase
-            .from('reactions')
-            .select('emoji, count')
-            .eq('post_id', post.id)
-
+        const { data } = await supabase.from('reactions').select('emoji, count').eq('post_id', post.id)
         if (data) {
-            const reactionsMap = {}
-            data.forEach(r => {
-                reactionsMap[r.emoji] = r.count
-            })
-            setReactions(reactionsMap)
+            const reactionsMap = {}; data.forEach(r => { reactionsMap[r.emoji] = r.count }); setReactions(reactionsMap)
         }
     }
 
     async function fetchPollAndEvent() {
-        const { data: eventData } = await supabase
-            .from('events')
-            .select('*')
-            .eq('confession_id', post.id)
-            .single()
-
-        if (eventData) {
-            setEvent(eventData)
-        } else {
-            const { data: pollData } = await supabase
-                .from('polls')
-                .select('*')
-                .eq('confession_id', post.id)
-                .single()
-
-            if (pollData) {
-                setPoll(pollData)
-            }
+        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).single()
+        if (eventData) setEvent(eventData)
+        else {
+            const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).single()
+            if (pollData) setPoll(pollData)
         }
     }
 
     async function handleReport(e) {
         e.stopPropagation()
-        if (isReported) {
-            alert('You have already reported this post.')
-            return
-        }
-
-        const confirmed = window.confirm('Are you sure you want to report this post?')
-        if (!confirmed) return
-
+        if (isReported) { alert('You have already reported this post.'); return }
+        if (!window.confirm('Are you sure you want to report this post?')) return
         try {
-            const { error } = await supabase.rpc('increment_report_count', {
-                post_id_in: post.id
-            })
-            if (error) throw error
-            setIsReported(true)
-            alert('Post reported successfully.')
-        } catch (err) {
-            console.error('Report error:', err)
-            alert('Failed to report post: ' + err.message)
-        }
+            const { error } = await supabase.rpc('increment_report_count', { post_id_in: post.id })
+            if (error) throw error; setIsReported(true); alert('Post reported successfully.')
+        } catch (err) { console.error('Report error:', err); alert('Failed to report post.') }
     }
 
-    function handleImageClick(e, url) {
-        e.stopPropagation()
-        setZoomedImage(url)
-    }
+    function handleImageClick(e, url) { e.stopPropagation(); setZoomedImage(url); }
 
     const getPostAge = useCallback(() => {
         const hours = dayjs().diff(dayjs(post.created_at), 'hour')
@@ -155,110 +97,152 @@ export default function PostCard({ post, onOpen }) {
 
     const postAge = useMemo(() => getPostAge(), [getPostAge])
 
+    const triggerHeartExplosion = (e) => {
+        e.stopPropagation();
+        setShowHeartAnimation(true);
+        setTimeout(() => setShowHeartAnimation(false), 1200);
+    };
+
+    const handleSponsorClick = (url) => {
+        if (url) window.open(url, '_blank');
+    }
+
+    const brandColor = post.brand_color || '#EAB308';
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '234, 179, 8';
+    }
+    const brandRgb = hexToRgb(brandColor);
+
+    const containerStyle = post.is_sponsored ? {
+        borderColor: brandColor,
+        boxShadow: `0 8px 32px -8px rgba(${brandRgb}, 0.25)`,
+    } : {};
+
+    const shimmerStyle = post.is_sponsored ? {
+        background: `linear-gradient(110deg, transparent 30%, rgba(${brandRgb}, 0.15) 50%, transparent 70%)`,
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 4s infinite linear'
+    } : {};
+
     return (
         <>
+            <style>{`
+                @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+                @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: scale(1.2); } 100% { transform: translateY(-100px) scale(1); opacity: 0; } }
+            `}</style>
+
             <div
                 onClick={() => onOpen && onOpen(post)}
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 cursor-pointer mb-4 overflow-hidden group relative isolate"
+                style={containerStyle}
+                className={`
+                    relative isolate mb-6 overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer group
+                    ${post.is_sponsored
+                        ? 'bg-white dark:bg-gray-800 border-2 transform hover:-translate-y-1'
+                        : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
+                `}
             >
-                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-4rem)] pointer-events-none">
-                    {postAge && (
-                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1 whitespace-nowrap">
-                            <Clock className="w-3 h-3" />
-                            {postAge.label}
-                        </span>
-                    )}
+                {post.is_sponsored && (
+                    <div className="absolute inset-0 pointer-events-none z-0" style={shimmerStyle} />
+                )}
 
-                    {post.pinned && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
-                            📌 PINNED
-                        </div>
-                    )}
+                {showHeartAnimation && (
+                    <div className="absolute inset-0 z-50 pointer-events-none flex justify-center items-center overflow-hidden">
+                        {[...Array(8)].map((_, i) => (
+                            <Heart
+                                key={i}
+                                className="absolute text-red-500 fill-red-500"
+                                style={{
+                                    left: `${50 + (Math.random() * 60 - 30)}%`,
+                                    bottom: '30%',
+                                    animation: `floatUp ${0.8 + Math.random() * 0.6}s ease-out forwards`,
+                                    width: `${24 + Math.random() * 24}px`,
+                                    height: `${24 + Math.random() * 24}px`,
+                                    animationDelay: `${Math.random() * 0.2}s`
+                                }}
+                            />
+                        ))}
+                    </div>
+                )}
 
-                    {isHotPost && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse whitespace-nowrap">
-                            🔥 HOT
-                        </div>
-                    )}
+                {!post.is_sponsored && (
+                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-4rem)] pointer-events-none">
+                        {postAge && (
+                            <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full font-medium flex items-center gap-1 whitespace-nowrap">
+                                <Clock className="w-3 h-3" /> {postAge.label}
+                            </span>
+                        )}
+                        {post.pinned && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">📌 PINNED</div>}
+                        {isHotPost && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">🔥 HOT</div>}
+                        {isTrendingPost && !isHotPost && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><TrendingUp className="w-3 h-3" /> TRENDING</div>}
+                        {poll && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><BarChart3 className="w-3 h-3" /> POLL</div>}
+                        {event && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Calendar className="w-3 h-3" /> EVENT</div>}
+                    </div>
+                )}
 
-                    {isTrendingPost && !isHotPost && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
-                            <TrendingUp className="w-3 h-3" />
-                            TRENDING
-                        </div>
-                    )}
-
-                    {poll && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
-                            <BarChart3 className="w-3 h-3" />
-                            POLL
-                        </div>
-                    )}
-
-                    {event && (
-                        <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
-                            <Calendar className="w-3 h-3" />
-                            EVENT
-                        </div>
-                    )}
-                </div>
-
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                <div className="p-3 sm:p-4 flex items-start gap-2 sm:gap-3 relative z-0">
-                    <AnonAvatar authorId={post.author_id} size="md" />
-                    <div className="flex-1 min-w-0 pr-20 sm:pr-24">
+                <div className="p-4 flex items-start gap-3 relative z-10">
+                    <AnonAvatar authorId={post.author_id} size="md" isSponsored={post.is_sponsored} />
+                    <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                                <div className={`font-semibold text-sm sm:text-base truncate ${post.author_name
-                                    ? 'text-indigo-600 dark:text-indigo-400'
-                                    : 'text-gray-900 dark:text-gray-100'
-                                    }`}>
+                                <div
+                                    className="font-bold text-base truncate flex items-center gap-1.5"
+                                    style={{ color: post.is_sponsored ? brandColor : undefined }}
+                                >
                                     {post.author_name || 'Anonymous'}
+                                    {post.is_sponsored && <Zap className="w-4 h-4 fill-current" />}
                                 </div>
                                 {moodData && <MoodBadge mood={moodData} />}
                             </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {dayjs(post.created_at).fromNow()}
+                            {post.is_sponsored ? (
+                                <span className="uppercase tracking-widest font-bold text-[10px] opacity-80" style={{ color: brandColor }}>
+                                    Official Partner
+                                </span>
+                            ) : dayjs(post.created_at).fromNow()}
                         </div>
                     </div>
+
+                    {post.is_sponsored && (
+                        <div
+                            className="px-3 py-1 text-white text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg flex items-center gap-1"
+                            style={{ backgroundColor: brandColor }}
+                        >
+                            <Star className="w-3 h-3 fill-white" /> Promoted
+                        </div>
+                    )}
                 </div>
 
-                <div className="px-3 sm:px-4 pb-3 relative z-0">
-                    <p className="text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
+                <div className="px-4 pb-3 relative z-10">
+                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`}>
                         {renderedText}
                     </p>
                 </div>
 
-                {post.media_type === 'images' && displayImages.length > 0 && (
-                    <div className={`w-full relative z-0 ${displayImages.length === 1 ? '' :
-                        displayImages.length === 2 ? 'grid grid-cols-2' :
-                            displayImages.length === 3 ? 'grid grid-cols-3' :
-                                'grid grid-cols-2'
-                        } gap-0.5`}>
+                {post.is_sponsored && displayImages.length > 0 && (
+                    <div className="w-full relative z-10 cursor-pointer group/img mb-2" onClick={(e) => { e.stopPropagation(); handleSponsorClick(post.sponsor_url); }}>
+                        <img
+                            src={getOptimizedUrl(displayImages[0], 80)}
+                            alt="Sponsored Content"
+                            className="w-full h-64 sm:h-80 object-cover shadow-inner transition-transform duration-700 group-hover/img:scale-[1.02]"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
+                            <span className="text-white font-bold bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">
+                                View Offer
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {!post.is_sponsored && post.media_type === 'images' && displayImages.length > 0 && (
+                    <div className={`w-full relative z-0 ${displayImages.length === 1 ? '' : displayImages.length === 2 ? 'grid grid-cols-2' : displayImages.length === 3 ? 'grid grid-cols-3' : 'grid grid-cols-2'} gap-0.5`}>
                         {displayImages.slice(0, 4).map((url, idx) => (
-                            <div
-                                key={idx}
-                                className="relative cursor-pointer group/img"
-                                onClick={(e) => handleImageClick(e, url)}
-                            >
-                                <img
-                                    loading="lazy"
-                                    src={getOptimizedUrl(url)}
-                                    alt={`media ${idx + 1}`}
-                                    className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1
-                                        ? 'max-h-[75vh]'
-                                        : 'object-cover h-40 sm:h-48'
-                                        }`}
-                                />
+                            <div key={idx} className="relative cursor-pointer group/img" onClick={(e) => handleImageClick(e, url)}>
+                                <img loading="lazy" src={getOptimizedUrl(url)} alt={`media ${idx + 1}`} className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48'}`} />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
                                 {idx === 3 && displayImages.length > 4 && (
-                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                        <span className="text-white text-xl sm:text-2xl font-bold">
-                                            +{displayImages.length - 4}
-                                        </span>
-                                    </div>
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><span className="text-white text-xl sm:text-2xl font-bold">+{displayImages.length - 4}</span></div>
                                 )}
                             </div>
                         ))}
@@ -266,127 +250,85 @@ export default function PostCard({ post, onOpen }) {
                 )}
 
                 {post.media_type === 'video' && post.media_url && (
-                    <div className="w-full relative z-0">
-                        <video
-                            src={post.media_url}
-                            className="w-full max-h-64 sm:max-h-96"
-                            controls
-                            preload="metadata"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
+                    <div className="w-full relative z-0"><video src={post.media_url} className="w-full max-h-64 sm:max-h-96" controls preload="metadata" onClick={(e) => e.stopPropagation()} /></div>
                 )}
-
                 {post.media_type === 'audio' && post.media_url && (
                     <div className="px-3 sm:px-4 pb-3 relative z-0">
                         <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                            </div>
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0"><Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
-                                    Voice Message
-                                    {moodData?.voice_effect && (
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border flex items-center gap-1 ${moodData.voice_effect === 'chipmunk'
-                                                ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
-                                                : 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800'
-                                            }`}>
-                                            {moodData.voice_effect === 'chipmunk' ? <Zap className="w-3 h-3" /> : <Ghost className="w-3 h-3" />}
-                                            {moodData.voice_effect}
-                                        </span>
-                                    )}
-                                </p>
-                                <audio
-                                    controls
-                                    className="w-full h-8"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <source src={post.media_url} />
-                                </audio>
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">Voice Message {moodData?.voice_effect && <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border">{moodData.voice_effect}</span>}</p>
+                                <audio controls className="w-full h-8" onClick={(e) => e.stopPropagation()}><source src={post.media_url} /></audio>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {post.series_id && (
-                    <div className="px-3 sm:px-4 pb-3 relative z-0">
-                        <SeriesIndicator post={post} />
-                    </div>
-                )}
+                {post.series_id && <div className="px-3 sm:px-4 pb-3 relative z-0"><SeriesIndicator post={post} /></div>}
+                {event && <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}><EventDisplay {...event} /></div>}
+                {poll && !event && <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}><PollDisplay poll={poll} confessionId={post.id} /></div>}
 
-                {event && (
-                    <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}>
-                        <EventDisplay
-                            eventName={event.event_name}
-                            description={event.description}
-                            startTime={event.start_time}
-                            endTime={event.end_time}
-                            location={event.location}
-                        />
-                    </div>
-                )}
+                <div className="px-4 py-3 relative z-10">
+                    {post.is_sponsored ? (
+                        <div className="flex flex-wrap items-center gap-3 mt-1">
+                            <button
+                                onClick={triggerHeartExplosion}
+                                className="flex-1 py-2.5 rounded-xl font-bold text-white shadow-lg transform transition active:scale-95 flex items-center justify-center gap-2 min-w-[120px]"
+                                style={{ backgroundColor: brandColor }}
+                            >
+                                <Heart className="w-5 h-5 fill-white animate-pulse" />
+                                <span>Send Love</span>
+                            </button>
 
-                {poll && !event && (
-                    <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}>
-                        <PollDisplay poll={poll} confessionId={post.id} />
-                    </div>
-                )}
+                            {post.sponsor_url && (
+                                <a
+                                    href={post.sponsor_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 min-w-[120px]"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Visit Site
+                                </a>
+                            )}
 
-                <div className="px-3 sm:px-4 py-2 sm:py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 relative z-10">
-                    {(currentTotalReactions > 0) && (
-                        <div className="mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-gray-200 dark:border-gray-700">
-                            <ReactionTooltip reactions={reactions} />
+                            {post.whatsapp_number && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://wa.me/${post.whatsapp_number}`, '_blank');
+                                    }}
+                                    className="py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-sm transition flex items-center justify-center"
+                                    title="Chat on WhatsApp"
+                                >
+                                    <MessageSquare className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                            {(currentTotalReactions > 0) && <div className="mb-2"><ReactionTooltip reactions={reactions} /></div>}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all">
+                                        <Heart className="w-5 h-5" /> <span className="font-medium">React</span>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                        <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
+                                    </button>
+                                    <ShareButton post={post} />
+                                </div>
+                                <button onClick={handleReport} disabled={isReported} className={`p-2 rounded-lg transition-all ${isReported ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'}`}>
+                                    <AlertTriangle className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                     )}
-
-                    <div className="flex items-center justify-between text-xs sm:text-sm relative z-10">
-                        <div className="flex items-center gap-1 sm:gap-3">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onOpen && onOpen(post)
-                                }}
-                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                            >
-                                <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
-                                <span className="font-medium">React</span>
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onOpen && onOpen(post)
-                                }}
-                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                            >
-                                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                                <span className="font-medium">{post.comments_count || 0}</span>
-                            </button>
-                            <ShareButton post={post} />
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={handleReport}
-                                disabled={isReported}
-                                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all ${isReported
-                                    ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                                    }`}
-                                title={isReported ? 'Reported' : 'Report Post'}
-                            >
-                                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            {zoomedImage && (
-                <ImageGalleryModal
-                    images={displayImages}
-                    initialIndex={displayImages.indexOf(zoomedImage)}
-                    onClose={() => setZoomedImage(null)}
-                />
-            )}
+            {zoomedImage && <ImageGalleryModal images={displayImages} initialIndex={displayImages.indexOf(zoomedImage)} onClose={() => setZoomedImage(null)} />}
         </>
     )
 }

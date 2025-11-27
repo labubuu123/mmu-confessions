@@ -4,7 +4,7 @@ import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
     ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
-    Megaphone, Search, Menu, X, ArrowLeft, Infinity
+    Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap, Image as ImageIcon, Link as LinkIcon, Palette
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -14,6 +14,7 @@ import EventDisplay from './EventDisplay'
 import UserManagement from './UserManagement'
 import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
 import PostModal from './PostModal'
+import imageCompression from 'browser-image-compression';
 
 dayjs.extend(relativeTime)
 
@@ -47,6 +48,16 @@ export default function AdminPanel() {
     const [announcements, setAnnouncements] = useState([])
     const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', type: 'info' })
     const [selectedPost, setSelectedPost] = useState(null)
+    const [sponsorForm, setSponsorForm] = useState({
+        brandName: '',
+        content: '',
+        link: '',
+        whatsapp: '',
+        color: '#EAB308',
+        images: []
+    });
+    const [sponsorLoading, setSponsorLoading] = useState(false);
+    const [sponsorPreviews, setSponsorPreviews] = useState([]);
 
     useEffect(() => {
         checkSession()
@@ -245,6 +256,79 @@ export default function AdminPanel() {
         setSelectedSupportUser(null);
     }
 
+    function handleSponsorImageChange(e) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setSponsorForm(prev => ({ ...prev, images: files }));
+
+        const newPreviews = [];
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                newPreviews.push(reader.result);
+                if (newPreviews.length === files.length) {
+                    setSponsorPreviews(newPreviews);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handleSponsorSubmit(e) {
+        e.preventDefault();
+        setSponsorLoading(true);
+
+        try {
+            let media_urls = [];
+            let single_media_url = null;
+
+            if (sponsorForm.images.length > 0) {
+                for (let i = 0; i < sponsorForm.images.length; i++) {
+                    const img = sponsorForm.images[i];
+                    const compressed = await imageCompression(img, { maxSizeMB: 1, maxWidthOrHeight: 1600 });
+                    const ext = (compressed.name || 'image.jpg').split('.').pop();
+                    const path = `public/sponsored-${Date.now()}-${i}.${ext}`;
+
+                    const { data: uploadData, error: uploadError } = await supabase.storage.from('confessions').upload(path, compressed);
+                    if (uploadError) throw uploadError;
+
+                    const { data: publicUrlData } = supabase.storage.from('confessions').getPublicUrl(uploadData.path);
+                    media_urls.push(publicUrlData.publicUrl);
+                }
+                single_media_url = media_urls[0];
+            }
+
+            const { error: insertError } = await supabase.from('confessions').insert([{
+                text: sponsorForm.content,
+                author_id: 'admin-sponsor',
+                author_name: sponsorForm.brandName,
+                media_url: single_media_url,
+                media_urls: media_urls.length > 0 ? media_urls : null,
+                media_type: media_urls.length > 0 ? 'images' : null,
+                approved: true,
+                is_sponsored: true,
+                sponsor_url: sponsorForm.link || null,
+                whatsapp_number: sponsorForm.whatsapp || null,
+                brand_color: sponsorForm.color || '#EAB308',
+                pinned: true
+            }]);
+
+            if (insertError) throw insertError;
+
+            alert('Sponsored post created successfully!');
+            setSponsorForm({ brandName: '', content: '', link: '', whatsapp: '', color: '#EAB308', images: [] });
+            setSponsorPreviews([]);
+            fetchPosts(true);
+
+        } catch (err) {
+            console.error(err);
+            alert('Failed to create sponsored post: ' + err.message);
+        } finally {
+            setSponsorLoading(false);
+        }
+    }
+
     if (!user) {
         return (
             <div className="flex items-start justify-center bg-gray-50 dark:bg-gray-900 px-4 pt-10 md:pt-12">
@@ -279,6 +363,7 @@ export default function AdminPanel() {
         { id: 'moderation', label: 'Moderation', icon: Shield },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
+        { id: 'sponsorships', label: 'Sponsorships', icon: Briefcase },
         { id: 'support', label: 'Support', icon: MessageSquare },
         { id: 'announcements', label: 'Announcements', icon: Megaphone }
     ];
@@ -372,19 +457,19 @@ export default function AdminPanel() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                                                             <div className="flex items-center gap-3">
-                                                                <AnonAvatar authorId={p.author_id} size="sm" />
+                                                                <AnonAvatar authorId={p.author_id} size="sm" isSponsored={p.is_sponsored} />
                                                                 <div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-gray-900 dark:text-white text-sm">{p.author_name || 'Anonymous'}</span>
+                                                                        <span className={`font-bold text-sm ${p.is_sponsored ? 'text-yellow-600' : 'text-gray-900 dark:text-white'}`}>{p.author_name || 'Anonymous'}</span>
                                                                         <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-xs rounded font-mono">#{p.id}</span>
                                                                     </div>
                                                                     <span className="text-xs text-gray-500">{dayjs(p.created_at).fromNow()}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex gap-2">
+                                                                {p.is_sponsored && <Badge color="yellow" icon={Zap} label="Sponsored" />}
                                                                 {p.approved ? <Badge color="green" icon={CheckCircle} label="Approved" /> : <Badge color="yellow" icon={AlertTriangle} label="Pending" />}
                                                                 {p.pinned && <Badge color="blue" icon={Pin} label="Pinned" />}
-                                                                {p.is_permanent && <Badge color="purple" icon={Infinity} label="Permanent" />}
                                                                 {p.reported && <Badge color="red" icon={AlertTriangle} label="Reported" />}
                                                             </div>
                                                         </div>
@@ -404,6 +489,13 @@ export default function AdminPanel() {
                                                                 )}
                                                                 {polls[p.id] && <div className="p-2"><PollDisplay poll={polls[p.id]} confessionId={p.id} isAdminReview={true} /></div>}
                                                                 {p.events?.[0] && <div className="p-2"><EventDisplay {...p.events[0]} /></div>}
+                                                            </div>
+                                                        )}
+
+                                                        {p.is_sponsored && p.sponsor_url && (
+                                                            <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30 text-xs text-yellow-700 dark:text-yellow-500 flex items-center gap-2">
+                                                                <LinkIcon className="w-4 h-4" />
+                                                                Link: <a href={p.sponsor_url} target="_blank" rel="noreferrer" className="underline truncate">{p.sponsor_url}</a>
                                                             </div>
                                                         )}
 
@@ -472,6 +564,149 @@ export default function AdminPanel() {
                                     )
                                 })}
                                 {hasMore && <button onClick={() => fetchPosts()} disabled={loading} className="w-full py-4 bg-white dark:bg-gray-800 text-indigo-600 font-bold rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition">{loading ? 'Loading...' : 'Load More Posts'}</button>}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'sponsorships' && (
+                        <div className="max-w-2xl mx-auto space-y-6">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
+                                    <Briefcase className="w-5 h-5" /> Create Premium Sponsored Post
+                                </h3>
+                                <form onSubmit={handleSponsorSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Brand Name</label>
+                                            <input
+                                                type="text"
+                                                value={sponsorForm.brandName}
+                                                onChange={e => setSponsorForm({ ...sponsorForm, brandName: e.target.value })}
+                                                className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-yellow-500 outline-none"
+                                                placeholder="e.g. Star Coffee"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2 mb-2">
+                                                <Palette className="w-4 h-4" /> Brand Theme Color
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="color"
+                                                    value={sponsorForm.color}
+                                                    onChange={(e) => setSponsorForm({ ...sponsorForm, color: e.target.value })}
+                                                    className="w-12 h-10 rounded cursor-pointer border-0 p-0"
+                                                />
+                                                <span className="text-xs text-gray-500">Post will glow in this color</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border dark:border-gray-700">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><LinkIcon className="w-3 h-3" /> Website Link</label>
+                                            <input
+                                                type="url"
+                                                value={sponsorForm.link}
+                                                onChange={e => setSponsorForm({ ...sponsorForm, link: e.target.value })}
+                                                className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-yellow-500 outline-none"
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><MessageSquare className="w-3 h-3" /> WhatsApp (Optional)</label>
+                                            <input
+                                                type="text"
+                                                value={sponsorForm.whatsapp}
+                                                onChange={e => setSponsorForm({ ...sponsorForm, whatsapp: e.target.value })}
+                                                className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                                placeholder="e.g. 60123456789"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Ad Copy</label>
+                                        <textarea
+                                            value={sponsorForm.content}
+                                            onChange={e => setSponsorForm({ ...sponsorForm, content: e.target.value })}
+                                            className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-yellow-500 outline-none h-32 resize-none"
+                                            placeholder="Write engaging promotional content here..."
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-500 uppercase flex justify-between">
+                                            <span>Visual Assets</span>
+                                            <span className="text-xs font-normal lowercase opacity-75">
+                                                {sponsorForm.images.length > 0 ? `${sponsorForm.images.length} files selected` : 'Max 5 images'}
+                                            </span>
+                                        </label>
+
+                                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition relative group">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleSponsorImageChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            />
+                                            <div className="flex flex-col items-center gap-2 text-gray-400 group-hover:text-yellow-600 dark:group-hover:text-yellow-500 transition-colors">
+                                                <ImageIcon className="w-8 h-8" />
+                                                <span className="text-sm font-medium">
+                                                    {sponsorForm.images.length > 0 ? 'Change Selection' : 'Upload Images'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* PREVIEW AREA */}
+                                        {sponsorPreviews.length > 0 && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                {/* Main Hero Preview */}
+                                                <div className="relative rounded-xl overflow-hidden h-48 w-full border border-gray-200 dark:border-gray-700 shadow-sm group/preview">
+                                                    <img src={sponsorPreviews[0]} alt="Hero" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover/preview:opacity-100 transition-opacity">
+                                                        <span className="text-xs font-bold uppercase tracking-widest border px-2 py-1 rounded">Main Display</span>
+                                                    </div>
+                                                    <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm">
+                                                        HERO
+                                                    </div>
+                                                </div>
+
+                                                {/* Gallery Thumbnails (if more than 1) */}
+                                                {sponsorPreviews.length > 1 && (
+                                                    <div className="grid grid-cols-4 gap-2">
+                                                        {sponsorPreviews.slice(1).map((src, idx) => (
+                                                            <div key={idx} className="relative h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group/thumb">
+                                                                <img src={src} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                                                                <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors" />
+                                                            </div>
+                                                        ))}
+                                                        {/* Visual indicator if there are too many images */}
+                                                        {sponsorPreviews.length > 5 && (
+                                                            <div className="h-16 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
+                                                                +{sponsorPreviews.length - 5}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-center pt-4 border-t dark:border-gray-700">
+                                        <button
+                                            type="submit"
+                                            disabled={sponsorLoading}
+                                            className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold rounded-xl transition shadow-lg transform hover:-translate-y-0.5 flex items-center gap-2"
+                                        >
+                                            {sponsorLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-5 h-5" />}
+                                            Launch Campaign
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     )}
