@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, FileText, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
@@ -91,6 +92,9 @@ export default function PostForm({ onPosted }) {
     const [selectedMood, setSelectedMood] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
     const [loadingSeries, setLoadingSeries] = useState(false);
+    const [isRewriting, setIsRewriting] = useState(false);
+    const [showRewriteOptions, setShowRewriteOptions] = useState(false);
+    const [history, setHistory] = useState([]);
 
     useEffect(() => {
         if (audio) {
@@ -103,6 +107,82 @@ export default function PostForm({ onPosted }) {
             setAudioPreviewUrl(null);
         }
     }, [audio]);
+
+    const handleSmartRewrite = async (mode) => {
+        if (!text.trim()) {
+            warning('Please write something first!');
+            return;
+        }
+
+        setHistory(prev => [...prev, text]);
+
+        setIsRewriting(true);
+        setShowRewriteOptions(false);
+
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+            if (!apiKey) {
+                throw new Error("Missing API Key");
+            }
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            let prompt = "";
+            switch (mode) {
+                case 'polish':
+                    prompt = `Fix grammar, spelling, and punctuation for the following text. Keep the tone natural and casual (like a confession). Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'funny':
+                    prompt = `Rewrite the following text to be humorous, witty, and fun. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'dramatic':
+                    prompt = `Rewrite the following text to be dramatic, intense, and soap-opera style. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'poetic':
+                    prompt = `Rewrite the following text in a beautiful, poetic style. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'anonymize':
+                    prompt = `Rewrite the following text to strictly remove any identifying writing styles, slang, or unique idioms to protect the author's anonymity, while preserving the exact meaning. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                default:
+                    prompt = `Polish this text: "${text}"`;
+            }
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            let newText = response.text().trim();
+
+            newText = newText.replace(/^"|"$/g, '')
+                .replace(/^Here is the rewritten text:\s*/i, '');
+
+            setText(newText);
+            success('Magic rewrite complete!');
+        } catch (err) {
+            console.error("Rewrite error:", err);
+            setHistory(prev => prev.slice(0, -1));
+
+            let msg = 'Failed to rewrite.';
+            if (err.message.includes('404') || err.message.includes('not found')) {
+                msg = 'AI Model unavailable. Check API configuration.';
+            } else if (err.message.includes('Missing API Key')) {
+                msg = 'API Key missing in environment variables.';
+            }
+            error(msg);
+        } finally {
+            setIsRewriting(false);
+        }
+    };
+
+    const handleUndo = () => {
+        if (history.length === 0) return;
+
+        const previousText = history[history.length - 1];
+        setText(previousText);
+        setHistory(prev => prev.slice(0, -1));
+        info('Undid last change');
+    };
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -344,6 +424,7 @@ export default function PostForm({ onPosted }) {
             setSelectedMood(null);
             setUploadProgress(0);
             setShowAudioOptions(false);
+            setHistory([]);
             success('Posted successfully!');
 
         } catch (err) {
@@ -598,7 +679,7 @@ export default function PostForm({ onPosted }) {
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6 transition-colors">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
@@ -621,15 +702,91 @@ export default function PostForm({ onPosted }) {
                                 className="w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100"
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
+                                disabled={isRewriting}
                             />
-                            <div className={`text-xs text-right mt-1 ${isNearLimit ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                                {charCount} / {MAX_TEXT_LENGTH}
+
+                            <div className="flex justify-between items-center mt-2 mb-2 relative px-1">
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <div className="relative z-50">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRewriteOptions(!showRewriteOptions)}
+                                            disabled={isRewriting}
+                                            className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm border
+                                                ${showRewriteOptions
+                                                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-transparent shadow-indigo-200 dark:shadow-none ring-2 ring-indigo-100 dark:ring-indigo-900'
+                                                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:shadow-md'}`}
+                                        >
+                                            {isRewriting ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <Wand2 className={`w-3.5 h-3.5 ${showRewriteOptions ? 'text-white' : 'text-violet-500 group-hover:rotate-12 transition-transform'}`} />
+                                            )}
+                                            <span className="leading-none">Magic Rewrite</span>
+                                            <ChevronDown className={`w-3 h-3 transition-transform ${showRewriteOptions ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showRewriteOptions && (
+                                            <div className="absolute top-full mt-2 left-0 w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-[100] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2">
+                                                <div className="p-1.5 space-y-0.5">
+                                                    <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider px-3 py-2">Select Tone</div>
+                                                    {[
+                                                        { id: 'polish', label: '✨ Fix Grammar', desc: 'Standard polish' },
+                                                        { id: 'funny', label: '😂 Make it Funny', desc: 'Add humor' },
+                                                        { id: 'dramatic', label: '🎭 Dramatic', desc: 'Add intensity' },
+                                                        { id: 'poetic', label: '📜 Poetic', desc: 'Lyrical style' },
+                                                        { id: 'anonymize', label: '🕵️ Anonymize', desc: 'Remove style' },
+                                                    ].map((mode) => (
+                                                        <button
+                                                            key={mode.id}
+                                                            type="button"
+                                                            onClick={() => handleSmartRewrite(mode.id)}
+                                                            className="w-full text-left px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-xl group transition-all flex flex-col"
+                                                        >
+                                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 group-hover:text-violet-700 dark:group-hover:text-violet-400">
+                                                                {mode.label}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 group-hover:text-violet-500/80 dark:group-hover:text-violet-400/70">
+                                                                {mode.desc}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {history.length > 0 && !isRewriting && (
+                                        <button
+                                            type="button"
+                                            onClick={handleUndo}
+                                            className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm"
+                                            title="Undo last change"
+                                        >
+                                            <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-180 transition-transform duration-500" />
+                                            <span className="leading-none hidden sm:inline">Undo</span>
+                                        </button>
+                                    )}
+
+                                    {isRewriting && (
+                                        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 dark:bg-violet-900/20 rounded-full border border-violet-100 dark:border-violet-800 animate-pulse">
+                                            <Loader2 className="w-3 h-3 text-violet-600 dark:text-violet-400 animate-spin" />
+                                            <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 leading-none">Rewriting...</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full border leading-none ${isNearLimit
+                                    ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                                    : 'bg-gray-50 text-gray-500 border-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}>
+                                    {charCount}/{MAX_TEXT_LENGTH}
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {detectedTags.length > 0 && (
-                        <div className="mb-3 sm:mb-4 ml-10 sm:ml-14 -mt-2 p-2 sm:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
+                        <div className="mb-3 sm:mb-4 ml-10 sm:ml-14 mt-2 p-2 sm:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">
                             <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 <Tag className="w-3 h-3 sm:w-4 sm:h-4" />
                                 Detected Tags
