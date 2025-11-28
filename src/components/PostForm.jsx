@@ -706,13 +706,13 @@ export default function PostForm({ onPosted }) {
                             />
 
                             <div className="flex justify-between items-center mt-2 mb-2 relative px-1">
-                                <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="flex items-center gap-2">
                                     <div className="relative z-50">
                                         <button
                                             type="button"
                                             onClick={() => setShowRewriteOptions(!showRewriteOptions)}
                                             disabled={isRewriting}
-                                            className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm border
+                                            className={`group flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold transition-all shadow-sm border
                                                 ${showRewriteOptions
                                                     ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-transparent shadow-indigo-200 dark:shadow-none ring-2 ring-indigo-100 dark:ring-indigo-900'
                                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:shadow-md'}`}
@@ -722,12 +722,13 @@ export default function PostForm({ onPosted }) {
                                             ) : (
                                                 <Wand2 className={`w-3.5 h-3.5 ${showRewriteOptions ? 'text-white' : 'text-violet-500 group-hover:rotate-12 transition-transform'}`} />
                                             )}
-                                            <span className="leading-none">Magic Rewrite</span>
+                                            <span className="leading-none sm:hidden">AI Rewrite</span>
+                                            <span className="leading-none hidden sm:inline">Magic Rewrite</span>
                                             <ChevronDown className={`w-3 h-3 transition-transform ${showRewriteOptions ? 'rotate-180' : ''}`} />
                                         </button>
 
                                         {showRewriteOptions && (
-                                            <div className="absolute top-full mt-2 left-0 w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-[100] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2">
+                                            <div className="absolute top-full mt-2 left-0 w-48 sm:w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-[100] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2">
                                                 <div className="p-1.5 space-y-0.5">
                                                     <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider px-3 py-2">Select Tone</div>
                                                     {[
@@ -760,7 +761,7 @@ export default function PostForm({ onPosted }) {
                                         <button
                                             type="button"
                                             onClick={handleUndo}
-                                            className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm"
+                                            className="group flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm"
                                             title="Undo last change"
                                         >
                                             <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-180 transition-transform duration-500" />
@@ -776,7 +777,7 @@ export default function PostForm({ onPosted }) {
                                     )}
                                 </div>
 
-                                <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full border leading-none ${isNearLimit
+                                <div className={`text-[10px] font-bold px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-full border leading-none ${isNearLimit
                                     ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
                                     : 'bg-gray-50 text-gray-500 border-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}>
                                     {charCount}/{MAX_TEXT_LENGTH}
