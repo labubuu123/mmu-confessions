@@ -13,16 +13,16 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-gray-900 w-full max-w-2xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700">
-                <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center z-10">
+        <div className="fixed inset-0 z-50 bg-gray-900/80 backdrop-blur-sm flex items-end md:items-center justify-center p-2 md:p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-2xl h-[92vh] md:h-[85vh] rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700 transition-all">
+                <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center z-10 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                            <ScrollText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                            <ScrollText className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-gray-900 dark:text-white">MMU Matchmaker Rules</h2>
-                            <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold">交友功能守则</p>
+                            <h2 className="text-lg md:text-xl font-black text-gray-900 dark:text-white">MMU Matchmaker Rules</h2>
+                            <p className="text-xs md:text-sm text-indigo-600 dark:text-indigo-400 font-bold">交友功能守则</p>
                         </div>
                     </div>
                     <button
@@ -36,7 +36,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                 <div
                     ref={contentRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50 scroll-smooth"
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 bg-gray-50/50 dark:bg-gray-900/50 scroll-smooth"
                 >
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-2xl flex gap-3">
                         <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
@@ -47,7 +47,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     </div>
 
                     <PolicySection icon={<Lock />} title="1. Privacy & Anonymity" titleCN="隐私与匿名" color="text-blue-600">
-                        <ul className="list-disc pl-5 space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-blue-500">
+                        <ul className="list-disc pl-5 space-y-3 md:space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-blue-500">
                             <li>
                                 <p className="font-medium">No Profile Picture Required. Your avatar is auto-generated to maintain anonymity.</p>
                                 <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">无需上传头像。系统将自动生成头像以保护您的隐私。</p>
@@ -68,7 +68,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     </PolicySection>
 
                     <PolicySection icon={<UserX />} title="2. Honest Profiles Only" titleCN="诚实交友" color="text-purple-600">
-                        <ul className="list-disc pl-5 space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-purple-500">
+                        <ul className="list-disc pl-5 space-y-3 md:space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-purple-500">
                             <li>
                                 <p className="font-medium">All profiles are reviewed by Admin. Fake or "Joke" identities will be rejected.</p>
                                 <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">所有档案均由管理员审核。虚假、恶搞或乱填的档案将被直接拒绝。</p>
@@ -81,7 +81,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     </PolicySection>
 
                     <PolicySection icon={<Heart />} title="3. Respect & Consent" titleCN="尊重与同意" color="text-pink-600">
-                        <ul className="list-disc pl-5 space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-pink-500">
+                        <ul className="list-disc pl-5 space-y-3 md:space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-pink-500">
                             <li>
                                 <p className="font-medium">Zero Tolerance for Harassment. If someone rejects you, leave them alone.</p>
                                 <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">对骚扰零容忍。如果对方拒绝了你，请勿纠缠。</p>
@@ -94,7 +94,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     </PolicySection>
 
                     <PolicySection icon={<Scale />} title="4. Legal & Compliance" titleCN="法律与合规" color="text-red-600">
-                        <ul className="list-disc pl-5 space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-red-500">
+                        <ul className="list-disc pl-5 space-y-3 md:space-y-4 text-sm text-gray-700 dark:text-gray-300 marker:text-red-500">
                             <li>
                                 <p className="font-medium"><strong>Comm. & Multimedia Act 1998 (Section 233):</strong> Sharing offensive, menacing, or false content is a criminal offense.</p>
                                 <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">根据《1998年通讯与多媒体法》第233条文，发布攻击性、威胁或虚假内容属刑事犯罪。</p>
@@ -110,7 +110,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                         </ul>
                     </PolicySection>
 
-                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+                    <div className="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
                         <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
                         <h3 className="font-bold text-gray-900 dark:text-white mb-1">Violation Consequences / 违规后果</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -121,7 +121,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
+                <div className="p-4 md:p-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20 flex-shrink-0">
                     {!canAccept && (
                         <p className="text-center text-xs text-gray-400 mb-3 animate-pulse font-medium">
                             ⬇️ Please scroll to the bottom to proceed / 请滑到底部以继续
@@ -130,7 +130,7 @@ export default function MatchmakerPolicy({ onAccept, onCancel }) {
                     <button
                         onClick={onAccept}
                         disabled={!canAccept}
-                        className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform
+                        className={`w-full flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl font-bold text-lg transition-all duration-300 transform
                         ${canAccept
                                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl hover:-translate-y-1 cursor-pointer'
                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed opacity-70'}`}
@@ -156,8 +156,8 @@ function PolicySection({ icon, title, titleCN, color, children }) {
             <div className={`flex items-center gap-3 mb-3 ${color}`}>
                 {React.cloneElement(icon, { className: "w-6 h-6" })}
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{title}</h3>
-                    <p className="text-sm font-medium opacity-80">{titleCN}</p>
+                    <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight">{title}</h3>
+                    <p className="text-xs md:text-sm font-medium opacity-80">{titleCN}</p>
                 </div>
             </div>
             {children}
