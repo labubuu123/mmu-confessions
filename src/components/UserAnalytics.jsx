@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { TrendingUp, MessageSquare, Heart, Calendar, Target, Zap } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
 
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
@@ -108,84 +109,97 @@ export default function UserAnalytics() {
 
     if (!stats) {
         return (
-            <div className="text-center py-12">
-                <MessageSquare className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                    Start posting to see your stats!
-                </p>
-            </div>
+            <>
+                <Helmet>
+                    <title>My Stats & Analytics - MMU Confessions</title>
+                    <meta name="description" content="View your personal engagement stats, post history, and confession insights on MMU Confessions." />
+                </Helmet>
+                <div className="text-center py-12">
+                    <MessageSquare className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400">
+                        Start posting to see your stats!
+                    </p>
+                </div>
+            </>
         )
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    Your Anonymous Stats
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Track your confession journey
-                </p>
-            </div>
+        <>
+            <Helmet>
+                <title>My Stats & Analytics - MMU Confessions</title>
+                <meta name="description" content="View your personal engagement stats, post history, and confession insights on MMU Confessions." />
+            </Helmet>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <MetricCard
-                    icon={MessageSquare}
-                    label="Total Posts"
-                    value={stats.totalPosts}
-                    color="blue"
-                />
-                <MetricCard
-                    icon={Heart}
-                    label="Total Likes"
-                    value={stats.totalLikes}
-                    color="red"
-                />
-                <MetricCard
-                    icon={TrendingUp}
-                    label="Engagement"
-                    value={stats.engagementRate}
-                    suffix="/post"
-                    color="green"
-                />
-                <MetricCard
-                    icon={Zap}
-                    label="Day Streak"
-                    value={stats.streak}
-                    color="orange"
-                />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Activity Overview
-                    </h3>
-                    <div className="space-y-3">
-                        <StatRow label="Approved Posts" value={`${stats.approvedPosts} / ${stats.totalPosts}`} />
-                        <StatRow label="Comments Made" value={stats.totalComments} />
-                        <StatRow label="Avg Likes/Post" value={stats.avgLikesPerPost} />
-                        <StatRow label="Avg Comments/Post" value={stats.avgCommentsPerPost} />
-                    </div>
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                        Your Anonymous Stats
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Track your confession journey
+                    </p>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Posting Patterns
-                    </h3>
-                    <div className="space-y-3">
-                        <StatRow
-                            label="Most Active Day"
-                            value={`${stats.mostActiveDay.day} (${stats.mostActiveDay.count} posts)`}
-                        />
-                        <StatRow
-                            label="Current Streak"
-                            value={`${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
-                        />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <MetricCard
+                        icon={MessageSquare}
+                        label="Total Posts"
+                        value={stats.totalPosts}
+                        color="blue"
+                    />
+                    <MetricCard
+                        icon={Heart}
+                        label="Total Likes"
+                        value={stats.totalLikes}
+                        color="red"
+                    />
+                    <MetricCard
+                        icon={TrendingUp}
+                        label="Engagement"
+                        value={stats.engagementRate}
+                        suffix="/post"
+                        color="green"
+                    />
+                    <MetricCard
+                        icon={Zap}
+                        label="Day Streak"
+                        value={stats.streak}
+                        color="orange"
+                    />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                            Activity Overview
+                        </h3>
+                        <div className="space-y-3">
+                            <StatRow label="Approved Posts" value={`${stats.approvedPosts} / ${stats.totalPosts}`} />
+                            <StatRow label="Comments Made" value={stats.totalComments} />
+                            <StatRow label="Avg Likes/Post" value={stats.avgLikesPerPost} />
+                            <StatRow label="Avg Comments/Post" value={stats.avgCommentsPerPost} />
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                            Posting Patterns
+                        </h3>
+                        <div className="space-y-3">
+                            <StatRow
+                                label="Most Active Day"
+                                value={`${stats.mostActiveDay.day} (${stats.mostActiveDay.count} posts)`}
+                            />
+                            <StatRow
+                                label="Current Streak"
+                                value={`${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }
 

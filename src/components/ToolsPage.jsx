@@ -100,7 +100,7 @@ export default function ToolsPage() {
                 <title>MMU Tools - Student Utilities & Resources</title>
                 <meta name="description" content="Access useful tools for MMU students including GPA/CGPA calculators, timetable planners, campus portals, and emergency contacts." />
             </Helmet>
-            
+
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16 animate-fade-in-down">

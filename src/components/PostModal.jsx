@@ -24,7 +24,6 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     const [reportLoading, setReportLoading] = useState(false)
     const [poll, setPoll] = useState(null)
     const [event, setEvent] = useState(null)
-    const [linkCopied, setLinkCopied] = useState(false)
     const [zoomedImage, setZoomedImage] = useState(null)
 
     useEffect(() => {
@@ -177,12 +176,22 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
     const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
     const metaDescription = `MMU Confession #${internalPost.id}: ${internalPost.text.slice(0, 150)}...`;
-    const metaTitle = `MMU Confession #${internalPost.id} | MMU Confessions`;
+    const metaTitle = `Confession #${internalPost.id} | MMU Confessions`;
     const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
-    const metaImage = internalPost.media_url || 'https://mmuconfessions.fun/default-og-image.png';
+    const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : 'https://mmuconfessions.fun/default-og-image.png');
 
     return ReactDOM.createPortal(
         <>
+            <Helmet>
+                <title>{metaTitle}</title>
+                <meta name="description" content={metaDescription} />
+                <meta property="og:type" content="article" />
+                <meta property="og:url" content={metaUrl} />
+                <meta property="og:title" content={metaTitle} />
+                <meta property="og:description" content={metaDescription} />
+                <meta property="og:image" content={metaImage} />
+            </Helmet>
+
             <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
                 <div className="absolute inset-0" onClick={onClose} />
 
