@@ -35,11 +35,11 @@ export default function Header({ theme, setTheme, onlineCount }) {
             <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg">
                             <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
                         <div>
-                            <span className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block leading-tight whitespace-nowrap">
+                            <span className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-purple-600 dark:from-indigo-400 dark:via-purple-400 dark:to-purple-400 bg-clip-text text-transparent block leading-tight whitespace-nowrap">
                                 MMU Confessions
                             </span>
                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-tight">
