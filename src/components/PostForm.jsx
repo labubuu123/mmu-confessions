@@ -707,7 +707,7 @@ export default function PostForm({ onPosted }) {
 
                             <div className="flex justify-between items-center mt-2 mb-2 relative px-1">
                                 <div className="flex items-center gap-2">
-                                    <div className="relative z-50">
+                                    <div className="relative">
                                         <button
                                             type="button"
                                             onClick={() => setShowRewriteOptions(!showRewriteOptions)}
