@@ -6,6 +6,7 @@ import PostModal from './PostModal'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowUp } from 'lucide-react'
 import { FeedSkeleton } from './LoadingSkeleton'
+import { Helmet } from 'react-helmet-async'
 
 const debounce = (func, wait) => {
     let timeout;
@@ -138,41 +139,48 @@ export default function Feed() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8">
-            <PostForm onPosted={handlePosted} />
+        <>
+            <Helmet>
+                <title>MMU Confessions - Anonymous Student Community</title>
+                <meta name="description" content="The #1 anonymous confession platform for MMU students. Share secrets, read stories, and connect with your campus community." />
+            </Helmet>
 
-            {newPostsAvailable && (
-                <button
-                    onClick={loadNewPosts}
-                    className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-all shadow-lg"
-                >
-                    <ArrowUp className="w-5 h-5" />
-                    New Confession - Click to Load
-                </button>
-            )}
+            <div className="max-w-2xl mx-auto px-4 py-8">
+                <PostForm onPosted={handlePosted} />
 
-            <div className="space-y-6">
-                {posts.map(post => (
-                    <PostCard key={post.id} post={post} onOpen={handleOpenModal} />
-                ))}
+                {newPostsAvailable && (
+                    <button
+                        onClick={loadNewPosts}
+                        className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-all shadow-lg"
+                    >
+                        <ArrowUp className="w-5 h-5" />
+                        New Confession - Click to Load
+                    </button>
+                )}
+
+                <div className="space-y-6">
+                    {posts.map(post => (
+                        <PostCard key={post.id} post={post} onOpen={handleOpenModal} />
+                    ))}
+                </div>
+
+                {loading && posts.length === 0 && <FeedSkeleton count={3} />}
+
+                {!loading && !hasMore && (
+                    <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                        You've reached the end.
+                    </p>
+                )}
+
+                {error && <p className="text-red-500 text-center mt-8">{error}</p>}
+
+                {modalPostId && (
+                    <PostModal
+                        postId={modalPostId}
+                        onClose={handleCloseModal}
+                    />
+                )}
             </div>
-
-            {loading && posts.length === 0 && <FeedSkeleton count={3} />}
-
-            {!loading && !hasMore && (
-                <p className="text-center text-gray-500 dark:text-gray-400 mt-8">
-                    You've reached the end.
-                </p>
-            )}
-
-            {error && <p className="text-red-500 text-center mt-8">{error}</p>}
-
-            {modalPostId && (
-                <PostModal
-                    postId={modalPostId}
-                    onClose={handleCloseModal}
-                />
-            )}
-        </div>
+        </>
     )
 }

@@ -7,6 +7,7 @@ import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
 import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Trash2 } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 
 export default function Matchmaker() {
     const { session, user, profile, loading, refreshProfile } = useMatchmakerAuth();
@@ -17,6 +18,13 @@ export default function Matchmaker() {
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
 
     const totalConnectionsCount = connectionCounts.received + connectionCounts.sent + connectionCounts.matches + connectionCounts.rejected;
+
+    const matchmakerSEO = (
+        <Helmet>
+            <title>MMU Matchmaker - Find Your Connection</title>
+            <meta name="description" content="Looking for love or friendship at MMU? Join our anonymous matchmaker to find compatible students nearby." />
+        </Helmet>
+    );
 
     useEffect(() => {
         if (user?.email === 'admin@mmu.edu') setIsAdmin(true);
@@ -122,7 +130,12 @@ export default function Matchmaker() {
     }
 
     if (!session || !user) {
-        return <MatchmakerWelcome onAuthSuccess={refreshProfile} />;
+        return (
+            <>
+                {matchmakerSEO}
+                <MatchmakerWelcome onAuthSuccess={refreshProfile} />
+            </>
+        );
     }
 
     if (profile?.status === 'banned') {
@@ -189,6 +202,7 @@ export default function Matchmaker() {
     if (!profile || (profile.status !== 'approved' && view !== 'admin')) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8 px-3 sm:px-4">
+                {matchmakerSEO}
                 <div className="flex justify-end max-w-2xl mx-auto mb-4 gap-4">
                     <button onClick={handleLogout} className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors font-bold">
                         <LogOut className="w-3 h-3" /> Log Out
@@ -204,6 +218,7 @@ export default function Matchmaker() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-300">
+            {matchmakerSEO}
             <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 shadow-sm transition-colors">
                 <div className="max-w-5xl mx-auto px-3 sm:px-4">
                     <div className="flex justify-between items-center h-14 sm:h-16">
