@@ -40,26 +40,55 @@ function App() {
   }, []);
 
   useEffect(() => {
+    console.log("🔔 Notification listener started");
+
     const channel = supabase
       .channel('reply-notifications')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
         const newComment = payload.new;
+
+        // 1. Log the raw event to verify Supabase is sending data
+        console.log("📨 New comment received from Supabase:", newComment);
+
         const myPosts = JSON.parse(localStorage.getItem('my_posts') || '[]');
         const myAnonId = localStorage.getItem('anonId');
 
-        if (myPosts.includes(newComment.post_id) && newComment.author_id !== myAnonId) {
+        console.log("🔍 Checking match...");
+        console.log("   - Post ID being commented on:", newComment.post_id);
+        console.log("   - My Posts List:", myPosts);
+        console.log("   - Comment Author ID:", newComment.author_id);
+        console.log("   - My Anon ID:", myAnonId);
+
+        // Check if I own this post
+        const isMyPost = myPosts.includes(newComment.post_id);
+
+        // Check if I am NOT the writer (prevent self-notification)
+        const isNotMe = newComment.author_id !== myAnonId;
+
+        if (isMyPost && isNotMe) {
+          console.log("✅ CONDITIONS MET! Attempting to trigger notification...");
+
           if (Notification.permission === 'granted') {
             const n = new Notification('New Reply! 💬', {
               body: newComment.text || 'Someone replied to your confession.',
               icon: '/favicon.svg',
               tag: `reply-${newComment.post_id}`
             });
-
             n.onclick = () => {
               window.focus();
               navigate(`/post/${newComment.post_id}`);
             };
+          } else {
+            console.warn("❌ Notification permission is:", Notification.permission);
+            // Try requesting again
+            if (Notification.permission !== 'denied') {
+              Notification.requestPermission();
+            }
           }
+        } else {
+          console.log("⛔ Notification Skipped. Reasons:");
+          if (!isMyPost) console.log("   - This comment is not on one of your posts.");
+          if (!isNotMe) console.log("   - You replied to yourself.");
         }
       })
       .subscribe();
