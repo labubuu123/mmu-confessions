@@ -6,7 +6,7 @@ import MatchmakerProfileForm from './MatchmakerProfileForm';
 import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
-import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Trash2 } from 'lucide-react';
+import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Trash2, Heart } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Matchmaker() {
@@ -223,7 +223,7 @@ export default function Matchmaker() {
                 <div className="max-w-5xl mx-auto px-3 sm:px-4">
                     <div className="flex justify-between items-center h-14 sm:h-16">
                         <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2 cursor-pointer" onClick={() => setView('browse')}>
-                            <Sparkles className="fill-indigo-600 dark:fill-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
+                            <Heart className="fill-indigo-600 dark:fill-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
                             <span className="hidden xs:inline">MMU Matchmaker</span>
                             <span className="xs:hidden">MMU Matchmaker</span>
                         </h1>

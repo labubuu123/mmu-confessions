@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Sparkles, Loader2, HeartHandshake, AlertCircle, BookOpen } from 'lucide-react';
+import { Sparkles, Loader2, HeartHandshake, AlertCircle, BookOpen, Heart } from 'lucide-react';
 import MatchmakerPolicy from './MatchmakerPolicy';
 import MatchmakerAuth from './MatchmakerAuth';
 
@@ -71,7 +71,7 @@ export default function MatchmakerWelcome({ onAuthSuccess }) {
                             onClick={() => setShowPolicy(true)}
                             className="w-full group relative flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] hover:bg-right text-white text-lg font-bold rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-1 active:scale-95"
                         >
-                            <Sparkles className="w-5 h-5 fill-white/20 group-hover:rotate-12 transition-transform" />
+                            <Heart className="w-5 h-5 fill-white/20 group-hover:rotate-12 transition-transform" />
                             <span>Enter Matchmaker</span>
                         </button>
                     </div>
