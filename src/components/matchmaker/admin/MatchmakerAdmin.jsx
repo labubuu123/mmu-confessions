@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, KeyRound, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, KeyRound, MessageCircle } from 'lucide-react';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -19,7 +19,7 @@ const AvatarGenerator = ({ nickname, gender }) => {
     const mouthVariant = (seed >> 1) % 3;
 
     return (
-        <svg viewBox="0 0 100 100" className="w-full h-full bg-gray-50">
+        <svg viewBox="0 0 100 100" className="w-full h-full bg-white">
             <rect width="100" height="100" fill={bg} />
             <path d="M20 100 Q50 80 80 100" fill={gender === 'male' ? '#6366f1' : '#ec4899'} opacity="0.8" />
             <circle cx="50" cy="50" r="35" fill={skin} />
@@ -38,9 +38,9 @@ const AvatarGenerator = ({ nickname, gender }) => {
     );
 };
 
-const ExpandableText = ({ text, limit = 80 }) => {
+const ExpandableText = ({ text, limit = 100 }) => {
     const [expanded, setExpanded] = useState(false);
-    if (!text) return <span className="text-gray-400 italic">No text provided</span>;
+    if (!text) return null;
     return (
         <div className="text-sm text-gray-700 dark:text-gray-300">
             <span className="whitespace-pre-wrap">{expanded ? text : text.slice(0, limit) + (text.length > limit ? '...' : '')}</span>
@@ -94,7 +94,7 @@ export default function MatchmakerAdmin() {
     };
 
     const handleReject = async (id, currentNickname) => {
-        const reason = window.prompt(`Rejection reason for ${currentNickname}:`, "Profile incomplete or invalid info.");
+        const reason = window.prompt(`Rejection reason for ${currentNickname}:`, "Profile incomplete");
         if (reason?.trim()) await updateStatus(id, 'rejected', reason);
     };
 
@@ -123,20 +123,17 @@ export default function MatchmakerAdmin() {
     };
 
     const ProfileCard = ({ p, children }) => (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden hover:shadow-md transition-shadow">
-            <div className="p-4 flex items-center gap-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-b border-gray-100 dark:border-gray-700 relative">
-                <div className="w-14 h-14 rounded-full overflow-hidden bg-white shadow-sm shrink-0 border-2 border-white dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
+            <div className="p-4 flex items-center gap-4 bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-700">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-white shadow-sm shrink-0">
                     <AvatarGenerator nickname={p.nickname} gender={p.gender} />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">{p.nickname}</h3>
-                        <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full ${p.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{p.gender}</span>
-                        <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-600 dark:text-gray-300">{p.age}</span>
-                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">{p.nickname}</h3>
                     <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city || 'Unknown'}</span>
-                        <span className="flex items-center gap-1 text-indigo-500 font-mono bg-indigo-50 dark:bg-indigo-900/20 px-1.5 rounded"><KeyRound className="w-3 h-3" /> {usernames[p.author_id] || 'Guest'}</span>
+                        <span className="capitalize bg-white dark:bg-gray-700 px-2 py-0.5 rounded border dark:border-gray-600">{p.gender}, {p.age}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</span>
+                        <span className="flex items-center gap-1 text-indigo-500"><KeyRound className="w-3 h-3" /> {usernames[p.author_id]}</span>
                     </div>
                 </div>
             </div>
@@ -144,42 +141,27 @@ export default function MatchmakerAdmin() {
             <div className="p-4 space-y-3 flex-1 text-sm">
                 {p.red_flags?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                        {p.red_flags.map((f, i) => <span key={i} className="px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 text-[10px] rounded border border-red-100 dark:border-red-900 font-bold uppercase">{f}</span>)}
+                        {p.red_flags.map((f, i) => <span key={i} className="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded border border-red-100 font-bold">{f}</span>)}
                     </div>
                 )}
-
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded text-center">
-                        <span className="text-gray-400 font-bold block text-[10px] uppercase">MBTI</span>
-                        <span className="font-bold text-indigo-600 dark:text-indigo-400">{p.mbti || '-'}</span>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded text-center">
-                        <span className="text-gray-400 font-bold block text-[10px] uppercase">Zodiac</span>
-                        <span className="font-bold text-purple-600 dark:text-purple-400">{p.zodiac?.split(' ')[0] || '-'}</span>
-                    </div>
+                    {p.mbti && <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-center font-bold">{p.mbti}</div>}
+                    {p.zodiac && <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-center font-bold">{p.zodiac}</div>}
                 </div>
-
                 <div>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Self Intro</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Self Intro</span>
                     <ExpandableText text={p.self_intro} />
                 </div>
                 <div>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Looking For</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Looking For</span>
                     <ExpandableText text={p.looking_for} />
                 </div>
-
                 <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact (Private)</span>
-                    <p className="font-mono bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1.5 rounded select-all truncate text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50 mt-1">{p.contact_info}</p>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Contact</span>
+                    <p className="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded select-all truncate text-indigo-600 dark:text-indigo-400">{p.contact_info}</p>
                 </div>
-
-                {p.rejection_reason && (
-                    <div className="p-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs rounded border border-red-200 dark:border-red-800">
-                        <strong>Rejection Reason:</strong> {p.rejection_reason}
-                    </div>
-                )}
+                {p.rejection_reason && <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-100"><strong>Reason:</strong> {p.rejection_reason}</div>}
             </div>
-
             <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-2">
                 {children}
             </div>
@@ -187,27 +169,20 @@ export default function MatchmakerAdmin() {
     );
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             {reports.length > 0 && (
-                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-2xl p-5 shadow-sm">
-                    <h3 className="font-bold text-red-800 dark:text-red-400 flex items-center gap-2 mb-4 text-lg">
-                        <ShieldAlert className="w-6 h-6 animate-pulse" /> Active Reports ({reports.length})
-                    </h3>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <h3 className="font-bold text-red-700 dark:text-red-400 flex items-center gap-2 mb-3"><ShieldAlert className="w-5 h-5" /> Active Reports ({reports.length})</h3>
+                    <div className="grid gap-3 md:grid-cols-2">
                         {reports.map(r => (
-                            <div key={r.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-red-100 dark:border-red-900 text-sm flex flex-col">
-                                <div className="flex justify-between font-bold mb-2 dark:text-white">
-                                    <span className="flex items-center gap-1"><AlertTriangle className="w-4 h-4 text-red-500" /> {r.reported?.nickname}</span>
-                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{r.reported?.warning_count} Warns</span>
-                                </div>
-                                <div className="text-gray-500 text-xs mb-2">Reported by: <strong>{r.reporter?.nickname}</strong></div>
-                                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-gray-700 dark:text-gray-300 italic mb-4 flex-1 border border-gray-100 dark:border-gray-700">
-                                    "{r.reason}"
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 mt-auto">
-                                    <button onClick={() => handleDismissReport(r.id)} className="py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-xs font-bold transition">Dismiss</button>
-                                    <button onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)} className="py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg text-xs font-bold transition">Warn</button>
-                                    <button onClick={() => handleBan(r.reported_id, r.reported?.nickname)} className="py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition">Ban</button>
+                            <div key={r.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm text-sm">
+                                <div className="flex justify-between font-bold mb-1 dark:text-white"><span>{r.reported?.nickname}</span><span className="text-xs text-red-500">{r.reported?.warning_count} Warns</span></div>
+                                <div className="text-gray-500 text-xs mb-2">Reporter: {r.reporter?.nickname}</div>
+                                <div className="bg-gray-50 dark:bg-gray-900 p-2 rounded text-gray-700 dark:text-gray-300 italic mb-3">"{r.reason}"</div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleDismissReport(r.id)} className="flex-1 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">Dismiss</button>
+                                    <button onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)} className="flex-1 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-bold">Warn</button>
+                                    <button onClick={() => handleBan(r.reported_id, r.reported?.nickname)} className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold">Ban</button>
                                 </div>
                             </div>
                         ))}
@@ -215,79 +190,51 @@ export default function MatchmakerAdmin() {
                 </div>
             )}
 
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-full md:w-auto self-start overflow-x-auto">
+            <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto pb-1">
                 {['pending', 'approved', 'rejected'].map(t => (
-                    <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg font-bold capitalize transition-all text-sm ${activeTab === t ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                        {t} <span className="ml-1 opacity-60 text-xs bg-gray-200 dark:bg-gray-900 px-1.5 py-0.5 rounded-full">{t === 'pending' ? pending.length : t === 'approved' ? approved.length : rejected.length}</span>
+                    <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-t-lg font-bold capitalize transition-colors ${activeTab === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}>
+                        {t} ({t === 'pending' ? pending.length : t === 'approved' ? approved.length : rejected.length})
                     </button>
                 ))}
             </div>
 
-            {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-indigo-500" /></div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {loading ? <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {activeTab === 'pending' && pending.map(p => (
                         <ProfileCard key={p.author_id} p={p}>
-                            <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-100 hover:bg-green-200 text-green-700 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition"><Check className="w-3.5 h-3.5" /> Approve</button>
-                            <button onClick={() => handleReject(p.author_id, p.nickname)} className="bg-red-100 hover:bg-red-200 text-red-700 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition"><X className="w-3.5 h-3.5" /> Reject</button>
+                            <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Approve</button>
+                            <button onClick={() => handleReject(p.author_id, p.nickname)} className="bg-red-100 hover:bg-red-200 text-red-600 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><X className="w-3 h-3" /> Reject</button>
                         </ProfileCard>
                     ))}
                     {activeTab === 'approved' && approved.map(p => (
                         <ProfileCard key={p.author_id} p={p}>
-                            <button onClick={() => updateStatus(p.author_id, 'pending')} className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition"><Ban className="w-3.5 h-3.5" /> Revoke</button>
-                            <button onClick={() => handleBan(p.author_id, p.nickname)} className="bg-gray-800 hover:bg-black text-white py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition"><Trash2 className="w-3.5 h-3.5" /> Ban</button>
+                            <button onClick={() => updateStatus(p.author_id, 'pending')} className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Ban className="w-3 h-3" /> Revoke</button>
+                            <button onClick={() => handleBan(p.author_id, p.nickname)} className="bg-gray-800 hover:bg-black text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Trash2 className="w-3 h-3" /> Ban</button>
                         </ProfileCard>
                     ))}
                     {activeTab === 'rejected' && rejected.map(p => (
                         <ProfileCard key={p.author_id} p={p}>
-                            <div className="col-span-2 text-center text-xs text-gray-400 italic py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">Waiting for user update...</div>
+                            <div className="col-span-2 text-center text-xs text-gray-400 italic py-2">Waiting for user update...</div>
                         </ProfileCard>
                     ))}
-                    {((activeTab === 'pending' && !pending.length) || (activeTab === 'approved' && !approved.length) || (activeTab === 'rejected' && !rejected.length)) && (
-                        <div className="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center">
-                            <Search className="w-10 h-10 mb-2 opacity-20" />
-                            <p>No profiles found in this category.</p>
-                        </div>
+                    {((activeTab === 'pending' && !pending.length) || (activeTab === 'approved' && !approved.length)) && (
+                        <div className="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">No profiles found.</div>
                     )}
                 </div>
             )}
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                <div className="p-5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
-                    <Heart className="w-5 h-5 text-pink-500 fill-current" /> Recent Connections
-                </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700 font-bold flex items-center gap-2"><Heart className="w-4 h-4 text-pink-500" /> Recent Love Logs</div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                            <tr>
-                                <th className="px-6 py-3 font-bold">From</th>
-                                <th className="px-6 py-3 font-bold">To</th>
-                                <th className="px-6 py-3 font-bold">Status</th>
-                                <th className="px-6 py-3 text-right font-bold">Time</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700"><tr><th className="px-4 py-3">From</th><th className="px-4 py-3">To</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Time</th></tr></thead>
+                        <tbody className="divide-y dark:divide-gray-700">
                             {loves.map(l => (
-                                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
-                                            {l.from?.nickname?.substring(0, 1)}
-                                        </div>
-                                        {l.from?.nickname}
-                                    </td>
-                                    <td className="px-6 py-3 text-gray-600 dark:text-gray-300">{l.to?.nickname}</td>
-                                    <td className="px-6 py-3">
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${l.status === 'accepted' ? 'bg-green-50 text-green-700 border-green-200' :
-                                            l.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                'bg-gray-100 text-gray-600 border-gray-200'
-                                            }`}>
-                                            {l.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-3 text-right text-gray-400 text-xs font-mono">
-                                        {new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
+                                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <td className="px-4 py-2 font-medium">{l.from?.nickname}</td>
+                                    <td className="px-4 py-2">{l.to?.nickname}</td>
+                                    <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded-full text-xs ${l.status === 'accepted' ? 'bg-green-100 text-green-700' : l.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`}>{l.status}</span></td>
+                                    <td className="px-4 py-2 text-right text-gray-400 text-xs">{new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                 </tr>
                             ))}
                         </tbody>
