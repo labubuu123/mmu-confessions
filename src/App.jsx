@@ -17,6 +17,8 @@ import Matchmaker from './components/matchmaker/Matchmaker';
 import { Megaphone, X } from "lucide-react";
 
 function App() {
+  const navigate = useNavigate();
+
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) return savedTheme;
@@ -30,6 +32,42 @@ function App() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('reply-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
+        const newComment = payload.new;
+        const myPosts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+        const myAnonId = localStorage.getItem('anonId');
+
+        if (myPosts.includes(newComment.post_id) && newComment.author_id !== myAnonId) {
+          if (Notification.permission === 'granted') {
+            const n = new Notification('New Reply! 💬', {
+              body: newComment.text || 'Someone replied to your confession.',
+              icon: '/favicon.svg',
+              tag: `reply-${newComment.post_id}`
+            });
+
+            n.onclick = () => {
+              window.focus();
+              navigate(`/post/${newComment.post_id}`);
+            };
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const fetchAnnouncement = async () => {
@@ -96,8 +134,8 @@ function App() {
         <div className="sticky top-0 z-50 flex flex-col w-full">
           {announcement && (
             <div className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
-                announcement.type === 'success' ? 'bg-green-600 text-white' :
-                  'bg-indigo-600 text-white'
+              announcement.type === 'success' ? 'bg-green-600 text-white' :
+                'bg-indigo-600 text-white'
               }`}>
               <div className="flex items-center gap-3 mx-auto max-w-5xl w-full overflow-hidden">
                 <Megaphone className="w-5 h-5 shrink-0 animate-pulse z-10 relative" />

@@ -408,6 +408,12 @@ export default function PostForm({ onPosted }) {
 
             const postId = data[0].id;
 
+            const myPosts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+            if (!myPosts.includes(postId)) {
+                myPosts.push(postId);
+                localStorage.setItem('my_posts', JSON.stringify(myPosts));
+            }
+
             if (pollData && pollData.question && pollData.options.length >= 2) {
                 info('Creating poll...');
 
