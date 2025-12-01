@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -15,6 +15,7 @@ const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
 const MAX_AUDIO_SIZE_MB = 10;
 const MAX_TEXT_LENGTH = 5000;
+const DRAFT_STORAGE_KEY = 'mmu_confession_draft_v1';
 
 function getAnonId() {
     let anonId = localStorage.getItem('anonId');
@@ -95,6 +96,63 @@ export default function PostForm({ onPosted }) {
     const [isRewriting, setIsRewriting] = useState(false);
     const [showRewriteOptions, setShowRewriteOptions] = useState(false);
     const [history, setHistory] = useState([]);
+    const [draftLoaded, setDraftLoaded] = useState(false);
+
+    useEffect(() => {
+        const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (savedDraft) {
+            try {
+                const draft = JSON.parse(savedDraft);
+
+                if (draft.text) setText(draft.text);
+                if (draft.mood) setSelectedMood(draft.mood);
+                if (draft.policyAccepted) setPolicyAccepted(true);
+
+                if (draft.pollData) {
+                    setPollData(draft.pollData);
+                    setShowPollCreator(true);
+                }
+
+                if (draft.eventData) {
+                    setEventData(draft.eventData);
+                    setShowEventCreator(true);
+                }
+
+                if (draft.seriesData) {
+                    setSeriesData(draft.seriesData);
+                    setShowSeriesManager(true);
+                }
+
+                if (draft.text || draft.mood || draft.pollData) {
+                }
+            } catch (err) {
+                console.error("Failed to restore draft:", err);
+                localStorage.removeItem(DRAFT_STORAGE_KEY);
+            }
+        }
+        setDraftLoaded(true);
+    }, []);
+
+    useEffect(() => {
+        if (!draftLoaded) return;
+
+        const hasContent = text.trim().length > 0 || selectedMood || pollData || eventData || seriesData;
+
+        if (hasContent) {
+            const draftState = {
+                text,
+                mood: selectedMood,
+                pollData,
+                eventData,
+                seriesData,
+                policyAccepted,
+                lastSaved: Date.now()
+            };
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftState));
+        } else {
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+        }
+    }, [text, selectedMood, pollData, eventData, seriesData, policyAccepted, draftLoaded]);
 
     useEffect(() => {
         if (audio) {
@@ -406,6 +464,8 @@ export default function PostForm({ onPosted }) {
                 }
             }
 
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+
             setText('');
             setImages([]);
             setVideo(null);
@@ -687,6 +747,12 @@ export default function PostForm({ onPosted }) {
                             Share Your Confession
                         </h2>
                     </div>
+                    {(text || selectedMood || pollData || eventData || seriesData) && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
+                            <Save className="w-3 h-3" />
+                            <span>Draft Saved</span>
+                        </div>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit}>
