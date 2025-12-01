@@ -407,7 +407,7 @@ export default function AdminPanel() {
         { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
         { id: 'sponsorships', label: 'Sponsorships', icon: Briefcase },
         { id: 'support', label: 'Support', icon: ChatIcon },
-        { id: 'announcements', label: 'Announce', icon: Megaphone }
+        { id: 'announcements', label: 'Announcement', icon: Megaphone }
     ];
 
     return (
