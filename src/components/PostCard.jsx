@@ -21,13 +21,32 @@ const WhatsAppIcon = ({ className }) => (
     </svg>
 )
 
-const getOptimizedUrl = (url, quality = 40) => {
+const getOptimizedUrl = (url, width = null, quality = 65) => {
     if (!url || typeof url !== 'string') return url;
+
     if (url.includes('/storage/v1/object/public')) {
         let optimized = url.replace('/object/public', '/render/image/public');
-        return `${optimized}?quality=${quality}`;
+        const params = [`quality=${quality}`];
+
+        if (width) {
+            params.push(`width=${width}`);
+            params.push('resize=contain');
+        }
+
+        return `${optimized}?${params.join('&')}`;
     }
+
     return url;
+};
+
+const generateSrcSet = (url) => {
+    if (!url || typeof url !== 'string' || !url.includes('/storage/v1/object/public')) return undefined;
+
+    return `
+        ${getOptimizedUrl(url, 400)} 400w,
+        ${getOptimizedUrl(url, 800)} 800w,
+        ${getOptimizedUrl(url, 1200)} 1200w
+    `;
 };
 
 export default function PostCard({ post, onOpen }) {
@@ -131,6 +150,14 @@ export default function PostCard({ post, onOpen }) {
         animation: 'shimmer 4s infinite linear'
     } : {};
 
+    const getImageSizes = () => {
+        const count = displayImages.length;
+        if (count === 1) return "(max-width: 640px) 100vw, 640px";
+        if (count === 2) return "(max-width: 640px) 50vw, 320px";
+        if (count === 3) return "(max-width: 640px) 33vw, 213px";
+        return "(max-width: 640px) 50vw, 320px";
+    };
+
     return (
         <>
             <style>{`
@@ -228,7 +255,9 @@ export default function PostCard({ post, onOpen }) {
                 {post.is_sponsored && displayImages.length > 0 && (
                     <div className="w-full relative z-10 cursor-pointer group/img mb-2" onClick={(e) => { e.stopPropagation(); handleSponsorClick(post.sponsor_url); }}>
                         <img
-                            src={getOptimizedUrl(displayImages[0], 80)}
+                            src={getOptimizedUrl(displayImages[0], 800, 80)}
+                            srcSet={generateSrcSet(displayImages[0])}
+                            sizes="(max-width: 640px) 100vw, 640px"
                             alt="Sponsored Content"
                             className="w-full h-auto max-h-[80vh] object-contain bg-black/5 dark:bg-black/20 shadow-inner transition-transform duration-700 group-hover/img:scale-[1.01]"
                         />
@@ -244,7 +273,14 @@ export default function PostCard({ post, onOpen }) {
                     <div className={`w-full relative z-0 ${displayImages.length === 1 ? '' : displayImages.length === 2 ? 'grid grid-cols-2' : displayImages.length === 3 ? 'grid grid-cols-3' : 'grid grid-cols-2'} gap-0.5`}>
                         {displayImages.slice(0, 4).map((url, idx) => (
                             <div key={idx} className="relative cursor-pointer group/img" onClick={(e) => handleImageClick(e, url)}>
-                                <img loading="lazy" src={getOptimizedUrl(url)} alt={`media ${idx + 1}`} className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48'}`} />
+                                <img
+                                    loading="lazy"
+                                    src={getOptimizedUrl(url, 800)}
+                                    srcSet={generateSrcSet(url)}
+                                    sizes={getImageSizes()}
+                                    alt={`media ${idx + 1}`}
+                                    className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48'}`}
+                                />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
                                 {idx === 3 && displayImages.length > 4 && (
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><span className="text-white text-xl sm:text-2xl font-bold">+{displayImages.length - 4}</span></div>
