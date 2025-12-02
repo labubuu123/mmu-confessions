@@ -9,8 +9,10 @@ dayjs.extend(relativeTime);
 
 export default function MarketplaceItemCard({ item, onDelete }) {
     const [isDeleting, setIsDeleting] = useState(false);
+
     const myAnonId = localStorage.getItem('anonId');
     const isOwner = myAnonId && String(myAnonId) === String(item.seller_id);
+
     const isWhatsApp = item.contact_info.includes('wa.me');
     const displayLink = isWhatsApp && !item.contact_info.startsWith('http')
         ? `https://${item.contact_info}`
@@ -24,10 +26,10 @@ export default function MarketplaceItemCard({ item, onDelete }) {
 
         setIsDeleting(true);
         try {
-            const { error } = await supabase
-                .from('marketplace_items')
-                .delete()
-                .eq('id', item.id);
+            const { error } = await supabase.rpc('delete_marketplace_item', {
+                item_id_input: item.id,
+                seller_id_input: myAnonId
+            });
 
             if (error) throw error;
 
@@ -35,7 +37,7 @@ export default function MarketplaceItemCard({ item, onDelete }) {
             if (onDelete) onDelete(item.id);
         } catch (err) {
             console.error(err);
-            toast.error("Failed to delete. verify you are the owner.");
+            toast.error("Failed to delete. Verify you are the owner.");
         } finally {
             setIsDeleting(false);
         }

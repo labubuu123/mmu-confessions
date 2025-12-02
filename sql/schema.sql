@@ -1374,6 +1374,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION delete_marketplace_item(item_id_input BIGINT, seller_id_input TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    DELETE FROM public.marketplace_items
+    WHERE id = item_id_input AND seller_id = seller_id_input;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions
 BEFORE INSERT OR UPDATE ON public.confessions
@@ -1455,4 +1466,5 @@ GRANT EXECUTE ON FUNCTION public.handle_love_action(text, text, text, bigint) TO
 GRANT EXECUTE ON FUNCTION public.handle_love_action(text, text, text, bigint) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION delete_marketplace_item(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
