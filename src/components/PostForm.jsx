@@ -9,6 +9,7 @@ import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
+import { useNotifications } from './NotificationSystem';
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
@@ -88,6 +89,7 @@ export default function PostForm({ onPosted }) {
     const [eventData, setEventData] = useState(null);
     const [showSeriesManager, setShowSeriesManager] = useState(false);
     const [seriesData, setSeriesData] = useState(null);
+    const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
     const [loadingSeries, setLoadingSeries] = useState(false);
