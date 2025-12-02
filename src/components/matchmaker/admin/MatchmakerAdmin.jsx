@@ -235,7 +235,7 @@ export default function MatchmakerAdmin() {
             )}
 
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700 font-bold flex items-center gap-2"><Heart className="w-4 h-4 text-pink-500" /> Recent Love Logs</div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700 font-bold flex items-center gap-2"><Heart className="w-4 h-4 text-pink-500" /> Recent Love Activity</div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700"><tr><th className="px-4 py-3">From</th><th className="px-4 py-3">To</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Time</th></tr></thead>
