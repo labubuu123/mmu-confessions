@@ -94,10 +94,10 @@ export default function PostCard({ post, onOpen }) {
     }
 
     async function fetchPollAndEvent() {
-        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).single()
+        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).maybeSingle()
         if (eventData) setEvent(eventData)
         else {
-            const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).single()
+            const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).maybeSingle()
             if (pollData) setPoll(pollData)
         }
     }
