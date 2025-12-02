@@ -14,6 +14,7 @@ import { NotificationProvider } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
+import Marketplace from "./components/Marketplace";
 import { Megaphone, X } from "lucide-react";
 
 function App() {
@@ -184,6 +185,7 @@ function App() {
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
           <Route path="/matchmaker" element={<Matchmaker />} />
+          <Route path="/marketplace" element={<Marketplace />} />
         </Routes>
 
         <FloatingActionMenu />

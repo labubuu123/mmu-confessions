@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity, Wrench } from 'lucide-react';
+import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity, Wrench, ShoppingBag } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
@@ -127,14 +127,17 @@ export default function FloatingActionMenu() {
             if (error) throw error;
         } catch (err) {
             console.error("Error sending:", err);
-            alert("Failed to send. Check your internet connection.");
         }
+    };
+
+    const handleMarketplaceClick = () => {
+        setIsOpen(false);
+        navigate('/marketplace');
     };
 
     const handleMatchmakerClick = () => {
         setIsOpen(false);
         navigate('/matchmaker');
-        //alert("传说中的「月老功能」即将上线... Stay tuned ❤️");
     };
 
     const handleContactAdminClick = () => {
@@ -154,52 +157,83 @@ export default function FloatingActionMenu() {
         navigate('/tools');
     };
 
+    const MenuButton = ({ icon: Icon, label, onClick, colorClass, bgClass }) => (
+        <button
+            onClick={onClick}
+            className="flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-all active:scale-95 group"
+        >
+            <div className={`w-10 h-10 ${bgClass} rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200`}>
+                <Icon className={`w-5 h-5 ${colorClass}`} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</span>
+        </button>
+    );
+
     return (
         <>
             {isOpen && (
                 <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] transition-opacity"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {isOpen && (
-                <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <button onClick={handleToolsClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
-                        <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/50 rounded-full flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                            <Wrench className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Tools</span>
-                    </button>
+                <div className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-6 duration-300">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 p-4 overflow-hidden">
 
-                    <button onClick={handleLiveActivityClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
-                        <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400">
-                            <Activity className="w-5 h-5" />
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Menu</h3>
                         </div>
-                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Live Comments</span>
-                    </button>
 
-                    <button onClick={handleContactAdminClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
-                        <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <MessageSquare className="w-5 h-5" />
+                        <div className="grid grid-cols-2 gap-3">
+                            <MenuButton
+                                icon={ShoppingBag}
+                                label="Marketplace"
+                                onClick={handleMarketplaceClick}
+                                bgClass="bg-emerald-100 dark:bg-emerald-900/40"
+                                colorClass="text-emerald-600 dark:text-emerald-400"
+                            />
+                            <MenuButton
+                                icon={Heart}
+                                label="Matchmaker"
+                                onClick={handleMatchmakerClick}
+                                bgClass="bg-pink-100 dark:bg-pink-900/40"
+                                colorClass="text-pink-600 dark:text-pink-400"
+                            />
+                            <MenuButton
+                                icon={Wrench}
+                                label="Tools"
+                                onClick={handleToolsClick}
+                                bgClass="bg-cyan-100 dark:bg-cyan-900/40"
+                                colorClass="text-cyan-600 dark:text-cyan-400"
+                            />
+                            <MenuButton
+                                icon={Activity}
+                                label="Live Comments"
+                                onClick={handleLiveActivityClick}
+                                bgClass="bg-orange-100 dark:bg-orange-900/40"
+                                colorClass="text-orange-600 dark:text-orange-400"
+                            />
                         </div>
-                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Contact Admin</span>
-                    </button>
 
-                    <button onClick={handleMatchmakerClick} className="flex items-center gap-2 pr-4 pl-2 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
-                        <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/50 rounded-full flex items-center justify-center text-pink-600 dark:text-pink-400">
-                            <Heart className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm whitespace-nowrap">Matchmaker</span>
-                    </button>
+                        <button
+                            onClick={handleContactAdminClick}
+                            className="w-full mt-3 flex items-center justify-center gap-2 py-3 px-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl transition-colors text-sm font-medium"
+                        >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>Contact Admin Support</span>
+                        </button>
+                    </div>
                 </div>
             )}
 
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center text-white rounded-full shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 ring-indigo-300 dark:ring-indigo-900 ${isOpen ? 'bg-gray-600 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                className={`fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center text-white rounded-full shadow-lg shadow-indigo-500/30 dark:shadow-none transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-900 active:scale-90 ${isOpen ? 'bg-gray-700 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                aria-label="Open menu"
             >
-                {isOpen ? <X className="w-8 h-8" /> : <Sparkles className="w-8 h-8" />}
+                {isOpen ? <X className="w-7 h-7" /> : <Sparkles className="w-7 h-7" />}
             </button>
 
             {isActivityOpen && (
@@ -208,8 +242,7 @@ export default function FloatingActionMenu() {
 
             {isChatOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 pointer-events-none">
-                    <div className="pointer-events-auto w-full sm:w-96 h-[80vh] sm:h-[600px] bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-
+                    <div className="pointer-events-auto w-full sm:w-96 h-[85vh] sm:h-[600px] bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
                         <div className="p-4 bg-indigo-600 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-2 text-white">
                                 <ShieldCheck className="w-5 h-5" />
@@ -237,7 +270,7 @@ export default function FloatingActionMenu() {
                             )}
                             {chatHistory.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user'
+                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user'
                                         ? 'bg-indigo-600 text-white rounded-br-none'
                                         : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-bl-none'
                                         }`}>
@@ -248,9 +281,9 @@ export default function FloatingActionMenu() {
                             <div ref={chatEndRef} />
                         </div>
 
-                        <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
-                            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-                            <button type="submit" disabled={!message.trim()} className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
+                        <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0 safe-pb">
+                            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+                            <button type="submit" disabled={!message.trim()} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
                                 <Send className="w-4 h-4" />
                             </button>
                         </form>
