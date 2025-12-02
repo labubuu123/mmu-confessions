@@ -5,6 +5,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { Smile, MessageSquare, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import CommentForm from './CommentForm'
+import { useUserBadges } from '../hooks/useUserBadges'
 
 dayjs.extend(relativeTime)
 
@@ -19,6 +20,8 @@ export default function Comment({ comment, postId, depth = 0 }) {
 
     const [replies, setReplies] = useState(comment.children || [])
     const [internalComment, setInternalComment] = useState(comment)
+
+    const { badges } = useUserBadges(internalComment.author_id)
 
     const isNested = depth > 0
     const hasReplies = replies.length > 0
@@ -76,7 +79,12 @@ export default function Comment({ comment, postId, depth = 0 }) {
     return (
         <div className={`${isNested ? 'ml-2 sm:ml-6' : ''}`}>
             <div className="flex items-start gap-2 sm:gap-3 mb-2">
-                <AnonAvatar authorId={internalComment.author_id} size={isNested ? 'sm' : 'md'} />
+                <AnonAvatar
+                    authorId={internalComment.author_id}
+                    size={isNested ? 'sm' : 'md'}
+                    showBadge={true}
+                    badges={badges}
+                />
 
                 <div className="flex-1 min-w-0">
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 border border-gray-200 dark:border-gray-700 shadow-sm">

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { TrendingUp, MessageSquare, Heart, Calendar, Target, Zap } from 'lucide-react'
+import { TrendingUp, MessageSquare, Heart, Calendar, Target, Zap, Award } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
+import { calculateBadges } from '../utils/badgeSystem'
 
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
+    const [badges, setBadges] = useState([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState('overview')
 
     useEffect(() => {
         fetchUserStats()
@@ -32,12 +33,25 @@ export default function UserAnalytics() {
                 .select('id, created_at, reactions')
                 .eq('author_id', anonId)
 
+            let events = []
+            if (posts?.length > 0) {
+                const postIds = posts.map(p => p.id)
+                const { data: eventData } = await supabase
+                    .from('events')
+                    .select('id, confession_id')
+                    .in('confession_id', postIds)
+                if (eventData) events = eventData
+            }
+
             const totalPosts = posts?.length || 0
             const approvedPosts = posts?.filter(p => p.approved).length || 0
             const totalComments = comments?.length || 0
 
             const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0
             const totalPostComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0
+
+            const earnedBadges = calculateBadges(posts || [], events || [])
+            setBadges(earnedBadges)
 
             const mostPopularPost = posts?.sort((a, b) =>
                 (b.likes_count + b.comments_count) - (a.likes_count + a.comments_count)
@@ -168,6 +182,24 @@ export default function UserAnalytics() {
                         color="orange"
                     />
                 </div>
+
+                {badges.length > 0 && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
+                        <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                            <Award className="w-5 h-5 text-yellow-500" />
+                            Earned Badges
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {badges.map(badge => (
+                                <div key={badge.id} className="flex flex-col items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <div className="text-3xl mb-2">{badge.icon}</div>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 text-center">{badge.label}</span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">{badge.description}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
                     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
