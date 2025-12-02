@@ -87,7 +87,14 @@ export default function MatchmakerAdmin() {
         try {
             const updates = { status, updated_at: new Date().toISOString() };
             if (reason) updates.rejection_reason = reason;
-            if (status === 'rejected' || status === 'banned') updates.is_visible = false;
+
+            if (status === 'rejected' || status === 'banned') {
+                updates.is_visible = false;
+            } else if (status === 'approved') {
+                updates.is_visible = true;
+                updates.rejection_reason = null;
+            }
+
             await supabase.from('matchmaker_profiles').update(updates).eq('author_id', id);
             await refreshAll();
         } catch (err) { alert(`Error: ${err.message}`); } finally { setProcessingId(null); }
@@ -160,7 +167,11 @@ export default function MatchmakerAdmin() {
                     <span className="text-xs font-bold text-gray-400 uppercase">Contact</span>
                     <p className="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded select-all truncate text-indigo-600 dark:text-indigo-400">{p.contact_info}</p>
                 </div>
-                {p.rejection_reason && <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-100"><strong>Reason:</strong> {p.rejection_reason}</div>}
+                {p.rejection_reason && p.status !== 'approved' && (
+                    <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-100">
+                        <strong>Reason:</strong> {p.rejection_reason}
+                    </div>
+                )}
             </div>
             <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-2">
                 {children}
