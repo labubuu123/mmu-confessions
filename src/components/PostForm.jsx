@@ -739,7 +739,6 @@ export default function PostForm({ onPosted }) {
             setSeriesData(null);
         }
     }
-
     const charCount = text.length;
     const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9;
 
