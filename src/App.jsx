@@ -10,29 +10,16 @@ import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
 import ToolsPage from "./components/ToolsPage";
 import AboutUs from "./components/AboutUs";
-import { NotificationProvider } from "./components/NotificationSystem";
+import { NotificationProvider, useNotifications } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
 import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
 import Marketplace from "./components/Marketplace";
 import { Megaphone, X } from "lucide-react";
 
-function App() {
+const GlobalNotificationHandler = () => {
   const navigate = useNavigate();
-
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) return savedTheme;
-    return 'dark';
-  });
-
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [announcement, setAnnouncement] = useState(null);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  const { info, success } = useNotifications();
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -41,19 +28,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const sendNotification = (title, body, url, tag) => {
-      if (Notification.permission === 'granted') {
-        const n = new Notification(title, {
-          body: body,
-          icon: '/favicon.svg',
-          tag: tag,
-          silent: false
-        });
-        n.onclick = () => {
-          window.focus();
-          navigate(url);
-          n.close();
-        };
+    const handleNotification = (title, body, url, tag) => {
+      if (document.visibilityState === 'visible') {
+        info(`${title} - ${body}`, 5000);
+
+      } else {
+        if (Notification.permission === 'granted') {
+          const n = new Notification(title, {
+            body: body,
+            icon: '/favicon.svg',
+            tag: tag,
+            silent: false
+          });
+          n.onclick = () => {
+            window.focus();
+            navigate(url);
+            n.close();
+          };
+        }
       }
     };
 
@@ -65,7 +57,7 @@ function App() {
           const isNewlyVisible = payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.old && payload.old.approved === false);
 
           if (isNewlyVisible) {
-            sendNotification(
+            handleNotification(
               'New Confession! 📢',
               payload.new.text ? `${payload.new.text.substring(0, 60)}...` : 'Check out the latest confession!',
               `/post/${payload.new.id}`,
@@ -87,7 +79,7 @@ function App() {
         const isNotMe = String(newComment.author_id) !== String(myAnonId);
 
         if (isMyPost && isNotMe) {
-          sendNotification(
+          handleNotification(
             'New Reply! 💬',
             newComment.text ? `Someone replied: "${newComment.text.substring(0, 50)}..."` : 'New comment on your confession.',
             `/post/${newComment.post_id}`,
@@ -97,7 +89,7 @@ function App() {
       })
 
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polls' }, (payload) => {
-        sendNotification(
+        handleNotification(
           'New Poll! 📊',
           payload.new.question || 'A new poll has started!',
           `/post/${payload.new.confession_id}`,
@@ -106,7 +98,7 @@ function App() {
       })
 
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => {
-        sendNotification(
+        handleNotification(
           'New Event! 📅',
           `${payload.new.event_name} - ${payload.new.description ? payload.new.description.substring(0, 40) : 'Check it out!'}`,
           `/post/${payload.new.confession_id}`,
@@ -117,7 +109,7 @@ function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_loves' }, (payload) => {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && payload.new.to_user_id === myAnonId) {
-          sendNotification(
+          handleNotification(
             'Matchmaker Update 💘',
             'Someone sent you a Love request! Click to see who.',
             '/matchmaker',
@@ -130,7 +122,7 @@ function App() {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && payload.new.status === 'accepted') {
           if (payload.new.from_user_id === myAnonId || payload.new.to_user_id === myAnonId) {
-            sendNotification(
+            handleNotification(
               'It\'s a Match! 💑',
               'You have a new connection in Matchmaker!',
               '/matchmaker',
@@ -143,7 +135,7 @@ function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_matches' }, (payload) => {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && (payload.new.user1_id === myAnonId || payload.new.user2_id === myAnonId)) {
-          sendNotification(
+          handleNotification(
             'New Match! ✨',
             'You have been matched!',
             '/matchmaker',
@@ -157,7 +149,25 @@ function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [navigate]);
+  }, [navigate, info, success]);
+
+  return null;
+};
+
+function App() {
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) return savedTheme;
+    return 'dark';
+  });
+
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [announcement, setAnnouncement] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const fetchAnnouncement = async () => {
@@ -220,6 +230,8 @@ function App() {
 
   return (
     <NotificationProvider>
+      <GlobalNotificationHandler />
+
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
         <div className="sticky top-0 z-50 flex flex-col w-full">
           {announcement && (
