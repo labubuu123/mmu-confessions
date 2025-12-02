@@ -115,7 +115,7 @@ export default function MarketplaceForm({ onItemPosted }) {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl border border-indigo-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl border border-indigo-100 dark:border-gray-700">
             <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-2">
                 List an Item
             </h2>
@@ -128,7 +128,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                             placeholder="e.g., Calculus Textbook"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-base"
                         />
                     </div>
                     <div>
@@ -140,7 +140,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                                 placeholder="0.00"
                                 value={formData.price}
                                 onChange={e => setFormData({ ...formData, price: e.target.value })}
-                                className="w-full pl-9 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                                className="w-full pl-9 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-base"
                             />
                         </div>
                     </div>
@@ -152,7 +152,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                         <select
                             value={formData.category}
                             onChange={e => setFormData({ ...formData, category: e.target.value })}
-                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-base"
                         >
                             {['Textbooks', 'Electronics', 'Furniture', 'Fashion', 'Room Rental', 'Others'].map(c => (
                                 <option key={c} value={c}>{c}</option>
@@ -164,7 +164,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                         <select
                             value={formData.condition}
                             onChange={e => setFormData({ ...formData, condition: e.target.value })}
-                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-base"
                         >
                             {['New', 'Like New', 'Good', 'Fair', 'Poor'].map(c => (
                                 <option key={c} value={c}>{c}</option>
@@ -180,7 +180,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                         placeholder="Describe the condition, features, or reason for selling..."
                         value={formData.description}
                         onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white resize-none"
+                        className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white resize-none text-base"
                     />
                 </div>
 
@@ -193,7 +193,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                             placeholder="WhatsApp Link (wa.me/601...) or Username"
                             value={formData.contact}
                             onChange={e => setFormData({ ...formData, contact: e.target.value })}
-                            className="w-full pl-9 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                            className="w-full pl-9 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-base"
                         />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
@@ -207,13 +207,13 @@ export default function MarketplaceForm({ onItemPosted }) {
                         {previews.map((src, idx) => (
                             <div key={idx} className="relative w-20 h-20 group">
                                 <img src={src} alt="Preview" className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                                <button type="button" onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition">
+                                <button type="button" onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow-sm">
                                     <X className="w-3 h-3" />
                                 </button>
                             </div>
                         ))}
                         {images.length < 3 && (
-                            <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                            <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-900/50">
                                 <Upload className="w-6 h-6 text-gray-400" />
                                 <span className="text-[10px] text-gray-500 mt-1">Add Photo</span>
                                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -225,7 +225,7 @@ export default function MarketplaceForm({ onItemPosted }) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'List Item Now'}
                 </button>

@@ -57,7 +57,7 @@ export default function MarketplaceItemCard({ item }) {
                         href={contactLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        className="w-full py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-sm"
                     >
                         <MessageCircle className="w-4 h-4" />
                         {isWhatsApp ? 'WhatsApp Seller' : 'Contact Link'}
