@@ -86,8 +86,22 @@ export default function MatchmakerConnections({ user, userProfile, connectionCou
     };
 
     const fetchFullProfile = async (userId) => {
-        const { data } = await supabase.from('matchmaker_profiles').select('*').eq('author_id', userId).single();
-        if (data) setViewingProfile(data);
+        const { data, error } = await supabase
+            .from('matchmaker_profiles')
+            .select('*')
+            .eq('author_id', userId)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error fetching profile:', error);
+            return;
+        }
+
+        if (data) {
+            setViewingProfile(data);
+        } else {
+            console.warn('Profile not found for user:', userId);
+        }
     };
 
     useEffect(() => {
