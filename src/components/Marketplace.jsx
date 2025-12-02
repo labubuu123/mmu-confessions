@@ -55,7 +55,7 @@ export default function Marketplace() {
                     background: transparent;
                 }
                 .category-scroll::-webkit-scrollbar-thumb {
-                    background-color: rgba(203, 213, 225, 0.5); 
+                    background-color: rgba(203, 213, 225, 0.5);
                     border-radius: 20px;
                 }
                 .dark .category-scroll::-webkit-scrollbar-thumb {
