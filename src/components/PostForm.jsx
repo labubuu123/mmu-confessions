@@ -88,7 +88,6 @@ export default function PostForm({ onPosted }) {
     const [eventData, setEventData] = useState(null);
     const [showSeriesManager, setShowSeriesManager] = useState(false);
     const [seriesData, setSeriesData] = useState(null);
-    const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
     const [loadingSeries, setLoadingSeries] = useState(false);
@@ -738,7 +737,7 @@ export default function PostForm({ onPosted }) {
             setSeriesData(null);
         }
     }
-    
+
     const charCount = text.length;
     const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9;
 
