@@ -67,10 +67,6 @@ function App() {
           }
         }
       })
-      .subscribe((status) => {
-        console.log("Supabase Realtime Status:", status);
-      });
-
     return () => {
       supabase.removeChannel(channel);
     };
