@@ -361,6 +361,7 @@ CREATE POLICY "Admin Manage Announcements" ON public.announcements FOR ALL USING
 CREATE POLICY "Everyone can view marketplace items" ON public.marketplace_items FOR SELECT USING (true);
 CREATE POLICY "Anon users can insert items" ON public.marketplace_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Sellers can update own items" ON public.marketplace_items FOR UPDATE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
+CREATE POLICY "Sellers can delete own items" ON public.marketplace_items FOR DELETE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

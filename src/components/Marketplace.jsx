@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import MarketplaceForm from './MarketplaceForm';
 import MarketplaceItemCard from './MarketplaceItemCard';
-import { ShoppingBag, Search, Filter, Plus, Store } from 'lucide-react';
+import { ShoppingBag, Search, Plus, Store, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Marketplace() {
@@ -23,13 +23,16 @@ export default function Marketplace() {
         const { data, error } = await supabase
             .from('marketplace_items')
             .select('*')
-            .eq('is_sold', false)
             .order('created_at', { ascending: false });
 
         if (data) setItems(data);
         if (error) console.error('Error fetching items:', error);
         setLoading(false);
     }
+
+    const handleDeleteItem = (deletedId) => {
+        setItems(prev => prev.filter(item => item.id !== deletedId));
+    };
 
     const filteredItems = items.filter(item => {
         const matchesCategory = filterCategory === 'All' || item.category === filterCategory;
@@ -44,85 +47,119 @@ export default function Marketplace() {
                 <title>MMU Marketplace - Buy & Sell</title>
             </Helmet>
 
-            <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 min-h-screen">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-8">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <Store className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-600" />
-                            MMU Student Marketplace
-                        </h1>
-                        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
-                            Buy, sell, and trade with fellow MMU students.
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowSellForm(!showSellForm)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg transition-all transform hover:scale-105 active:scale-95"
-                    >
-                        {showSellForm ? 'Close Form' : 'Sell an Item'}
-                        {!showSellForm && <Plus className="w-5 h-5" />}
-                    </button>
-                </div>
+            <style>{`
+                .category-scroll::-webkit-scrollbar {
+                    height: 6px;
+                }
+                .category-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .category-scroll::-webkit-scrollbar-thumb {
+                    background-color: rgba(203, 213, 225, 0.5); 
+                    border-radius: 20px;
+                }
+                .dark .category-scroll::-webkit-scrollbar-thumb {
+                    background-color: rgba(75, 85, 99, 0.5);
+                }
+                .category-scroll::-webkit-scrollbar-thumb:hover {
+                    background-color: rgba(148, 163, 184, 0.8);
+                }
+            `}</style>
 
-                {showSellForm && (
-                    <div className="mb-8 sm:mb-10 animate-fade-in-down">
-                        <MarketplaceForm
-                            onItemPosted={(newItem) => {
-                                setItems([newItem, ...items]);
-                                setShowSellForm(false);
-                            }}
-                        />
-                    </div>
-                )}
+            <div className="min-h-screen pb-12">
+                <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 transition-colors duration-300">
+                    <div className="max-w-4xl mx-auto px-4 py-4">
+                        <div className="flex items-start justify-between mb-4 gap-2">
+                            <div className="flex-1 min-w-0">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Store className="w-6 h-6 text-indigo-600 shrink-0" />
+                                    MMU Marketplace
+                                </h1>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
+                                    Buy, sell, and trade with fellow MMU students.
+                                </p>
+                            </div>
 
-                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex flex-col md:flex-row gap-3 sm:gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Search items..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white transition-all text-sm sm:text-base"
-                        />
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scroll-smooth no-scrollbar">
-                        {categories.map(cat => (
                             <button
-                                key={cat}
-                                onClick={() => setFilterCategory(cat)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${filterCategory === cat
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
-                                    : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                    }`}
+                                onClick={() => setShowSellForm(!showSellForm)}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg active:scale-95 shrink-0 whitespace-nowrap"
                             >
-                                {cat}
+                                {showSellForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                <span>{showSellForm ? 'Close' : 'Sell Item'}</span>
                             </button>
-                        ))}
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input
+                                    type="text"
+                                    placeholder="Search textbooks, gadgets..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-gray-100 dark:bg-gray-900/50 border border-transparent focus:bg-white dark:focus:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white transition-all text-sm"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 overflow-x-auto pb-4 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0 category-scroll">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setFilterCategory(cat)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 ${filterCategory === cat
+                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="h-80 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
-                        ))}
-                    </div>
-                ) : filteredItems.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        {filteredItems.map(item => (
-                            <MarketplaceItemCard key={item.id} item={item} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-16 sm:py-20">
-                        <ShoppingBag className="w-14 h-14 sm:w-16 sm:h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">No items found</h3>
-                        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                            Be the first to list something in this category!
-                        </p>
-                    </div>
-                )}
+                <div className="max-w-4xl mx-auto px-4 py-6">
+                    {showSellForm && (
+                        <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-300">
+                            <MarketplaceForm
+                                onItemPosted={(newItem) => {
+                                    setItems([newItem, ...items]);
+                                    setShowSellForm(false);
+                                }}
+                                onCancel={() => setShowSellForm(false)}
+                            />
+                        </div>
+                    )}
+
+                    {loading ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} className="aspect-[4/5] bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : filteredItems.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+                            {filteredItems.map(item => (
+                                <MarketplaceItemCard
+                                    key={item.id}
+                                    item={item}
+                                    onDelete={handleDeleteItem}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                <ShoppingBag className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">No items found</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
+                                Try adjusting your search or be the first to sell something in {filterCategory}!
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
         </>
     );
