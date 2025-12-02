@@ -9,7 +9,6 @@ import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
-import { useNotifications } from './NotificationSystem';
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
@@ -739,6 +738,7 @@ export default function PostForm({ onPosted }) {
             setSeriesData(null);
         }
     }
+    
     const charCount = text.length;
     const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9;
 
