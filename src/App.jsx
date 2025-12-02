@@ -40,37 +40,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    console.log("🔔 Notification listener started");
-
     const channel = supabase
       .channel('reply-notifications')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
         const newComment = payload.new;
-
-        // 1. Log the raw event to verify Supabase is sending data
-        console.log("📨 New comment received from Supabase:", newComment);
-
-        const myPosts = JSON.parse(localStorage.getItem('my_posts') || '[]');
+        const myPostsRaw = localStorage.getItem('my_posts');
         const myAnonId = localStorage.getItem('anonId');
 
-        console.log("🔍 Checking match...");
-        console.log("   - Post ID being commented on:", newComment.post_id);
-        console.log("   - My Posts List:", myPosts);
-        console.log("   - Comment Author ID:", newComment.author_id);
-        console.log("   - My Anon ID:", myAnonId);
+        if (!myPostsRaw || !myAnonId) return;
 
-        // Check if I own this post
-        const isMyPost = myPosts.includes(newComment.post_id);
-
-        // Check if I am NOT the writer (prevent self-notification)
-        const isNotMe = newComment.author_id !== myAnonId;
+        const myPosts = JSON.parse(myPostsRaw);
+        const isMyPost = myPosts.some(id => String(id) === String(newComment.post_id));
+        const isNotMe = String(newComment.author_id) !== String(myAnonId);
 
         if (isMyPost && isNotMe) {
-          console.log("✅ CONDITIONS MET! Attempting to trigger notification...");
-
           if (Notification.permission === 'granted') {
             const n = new Notification('New Reply! 💬', {
-              body: newComment.text || 'Someone replied to your confession.',
+              body: newComment.text ? `Someone said: "${newComment.text.substring(0, 50)}..."` : 'Someone replied to your confession.',
               icon: '/favicon.svg',
               tag: `reply-${newComment.post_id}`
             });
@@ -78,20 +64,12 @@ function App() {
               window.focus();
               navigate(`/post/${newComment.post_id}`);
             };
-          } else {
-            console.warn("❌ Notification permission is:", Notification.permission);
-            // Try requesting again
-            if (Notification.permission !== 'denied') {
-              Notification.requestPermission();
-            }
           }
-        } else {
-          console.log("⛔ Notification Skipped. Reasons:");
-          if (!isMyPost) console.log("   - This comment is not on one of your posts.");
-          if (!isNotMe) console.log("   - You replied to yourself.");
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Supabase Realtime Status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
