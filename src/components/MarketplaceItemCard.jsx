@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 dayjs.extend(relativeTime);
 
-export default function MarketplaceItemCard({ item, onDelete }) {
+export default function MarketplaceItemCard({ item, onDelete, onClick }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const myAnonId = localStorage.getItem('anonId');
@@ -44,7 +44,10 @@ export default function MarketplaceItemCard({ item, onDelete }) {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
+        <div
+            onClick={onClick}
+            className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative cursor-pointer"
+        >
             {isOwner && (
                 <button
                     onClick={handleDelete}
@@ -61,7 +64,7 @@ export default function MarketplaceItemCard({ item, onDelete }) {
                     <img
                         src={item.images[0]}
                         alt={item.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                     />
                 ) : (
@@ -104,6 +107,7 @@ export default function MarketplaceItemCard({ item, onDelete }) {
                         href={displayLink}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-[0.98] shadow-sm"
                     >
                         <MessageCircle className="w-3.5 h-3.5" />

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import MarketplaceForm from './MarketplaceForm';
 import MarketplaceItemCard from './MarketplaceItemCard';
+import MarketplaceItemModal from './MarketplaceItemModal';
 import { ShoppingBag, Search, Plus, Store, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
@@ -9,6 +10,7 @@ export default function Marketplace() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showSellForm, setShowSellForm] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
     const [filterCategory, setFilterCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -17,6 +19,15 @@ export default function Marketplace() {
     useEffect(() => {
         fetchItems();
     }, []);
+
+    useEffect(() => {
+        if (selectedItem) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [selectedItem]);
 
     async function fetchItems() {
         setLoading(true);
@@ -32,6 +43,9 @@ export default function Marketplace() {
 
     const handleDeleteItem = (deletedId) => {
         setItems(prev => prev.filter(item => item.id !== deletedId));
+        if (selectedItem && selectedItem.id === deletedId) {
+            setSelectedItem(null);
+        }
     };
 
     const filteredItems = items.filter(item => {
@@ -46,6 +60,14 @@ export default function Marketplace() {
             <Helmet>
                 <title>MMU Marketplace - Buy & Sell</title>
             </Helmet>
+
+            {selectedItem && (
+                <MarketplaceItemModal
+                    item={selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onDelete={handleDeleteItem}
+                />
+            )}
 
             <style>{`
                 .category-scroll::-webkit-scrollbar {
@@ -145,6 +167,7 @@ export default function Marketplace() {
                                     key={item.id}
                                     item={item}
                                     onDelete={handleDeleteItem}
+                                    onClick={() => setSelectedItem(item)}
                                 />
                             ))}
                         </div>
