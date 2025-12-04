@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     X, MessageCircle, Calendar, Tag, AlertCircle,
     ChevronLeft, ChevronRight, Trash2, Loader2,
-    Share2, Flag, Maximize2
+    Flag, Maximize2
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -15,6 +15,7 @@ export default function MarketplaceItemModal({ item, onClose, onDelete }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isReporting, setIsReporting] = useState(false);
 
     if (!item) return null;
 
@@ -28,28 +29,30 @@ export default function MarketplaceItemModal({ item, onClose, onDelete }) {
 
     const hasMultipleImages = item.images && item.images.length > 1;
 
-    const handleShare = async () => {
-        const shareData = {
-            title: `MMU Marketplace: ${item.title}`,
-            text: `Check out this ${item.title} for RM${item.price}!`,
-            url: window.location.href
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.log('Share canceled');
-            }
-        } else {
-            navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-            toast.success("Link copied to clipboard!");
+    const handleReport = async () => {
+        if (!myAnonId) {
+            toast.error("Error: Could not identify user.");
+            return;
         }
-    };
 
-    const handleReport = () => {
-        if (window.confirm("Report this item as inappropriate or scam?")) {
-            toast.success("Thanks for reporting. We will review this item.");
+        const reason = window.prompt("Why are you reporting this item? (e.g., Scam, Inappropriate)");
+        if (!reason) return;
+
+        setIsReporting(true);
+        try {
+            const { error } = await supabase.rpc('report_marketplace_item', {
+                item_id_input: item.id,
+                reporter_id_input: myAnonId,
+                reason_input: reason
+            });
+
+            if (error) throw error;
+            toast.success("Item reported. Admins will review it shortly.");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to report item.");
+        } finally {
+            setIsReporting(false);
         }
     };
 
@@ -92,21 +95,14 @@ export default function MarketplaceItemModal({ item, onClose, onDelete }) {
 
             <div className={`bg-white dark:bg-gray-800 w-full ${isFullscreen ? 'h-full max-w-none rounded-none' : 'max-w-2xl max-h-[90vh] rounded-3xl'} shadow-2xl overflow-hidden relative flex flex-col animate-in fade-in zoom-in-95 duration-200 transition-all`}>
                 <div className="absolute top-4 right-4 z-20 flex gap-2">
-                    <button
-                        onClick={handleShare}
-                        className="p-2 bg-white/90 dark:bg-black/60 text-gray-700 dark:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 backdrop-blur-md shadow-sm transition-transform active:scale-95"
-                        title="Share Item"
-                    >
-                        <Share2 className="w-5 h-5" />
-                    </button>
-
                     {!isOwner && (
                         <button
                             onClick={handleReport}
+                            disabled={isReporting}
                             className="p-2 bg-white/90 dark:bg-black/60 text-gray-700 dark:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 backdrop-blur-md shadow-sm transition-transform active:scale-95"
                             title="Report Item"
                         >
-                            <Flag className="w-5 h-5" />
+                            {isReporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Flag className="w-5 h-5" />}
                         </button>
                     )}
 

@@ -4,7 +4,8 @@ import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
     ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
-    Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap, Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp
+    Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap,
+    Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -58,6 +59,8 @@ export default function AdminPanel() {
     });
     const [sponsorLoading, setSponsorLoading] = useState(false);
     const [sponsorPreviews, setSponsorPreviews] = useState([]);
+    const [marketItems, setMarketItems] = useState([]);
+    const [marketLoading, setMarketLoading] = useState(false);
 
     useEffect(() => {
         checkSession()
@@ -77,6 +80,7 @@ export default function AdminPanel() {
         if (activeTab === 'moderation' && posts.length > 0) fetchPollsForPosts();
         if (activeTab === 'support') fetchSupportUsers();
         if (activeTab === 'announcements') fetchAnnouncements();
+        if (activeTab === 'marketplace') fetchMarketItems();
     }, [posts, activeTab])
 
     useEffect(() => {
@@ -353,6 +357,43 @@ export default function AdminPanel() {
         }
     }
 
+    async function fetchMarketItems() {
+        setMarketLoading(true);
+        const { data, error } = await supabase
+            .from('marketplace_items')
+            .select('*')
+            .order('report_count', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        if (error) console.error("Error fetching market items:", error);
+        else setMarketItems(data);
+        setMarketLoading(false);
+    }
+
+    async function handleDeleteMarketItem(itemId) {
+        if (!window.confirm("Delete this marketplace item permanently?")) return;
+
+        try {
+            const { error } = await supabase.from('marketplace_items').delete().eq('id', itemId);
+            if (error) throw error;
+
+            setMarketItems(prev => prev.filter(item => item.id !== itemId));
+        } catch (err) {
+            alert("Failed to delete item: " + err.message);
+        }
+    }
+
+    async function handleClearMarketReports(itemId) {
+        try {
+            const { error } = await supabase.rpc('clear_marketplace_reports', { item_id_input: itemId });
+            if (error) throw error;
+
+            setMarketItems(prev => prev.map(item => item.id === itemId ? { ...item, report_count: 0 } : item));
+        } catch (err) {
+            alert("Failed to clear reports: " + err.message);
+        }
+    }
+
     if (!user) {
         return (
             <div className="flex items-start justify-center bg-gray-50 dark:bg-gray-900 px-4 pt-10 md:pt-12">
@@ -386,6 +427,7 @@ export default function AdminPanel() {
     const menuItems = [
         { id: 'moderation', label: 'Moderation', icon: Shield },
         { id: 'users', label: 'Users', icon: Users },
+        { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
         { id: 'matchmaker', label: 'Matchmaker', icon: Heart },
         { id: 'sponsorships', label: 'Sponsorships', icon: Briefcase },
         { id: 'support', label: 'Support', icon: MessageSquare },
@@ -435,6 +477,11 @@ export default function AdminPanel() {
                         {activeTab === 'moderation' && (
                             <button onClick={() => fetchPosts(true)} className="p-2 text-gray-500 hover:text-indigo-600 transition" title="Refresh">
                                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                            </button>
+                        )}
+                        {activeTab === 'marketplace' && (
+                            <button onClick={() => fetchMarketItems()} className="p-2 text-gray-500 hover:text-indigo-600 transition" title="Refresh">
+                                <RefreshCw className={`w-5 h-5 ${marketLoading ? 'animate-spin' : ''}`} />
                             </button>
                         )}
                         <button onClick={signOut} className="p-2 text-gray-500 hover:text-red-600 transition" title="Sign Out">
@@ -588,6 +635,86 @@ export default function AdminPanel() {
                                     )
                                 })}
                                 {hasMore && <button onClick={() => fetchPosts()} disabled={loading} className="w-full py-4 bg-white dark:bg-gray-800 text-indigo-600 font-bold rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition">{loading ? 'Loading...' : 'Load More Posts'}</button>}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'marketplace' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-bold text-gray-600 dark:text-gray-400 uppercase text-sm">Active Listings</h3>
+                                <span className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg font-bold">{marketItems.length} items</span>
+                            </div>
+
+                            {marketLoading && (
+                                <div className="text-center py-10">
+                                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block"></div>
+                                </div>
+                            )}
+
+                            {!marketLoading && marketItems.length === 0 && (
+                                <div className="text-center py-20 text-gray-400">
+                                    <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                    <p>No marketplace items found.</p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {marketItems.map(item => (
+                                    <div key={item.id} className={`bg-white dark:bg-gray-800 rounded-xl border p-4 flex gap-4 ${item.report_count > 0 ? 'border-red-300 dark:border-red-900 shadow-red-100 dark:shadow-none' : 'border-gray-200 dark:border-gray-700 shadow-sm'}`}>
+                                        <div className="w-24 h-24 shrink-0 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
+                                            {item.images?.[0] ? (
+                                                <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-400"><Tag className="w-6 h-6" /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <h4 className="font-bold text-gray-900 dark:text-white truncate">{item.title}</h4>
+                                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.5 rounded">RM{item.price}</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{item.description}</p>
+                                                <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+                                                    <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{item.category}</span>
+                                                    <span>{dayjs(item.created_at).fromNow()}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                                {item.report_count > 0 ? (
+                                                    <span className="flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full">
+                                                        <AlertTriangle className="w-3 h-3" /> Reported ({item.report_count})
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3" /> Clean
+                                                    </span>
+                                                )}
+
+                                                <div className="flex gap-2">
+                                                    {item.report_count > 0 && (
+                                                        <button
+                                                            onClick={() => handleClearMarketReports(item.id)}
+                                                            className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition"
+                                                            title="Clear Reports"
+                                                        >
+                                                            <ShieldOff className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDeleteMarketItem(item.id)}
+                                                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                                        title="Delete Item"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

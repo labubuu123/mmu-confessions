@@ -156,7 +156,16 @@ CREATE TABLE IF NOT EXISTS public.marketplace_items (
     contact_info text not null,
     seller_id text not null,
     images text[],
-    is_sold boolean default false
+    is_sold boolean default false,
+    report_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS public.marketplace_reports (
+    id BIGSERIAL PRIMARY KEY,
+    item_id BIGINT NOT NULL REFERENCES public.marketplace_items(id) ON DELETE CASCADE,
+    reporter_id TEXT,
+    reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 ALTER TABLE public.matchmaker_profiles
@@ -252,6 +261,10 @@ ADD CONSTRAINT matchmaker_reports_reported_id_fkey
     FOREIGN KEY (reported_id) REFERENCES matchmaker_profiles(author_id)
     ON DELETE CASCADE;
 
+ALTER TABLE public.marketplace_items
+ADD COLUMN IF NOT EXISTS report_count INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS is_sold BOOLEAN DEFAULT false;
+
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('confessions', 'confessions', true)
 ON CONFLICT (id) DO NOTHING;
@@ -274,6 +287,7 @@ ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_reports ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -362,6 +376,10 @@ CREATE POLICY "Everyone can view marketplace items" ON public.marketplace_items 
 CREATE POLICY "Anon users can insert items" ON public.marketplace_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Sellers can update own items" ON public.marketplace_items FOR UPDATE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Sellers can delete own items" ON public.marketplace_items FOR DELETE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
+CREATE POLICY "Admin manage marketplace items" ON public.marketplace_items FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Anon users can insert reports" ON public.marketplace_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin can view all reports" ON public.marketplace_reports FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin can delete reports" ON public.marketplace_reports FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -1385,6 +1403,44 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION report_marketplace_item(
+    item_id_input BIGINT,
+    reporter_id_input TEXT,
+    reason_input TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO public.marketplace_reports (item_id, reporter_id, reason)
+    VALUES (item_id_input, reporter_id_input, reason_input);
+
+    UPDATE public.marketplace_items
+    SET report_count = COALESCE(report_count, 0) + 1
+    WHERE id = item_id_input;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION clear_marketplace_reports(item_id_input BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@mmu.edu' THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    UPDATE public.marketplace_items
+    SET report_count = 0
+    WHERE id = item_id_input;
+
+    DELETE FROM public.marketplace_reports
+    WHERE item_id = item_id_input;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions
 BEFORE INSERT OR UPDATE ON public.confessions
@@ -1439,6 +1495,8 @@ GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_as_admin(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_post_and_storage(BIGINT) TO authenticated;
 GRANT ALL ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
@@ -1467,4 +1525,6 @@ GRANT EXECUTE ON FUNCTION public.handle_love_action(text, text, text, bigint) TO
 GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION delete_marketplace_item(BIGINT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION report_marketplace_item(BIGINT, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
