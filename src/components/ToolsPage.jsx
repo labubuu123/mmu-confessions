@@ -1,11 +1,239 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     MousePointer2, BookOpen, LayoutDashboard, Lock, FileText, Map, MapPin,
     Monitor, Phone, Siren, Users, Headphones, ExternalLink, Wrench, ArrowLeft,
-    QrCode, Banknote
+    QrCode, Banknote, Calculator, Plus, Trash2, RotateCcw, Save
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+
+const GRADE_POINTS = {
+    'A+': 4.00, 'A': 4.00, 'A-': 3.67,
+    'B+': 3.33, 'B': 3.00, 'B-': 2.67,
+    'C+': 2.33, 'C': 2.00, 'C-': 1.67,
+    'D+': 1.33, 'D': 1.00, 'F': 0.00
+};
+
+const CGPACalculator = () => {
+    const [subjects, setSubjects] = useState([
+        { id: 1, name: '', credit: 3, grade: 'A' }
+    ]);
+    const [previousCGPA, setPreviousCGPA] = useState('');
+    const [previousCredits, setPreviousCredits] = useState('');
+
+    useEffect(() => {
+        const savedData = localStorage.getItem('mmu_cgpa_data');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.subjects) setSubjects(parsed.subjects);
+                if (parsed.previousCGPA) setPreviousCGPA(parsed.previousCGPA);
+                if (parsed.previousCredits) setPreviousCredits(parsed.previousCredits);
+            } catch (e) {
+                console.error("Failed to load saved CGPA data");
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        const dataToSave = { subjects, previousCGPA, previousCredits };
+        localStorage.setItem('mmu_cgpa_data', JSON.stringify(dataToSave));
+    }, [subjects, previousCGPA, previousCredits]);
+
+    const addSubject = () => {
+        setSubjects([...subjects, { id: Date.now(), name: '', credit: 3, grade: 'A' }]);
+    };
+
+    const removeSubject = (id) => {
+        setSubjects(subjects.filter(sub => sub.id !== id));
+    };
+
+    const updateSubject = (id, field, value) => {
+        setSubjects(subjects.map(sub =>
+            sub.id === id ? { ...sub, [field]: value } : sub
+        ));
+    };
+
+    const resetCalculator = () => {
+        if (window.confirm('Clear all calculator data?')) {
+            setSubjects([{ id: Date.now(), name: '', credit: 3, grade: 'A' }]);
+            setPreviousCGPA('');
+            setPreviousCredits('');
+            localStorage.removeItem('mmu_cgpa_data');
+        }
+    };
+
+    const calculateResults = () => {
+        let currentPoints = 0;
+        let currentCredits = 0;
+
+        subjects.forEach(sub => {
+            const credit = parseFloat(sub.credit) || 0;
+            const point = GRADE_POINTS[sub.grade] || 0;
+            currentPoints += point * credit;
+            currentCredits += credit;
+        });
+
+        const gpa = currentCredits > 0 ? (currentPoints / currentCredits).toFixed(2) : "0.00";
+
+        let totalPoints = currentPoints;
+        let totalCredits = currentCredits;
+
+        if (previousCGPA && previousCredits) {
+            const prevPts = parseFloat(previousCGPA) * parseFloat(previousCredits);
+            totalPoints += prevPts;
+            totalCredits += parseFloat(previousCredits);
+        }
+
+        const cgpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : "0.00";
+
+        return { gpa, cgpa, currentCredits, totalCredits };
+    };
+
+    const results = calculateResults();
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300">
+            <div className="p-6 sm:p-8 bg-gradient-to-r from-indigo-600 to-purple-700 text-white">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                            <Calculator className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold">GPA & CGPA Calculator</h3>
+                            <p className="text-indigo-100 text-sm opacity-90">Auto-saves to your device</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={resetCalculator}
+                        className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                        title="Reset Calculator"
+                    >
+                        <RotateCcw className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="p-6 sm:p-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Previous CGPA (Optional)
+                        </label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 3.50"
+                            value={previousCGPA}
+                            onChange={(e) => setPreviousCGPA(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 dark:text-white transition-all outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Previous Credits Earned
+                        </label>
+                        <input
+                            type="number"
+                            placeholder="e.g. 45"
+                            value={previousCredits}
+                            onChange={(e) => setPreviousCredits(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 dark:text-white transition-all outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                    <div className="grid grid-cols-12 gap-2 px-2 mb-2">
+                        <div className="col-span-6 sm:col-span-5 text-xs font-bold text-gray-400 uppercase">Subject (Optional)</div>
+                        <div className="col-span-2 sm:col-span-3 text-xs font-bold text-gray-400 uppercase text-center">Grade</div>
+                        <div className="col-span-2 sm:col-span-2 text-xs font-bold text-gray-400 uppercase text-center">Credit</div>
+                        <div className="col-span-2 sm:col-span-2"></div>
+                    </div>
+
+                    {subjects.map((sub) => (
+                        <div key={sub.id} className="grid grid-cols-12 gap-2 items-center animate-fade-in-up">
+                            <div className="col-span-6 sm:col-span-5">
+                                <input
+                                    type="text"
+                                    placeholder="Subject Name"
+                                    value={sub.name}
+                                    onChange={(e) => updateSubject(sub.id, 'name', e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:border-purple-500 dark:text-white text-sm outline-none transition-colors"
+                                />
+                            </div>
+                            <div className="col-span-2 sm:col-span-3">
+                                <select
+                                    value={sub.grade}
+                                    onChange={(e) => updateSubject(sub.id, 'grade', e.target.value)}
+                                    className="w-full px-1 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:border-purple-500 dark:text-white text-sm font-medium text-center outline-none cursor-pointer"
+                                >
+                                    {Object.keys(GRADE_POINTS).map(g => (
+                                        <option key={g} value={g}>{g}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="col-span-2 sm:col-span-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    value={sub.credit}
+                                    onChange={(e) => updateSubject(sub.id, 'credit', e.target.value)}
+                                    className="w-full px-1 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:border-purple-500 dark:text-white text-sm text-center outline-none"
+                                />
+                            </div>
+                            <div className="col-span-2 sm:col-span-2 flex justify-center">
+                                <button
+                                    onClick={() => removeSubject(sub.id)}
+                                    disabled={subjects.length === 1}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <button
+                    onClick={addSubject}
+                    className="flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 px-4 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors mb-8"
+                >
+                    <Plus className="w-4 h-4" />
+                    Add Another Subject
+                </button>
+
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                    <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 text-center">
+                        <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
+                            Current GPA
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black text-indigo-700 dark:text-indigo-300">
+                            {results.gpa}
+                        </div>
+                        <div className="text-xs text-indigo-400 dark:text-indigo-500 mt-1 font-medium">
+                            {results.currentCredits} credits
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 text-center">
+                        <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">
+                            Total CGPA
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black text-purple-700 dark:text-purple-300">
+                            {results.cgpa}
+                        </div>
+                        <div className="text-xs text-purple-400 dark:text-purple-500 mt-1 font-medium">
+                            {results.totalCredits} total credits
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function ToolsPage() {
     const universityTools = [
@@ -113,6 +341,16 @@ export default function ToolsPage() {
                         <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
                             Everything you need to survive and thrive at MMU. Quick links to portals, emergency contacts, and essential resources.
                         </p>
+                    </div>
+
+                    <div className="mb-16 animate-fade-in-up delay-75">
+                        <div className="flex items-center gap-3 mb-8 px-2">
+                            <div className="h-8 w-1 bg-purple-500 rounded-full"></div>
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Grade Calculator</h2>
+                        </div>
+                        <div className="max-w-3xl mx-auto">
+                            <CGPACalculator />
+                        </div>
                     </div>
 
                     <div className="mb-16 animate-fade-in-up delay-100">

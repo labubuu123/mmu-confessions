@@ -237,6 +237,19 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.lost_and_found (
+    id uuid not null default gen_random_uuid (),
+    confession_id bigint null,
+    type text not null check (type in ('lost', 'found')),
+    item_name text not null,
+    location text not null,
+    contact_info text null,
+    is_resolved boolean default false,
+    created_at timestamp with time zone not null default now(),
+    constraint lost_and_found_pkey primary key (id),
+    constraint lost_and_found_confession_id_fkey foreign key (confession_id) references confessions (id) on delete cascade
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -288,6 +301,7 @@ ALTER TABLE public.matchmaker_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lost_and_found ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -380,6 +394,8 @@ CREATE POLICY "Admin manage marketplace items" ON public.marketplace_items FOR A
 CREATE POLICY "Anon users can insert reports" ON public.marketplace_reports FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admin can view all reports" ON public.marketplace_reports FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Admin can delete reports" ON public.marketplace_reports FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable read access for all users" ON public.lost_and_found AS permissive FOR SELECT TO public USING (true);
+CREATE POLICY "Enable insert for all users" ON public.lost_and_found AS permissive FOR INSERT TO public WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

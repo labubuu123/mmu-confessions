@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarCha
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
+import LostFoundDisplay from './LostFoundDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
 import ReactionTooltip from './ReactionToolTip'
 import ShareButton from './ShareButton'
@@ -54,6 +55,7 @@ export default function PostCard({ post, onOpen }) {
     const [isReported, setIsReported] = useState(post.reported || false)
     const [poll, setPoll] = useState(null)
     const [event, setEvent] = useState(null)
+    const [lostFound, setLostFound] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
 
@@ -84,7 +86,7 @@ export default function PostCard({ post, onOpen }) {
 
     const moodData = useMemo(() => { try { return post.mood ? JSON.parse(post.mood) : null; } catch (e) { return null; } }, [post.mood]);
 
-    useEffect(() => { fetchReactions(); fetchPollAndEvent(); }, [post.id])
+    useEffect(() => { fetchReactions(); fetchAttachments(); }, [post.id])
 
     async function fetchReactions() {
         const { data } = await supabase.from('reactions').select('emoji, count').eq('post_id', post.id)
@@ -93,12 +95,22 @@ export default function PostCard({ post, onOpen }) {
         }
     }
 
-    async function fetchPollAndEvent() {
+    async function fetchAttachments() {
         const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).maybeSingle()
-        if (eventData) setEvent(eventData)
-        else {
-            const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).maybeSingle()
-            if (pollData) setPoll(pollData)
+        if (eventData) {
+            setEvent(eventData)
+            return;
+        }
+
+        const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).maybeSingle()
+        if (pollData) {
+            setPoll(pollData)
+            return;
+        }
+
+        const { data: lfData } = await supabase.from('lost_and_found').select('*').eq('confession_id', post.id).maybeSingle()
+        if (lfData) {
+            setLostFound(lfData)
         }
     }
 
@@ -210,6 +222,7 @@ export default function PostCard({ post, onOpen }) {
                         {isTrendingPost && !isHotPost && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><TrendingUp className="w-3 h-3" /> TRENDING</div>}
                         {poll && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><BarChart3 className="w-3 h-3" /> POLL</div>}
                         {event && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Calendar className="w-3 h-3" /> EVENT</div>}
+                        {lostFound && <div className={`px-2 sm:px-3 py-0.5 sm:py-1 ${lostFound.type === 'lost' ? 'bg-red-500' : 'bg-green-500'} text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1`}><AlertTriangle className="w-3 h-3" /> {lostFound.type.toUpperCase()}</div>}
                     </div>
                 )}
 
@@ -251,6 +264,12 @@ export default function PostCard({ post, onOpen }) {
                         {renderedText}
                     </p>
                 </div>
+
+                {lostFound && (
+                    <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}>
+                        <LostFoundDisplay {...lostFound} />
+                    </div>
+                )}
 
                 {post.is_sponsored && displayImages.length > 0 && (
                     <div className="w-full relative z-10 cursor-pointer group/img mb-2" onClick={(e) => { e.stopPropagation(); handleSponsorClick(post.sponsor_url); }}>

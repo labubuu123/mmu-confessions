@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
+import LostFoundCreator from './LostFoundCreator';
 import { useNotifications } from './NotificationSystem';
 
 const MAX_VIDEO_SIZE_MB = 25;
@@ -89,6 +90,8 @@ export default function PostForm({ onPosted }) {
     const [eventData, setEventData] = useState(null);
     const [showSeriesManager, setShowSeriesManager] = useState(false);
     const [seriesData, setSeriesData] = useState(null);
+    const [showLostFoundCreator, setShowLostFoundCreator] = useState(false);
+    const [lostFoundData, setLostFoundData] = useState(null);
     const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
@@ -123,8 +126,11 @@ export default function PostForm({ onPosted }) {
                     setShowSeriesManager(true);
                 }
 
-                if (draft.text || draft.mood || draft.pollData) {
+                if (draft.lostFoundData) {
+                    setLostFoundData(draft.lostFoundData);
+                    setShowLostFoundCreator(true);
                 }
+
             } catch (err) {
                 console.error("Failed to restore draft:", err);
                 localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -136,7 +142,7 @@ export default function PostForm({ onPosted }) {
     useEffect(() => {
         if (!draftLoaded) return;
 
-        const hasContent = text.trim().length > 0 || selectedMood || pollData || eventData || seriesData;
+        const hasContent = text.trim().length > 0 || selectedMood || pollData || eventData || seriesData || lostFoundData;
 
         if (hasContent) {
             const draftState = {
@@ -145,6 +151,7 @@ export default function PostForm({ onPosted }) {
                 pollData,
                 eventData,
                 seriesData,
+                lostFoundData,
                 policyAccepted,
                 lastSaved: Date.now()
             };
@@ -152,7 +159,7 @@ export default function PostForm({ onPosted }) {
         } else {
             localStorage.removeItem(DRAFT_STORAGE_KEY);
         }
-    }, [text, selectedMood, pollData, eventData, seriesData, policyAccepted, draftLoaded]);
+    }, [text, selectedMood, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
 
     useEffect(() => {
         if (audio) {
@@ -255,7 +262,12 @@ export default function PostForm({ onPosted }) {
             return;
         }
 
-        if (!text.trim() && images.length === 0 && !video && !audio && !eventData) {
+        if (showLostFoundCreator && (!lostFoundData || !lostFoundData.itemName || !lostFoundData.location)) {
+            error('Please fill in Item Name and Location for Lost & Found.');
+            return;
+        }
+
+        if (!text.trim() && images.length === 0 && !video && !audio && !eventData && !lostFoundData) {
             warning('Write something or attach media');
             return;
         }
@@ -370,7 +382,16 @@ export default function PostForm({ onPosted }) {
             }
 
             info('Posting...');
-            const tags = extractTags(text);
+            let finalTags = extractTags(text);
+
+            if (lostFoundData) {
+                if (lostFoundData.type === 'lost') {
+                    if (!finalTags.includes('lost')) finalTags.push('lost');
+                } else {
+                    if (!finalTags.includes('found')) finalTags.push('found');
+                }
+                if (!finalTags.includes('lost&found')) finalTags.push('lost&found');
+            }
 
             let moodData = null;
             if (selectedMood || (voiceEffect && voiceEffect !== 'normal')) {
@@ -388,7 +409,7 @@ export default function PostForm({ onPosted }) {
                     media_url: single_media_url,
                     media_urls: media_urls.length > 0 ? media_urls : null,
                     media_type,
-                    tags,
+                    tags: finalTags,
                     approved: true,
                     likes_count: 0,
                     comments_count: 0,
@@ -456,6 +477,23 @@ export default function PostForm({ onPosted }) {
                 }
             }
 
+            if (lostFoundData && lostFoundData.itemName && lostFoundData.location) {
+                info('Saving lost & found details...');
+                const { error: lfError } = await supabase.from('lost_and_found').insert([{
+                    confession_id: postId,
+                    type: lostFoundData.type,
+                    item_name: lostFoundData.itemName,
+                    location: lostFoundData.location,
+                    contact_info: lostFoundData.contact || null,
+                    is_resolved: false
+                }]);
+
+                if (lfError) {
+                    console.error('L&F creation error:', lfError);
+                    error('Post created, but L&F details failed: ' + lfError.message);
+                }
+            }
+
             if (onPosted && data && data.length > 0) {
                 onPosted(data[0]);
 
@@ -487,6 +525,8 @@ export default function PostForm({ onPosted }) {
             setShowEventCreator(false);
             setSeriesData(null);
             setShowSeriesManager(false);
+            setLostFoundData(null);
+            setShowLostFoundCreator(false);
             setSelectedMood(null);
             setUploadProgress(0);
             setShowAudioOptions(false);
@@ -734,6 +774,7 @@ export default function PostForm({ onPosted }) {
 
         setShowPollCreator(false);
         setShowEventCreator(false);
+        setShowLostFoundCreator(false);
 
         if (showSeriesManager) {
             setSeriesData(null);
@@ -753,7 +794,7 @@ export default function PostForm({ onPosted }) {
                             Share Your Confession
                         </h2>
                     </div>
-                    {(text || selectedMood || pollData || eventData || seriesData) && (
+                    {(text || selectedMood || pollData || eventData || seriesData || lostFoundData) && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
                             <Save className="w-3 h-3" />
                             <span>Draft Saved</span>
@@ -1036,6 +1077,15 @@ export default function PostForm({ onPosted }) {
                         </div>
                     )}
 
+                    {showLostFoundCreator && (
+                        <div className="my-3 sm:my-4">
+                            <LostFoundCreator
+                                onData={setLostFoundData}
+                                onRemove={() => { setShowLostFoundCreator(false); setLostFoundData(null); }}
+                            />
+                        </div>
+                    )}
+
                     {showSeriesManager && (
                         <div className="my-3 sm:my-4">
                             <SeriesManager
@@ -1142,13 +1192,14 @@ export default function PostForm({ onPosted }) {
                                     onClick={() => {
                                         setShowPollCreator(!showPollCreator);
                                         setShowEventCreator(false);
+                                        setShowLostFoundCreator(false);
                                         setShowSeriesManager(false);
                                     }}
                                     className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                         ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                         : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                         }`}
-                                    disabled={loading || showEventCreator || showSeriesManager}
+                                    disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator}
                                 >
                                     <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                     <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1161,13 +1212,14 @@ export default function PostForm({ onPosted }) {
                                     onClick={() => {
                                         setShowEventCreator(!showEventCreator);
                                         setShowPollCreator(false);
+                                        setShowLostFoundCreator(false);
                                         setShowSeriesManager(false);
                                     }}
                                     className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                         ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                         : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                         }`}
-                                    disabled={loading || showPollCreator || showSeriesManager}
+                                    disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator}
                                 >
                                     <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                     <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1179,12 +1231,32 @@ export default function PostForm({ onPosted }) {
                             <div className="flex items-center gap-1">
                                 <button
                                     type="button"
+                                    onClick={() => {
+                                        setShowLostFoundCreator(!showLostFoundCreator);
+                                        setShowEventCreator(false);
+                                        setShowPollCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showEventCreator || showSeriesManager}
+                                >
+                                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Lost & Found
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
                                     onClick={handleToggleSeries}
                                     className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
                                         ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                                         : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                         }`}
-                                    disabled={loading || showPollCreator || showEventCreator}
+                                    disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator}
                                 >
                                     <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
                                     <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1201,7 +1273,7 @@ export default function PostForm({ onPosted }) {
 
                         <button
                             type="submit"
-                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
                         >
                             {loading ? (
