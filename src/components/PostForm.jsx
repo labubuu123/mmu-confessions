@@ -1138,133 +1138,138 @@ export default function PostForm({ onPosted }) {
                         </label>
                     </div>
 
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-1">
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Photos
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                    disabled={loading || !!video || !!audio}
+                    <div className="flex items-end justify-between gap-3">
+                        <div className="flex flex-col gap-2">
+                            
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-1">
+                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Photos
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleImageChange}
+                                        className="hidden"
+                                        disabled={loading || !!video || !!audio}
+                                    />
+                                </label>
+
+                                <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Video
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={handleVideoChange}
+                                        className="hidden"
+                                        disabled={loading || images.length > 0 || !!audio}
+                                    />
+                                </label>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!audio && !isRecording) setShowAudioOptions(!showAudioOptions);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${(audio || isRecording || showAudioOptions)
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || images.length > 0 || !!video}
+                                >
+                                    <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Audio
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowPollCreator(!showPollCreator);
+                                        setShowEventCreator(false);
+                                        setShowLostFoundCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator}
+                                >
+                                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Poll
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEventCreator(!showEventCreator);
+                                        setShowPollCreator(false);
+                                        setShowLostFoundCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator}
+                                >
+                                    <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Event
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowLostFoundCreator(!showLostFoundCreator);
+                                        setShowEventCreator(false);
+                                        setShowPollCreator(false);
+                                        setShowSeriesManager(false);
+                                    }}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showLostFoundCreator
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showEventCreator || showSeriesManager}
+                                >
+                                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Lost & Found
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleToggleSeries}
+                                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator}
+                                >
+                                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+                                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                        Series
+                                    </span>
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-1 sm:gap-1">
+                                <MoodSelector
+                                    selectedMood={selectedMood}
+                                    onSelectMood={setSelectedMood}
                                 />
-                            </label>
-
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Video
-                                </span>
-                                <input
-                                    type="file"
-                                    accept="video/*"
-                                    onChange={handleVideoChange}
-                                    className="hidden"
-                                    disabled={loading || images.length > 0 || !!audio}
-                                />
-                            </label>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (!audio && !isRecording) setShowAudioOptions(!showAudioOptions);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${(audio || isRecording || showAudioOptions)
-                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || images.length > 0 || !!video}
-                            >
-                                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Audio
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowPollCreator(!showPollCreator);
-                                    setShowEventCreator(false);
-                                    setShowLostFoundCreator(false);
-                                    setShowSeriesManager(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator}
-                            >
-                                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Poll
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowEventCreator(!showEventCreator);
-                                    setShowPollCreator(false);
-                                    setShowLostFoundCreator(false);
-                                    setShowSeriesManager(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator}
-                            >
-                                <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Event
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowLostFoundCreator(!showLostFoundCreator);
-                                    setShowEventCreator(false);
-                                    setShowPollCreator(false);
-                                    setShowSeriesManager(false);
-                                }}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showLostFoundCreator
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager}
-                            >
-                                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Lost & Found
-                                </span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleSeries}
-                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
-                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator}
-                            >
-                                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                    Series
-                                </span>
-                            </button>
-
-                            <MoodSelector
-                                selectedMood={selectedMood}
-                                onSelectMood={setSelectedMood}
-                            />
+                            </div>
                         </div>
 
                         <button
