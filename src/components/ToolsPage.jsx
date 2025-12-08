@@ -331,18 +331,6 @@ export default function ToolsPage() {
 
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
                 <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16 animate-fade-in-down">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg mb-6 transform hover:scale-105 transition-transform duration-300">
-                            <Wrench className="w-8 h-8 text-white" />
-                        </div>
-                        <h1 className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
-                            MMU <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">Toolkit</span>
-                        </h1>
-                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
-                            Everything you need to survive and thrive at MMU. Quick links to portals, emergency contacts, and essential resources.
-                        </p>
-                    </div>
-
                     <div className="mb-16 animate-fade-in-up delay-75">
                         <div className="flex items-center gap-3 mb-8 px-2">
                             <div className="h-8 w-1 bg-purple-500 rounded-full"></div>
