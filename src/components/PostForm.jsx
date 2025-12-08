@@ -1139,8 +1139,8 @@ export default function PostForm({ onPosted }) {
                     </div>
 
                     <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
                                     Photos
