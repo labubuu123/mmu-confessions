@@ -67,6 +67,8 @@ export default function PostCard({ post, onOpen }) {
     const [lostFound, setLostFound] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
+
+    // Translation States
     const [translation, setTranslation] = useState(null)
     const [isTranslating, setIsTranslating] = useState(false)
     const [showTranslation, setShowTranslation] = useState(false)
@@ -103,6 +105,7 @@ export default function PostCard({ post, onOpen }) {
 
     useEffect(() => { fetchReactions(); fetchAttachments(); }, [post.id])
 
+    // Close lang menu on click outside
     useEffect(() => {
         function handleClickOutside(event) {
             if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
@@ -453,18 +456,18 @@ export default function PostCard({ post, onOpen }) {
                         <div>
                             {(currentTotalReactions > 0) && <div className="mb-2"><ReactionTooltip reactions={reactions} /></div>}
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 sm:gap-3">
-                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
                                         <Heart className="w-5 h-5" /> <span className="font-medium hidden sm:inline">React</span>
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
                                         <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
                                     </button>
 
                                     <div className="relative flex items-center" ref={langMenuRef}>
                                         <button
                                             onClick={handleTranslate}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
+                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
                                             disabled={isTranslating}
                                         >
                                             {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
