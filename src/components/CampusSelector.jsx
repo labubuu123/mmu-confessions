@@ -3,7 +3,7 @@ import { MapPin, X } from 'lucide-react';
 
 export const campuses = [
     { id: 'melaka', label: 'Melaka', emoji: '🏰' },
-    { id: 'cyberjaya', label: 'Cyberjaya', emoji: '🏰' },
+    { id: 'cyberjaya', label: 'Cyberjaya', emoji: '💻' },
 ];
 
 export function CampusBadge({ campus }) {

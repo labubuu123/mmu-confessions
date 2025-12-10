@@ -230,18 +230,23 @@ export default function PostCard({ post, onOpen }) {
                 <div className="p-4 flex items-start gap-3 relative z-10">
                     <AnonAvatar authorId={post.author_id} size="md" isSponsored={post.is_sponsored} />
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
+                        <div className="flex items-start justify-between mb-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
                                 <div
                                     className="font-bold text-base truncate flex items-center gap-1.5"
                                     style={{ color: post.is_sponsored ? brandColor : undefined }}
                                 >
                                     {post.author_name || 'Anonymous'}
                                 </div>
-                                {moodData && <MoodBadge mood={moodData} />}
-                                <CampusBadge campus={post.campus} />
+                                {(moodData || post.campus) && (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {moodData && <MoodBadge mood={moodData} />}
+                                        {post.campus && <CampusBadge campus={post.campus} />}
+                                    </div>
+                                )}
                             </div>
                         </div>
+
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                             {post.is_sponsored ? (
                                 <span className="tracking-widest font-bold text-[12px] opacity-80">
