@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt', 'ads.txt'],
+      includeAssets: ['favicon.svg', 'robots.txt', 'ads.txt', 'sitemap.xml'],
       manifest: {
         name: 'MMU Confessions',
         short_name: 'MMU Confess',
