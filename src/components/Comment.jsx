@@ -205,7 +205,7 @@ export default function Comment({ comment, postId, depth = 0 }) {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-0.5 sm:gap-1 mt-1.5 px-1 flex-wrap">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mt-1.5 px-1 flex-wrap">
                         <div className="relative">
                             <button
                                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -258,14 +258,14 @@ export default function Comment({ comment, postId, depth = 0 }) {
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
-                                className="px-1 py-1.5 rounded-r-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                                className="px-1 py-1.5 rounded-r-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700/50"
                                 title="Select Language"
                             >
                                 <ChevronDown className="w-3 h-3" />
                             </button>
 
                             {showLangMenu && (
-                                <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 overflow-hidden">
+                                <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
                                     {LANGUAGES.map((lang) => (
                                         <button
                                             key={lang.code}
