@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -14,6 +14,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
 import SeriesIndicator from './SeriesIndicator';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dayjs.extend(relativeTime)
 
@@ -51,6 +52,13 @@ const generateSrcSet = (url) => {
     `;
 };
 
+const LANGUAGES = [
+    { code: 'English', label: 'English' },
+    { code: 'Malay', label: 'Malay' },
+    { code: 'Chinese', label: 'Chinese' },
+    { code: 'Tamil', label: 'Tamil' },
+];
+
 export default function PostCard({ post, onOpen }) {
     const [reactions, setReactions] = useState({})
     const [isReported, setIsReported] = useState(post.reported || false)
@@ -59,6 +67,12 @@ export default function PostCard({ post, onOpen }) {
     const [lostFound, setLostFound] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
+    const [translation, setTranslation] = useState(null)
+    const [isTranslating, setIsTranslating] = useState(false)
+    const [showTranslation, setShowTranslation] = useState(false)
+    const [targetLanguage, setTargetLanguage] = useState('English')
+    const [showLangMenu, setShowLangMenu] = useState(false)
+    const langMenuRef = useRef(null)
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
@@ -88,6 +102,16 @@ export default function PostCard({ post, onOpen }) {
     const moodData = useMemo(() => { try { return post.mood ? JSON.parse(post.mood) : null; } catch (e) { return null; } }, [post.mood]);
 
     useEffect(() => { fetchReactions(); fetchAttachments(); }, [post.id])
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
+                setShowLangMenu(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [langMenuRef]);
 
     async function fetchReactions() {
         const { data } = await supabase.from('reactions').select('emoji, count').eq('post_id', post.id)
@@ -124,6 +148,45 @@ export default function PostCard({ post, onOpen }) {
             if (error) throw error; setIsReported(true); alert('Post reported successfully.')
         } catch (err) { console.error('Report error:', err); alert('Failed to report post.') }
     }
+
+    const performTranslation = async (lang) => {
+        setIsTranslating(true);
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const prompt = `Translate the following text to ${lang}. Keep the tone, slang, and humor if possible: "${post.text}"`;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            setTranslation(response.text());
+            setShowTranslation(true);
+        } catch (err) {
+            console.error("Translation error:", err);
+            alert("Failed to translate. Please try again later.");
+        } finally {
+            setIsTranslating(false);
+        }
+    };
+
+    const handleTranslate = (e) => {
+        e.stopPropagation();
+        if (showTranslation && !translation) {
+            performTranslation(targetLanguage);
+        } else if (showTranslation) {
+            setShowTranslation(false);
+        } else if (translation) {
+            setShowTranslation(true);
+        } else {
+            performTranslation(targetLanguage);
+        }
+    };
+
+    const handleLanguageSelect = (langCode) => {
+        setTargetLanguage(langCode);
+        setShowLangMenu(false);
+        performTranslation(langCode);
+    };
 
     function handleImageClick(e, url) { e.stopPropagation(); setZoomedImage(url); }
 
@@ -182,7 +245,8 @@ export default function PostCard({ post, onOpen }) {
                 onClick={() => onOpen && onOpen(post)}
                 style={containerStyle}
                 className={`
-                    relative isolate mb-6 overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer group
+                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group
+                    ${showLangMenu ? 'z-30' : 'z-0'} 
                     ${post.is_sponsored
                         ? 'bg-white dark:bg-gray-800 border-2 transform hover:-translate-y-1'
                         : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
@@ -246,7 +310,6 @@ export default function PostCard({ post, onOpen }) {
                                 )}
                             </div>
                         </div>
-
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                             {post.is_sponsored ? (
                                 <span className="tracking-widest font-bold text-[12px] opacity-80">
@@ -270,6 +333,19 @@ export default function PostCard({ post, onOpen }) {
                     <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`}>
                         {renderedText}
                     </p>
+
+                    {showTranslation && translation && (
+                        <div className="mt-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                    <Sparkles className="w-3 h-3" /> Translated to {targetLanguage}
+                                </div>
+                            </div>
+                            <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed italic">
+                                {translation}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {lostFound && (
@@ -305,7 +381,7 @@ export default function PostCard({ post, onOpen }) {
                                     srcSet={generateSrcSet(url)}
                                     sizes={getImageSizes()}
                                     alt={`media ${idx + 1}`}
-                                    className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48'}`}
+                                    className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48 rounded-lg'}`}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
                                 {idx === 3 && displayImages.length > 4 && (
@@ -317,7 +393,7 @@ export default function PostCard({ post, onOpen }) {
                 )}
 
                 {post.media_type === 'video' && post.media_url && (
-                    <div className="w-full relative z-0"><video src={post.media_url} className="w-full max-h-64 sm:max-h-96" controls preload="metadata" onClick={(e) => e.stopPropagation()} /></div>
+                    <div className="w-full relative z-0"><video src={post.media_url} className="w-full max-h-64 sm:max-h-96 rounded-xl" controls preload="metadata" onClick={(e) => e.stopPropagation()} /></div>
                 )}
                 {post.media_type === 'audio' && post.media_url && (
                     <div className="px-3 sm:px-4 pb-3 relative z-0">
@@ -384,6 +460,41 @@ export default function PostCard({ post, onOpen }) {
                                     <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
                                         <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
                                     </button>
+
+                                    <div className="relative flex items-center" ref={langMenuRef}>
+                                        <button
+                                            onClick={handleTranslate}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
+                                            disabled={isTranslating}
+                                        >
+                                            {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
+                                            <span className="font-medium hidden sm:inline">
+                                                {showTranslation ? 'Original' : 'Translate'}
+                                            </span>
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
+                                            className="px-1.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-r-lg"
+                                            title="Select Language"
+                                        >
+                                            <ChevronDown className="w-4 h-4" />
+                                        </button>
+
+                                        {showLangMenu && (
+                                            <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                                                {LANGUAGES.map((lang) => (
+                                                    <button
+                                                        key={lang.code}
+                                                        onClick={(e) => { e.stopPropagation(); handleLanguageSelect(lang.code); }}
+                                                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${targetLanguage === lang.code ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-gray-300'}`}
+                                                    >
+                                                        {lang.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <ShareButton post={post} />
                                 </div>
                                 <button onClick={handleReport} disabled={isReported} className={`p-2 rounded-lg transition-all ${isReported ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'}`}>
