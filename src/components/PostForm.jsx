@@ -9,6 +9,7 @@ import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
+import CampusSelector from './CampusSelector';
 import LostFoundCreator from './LostFoundCreator';
 import { useNotifications } from './NotificationSystem';
 
@@ -94,6 +95,7 @@ export default function PostForm({ onPosted }) {
     const [lostFoundData, setLostFoundData] = useState(null);
     const { success, error, warning, info } = useNotifications();
     const [selectedMood, setSelectedMood] = useState(null);
+    const [selectedCampus, setSelectedCampus] = useState(null);
     const [existingSeries, setExistingSeries] = useState([]);
     const [loadingSeries, setLoadingSeries] = useState(false);
     const [isRewriting, setIsRewriting] = useState(false);
@@ -109,6 +111,7 @@ export default function PostForm({ onPosted }) {
 
                 if (draft.text) setText(draft.text);
                 if (draft.mood) setSelectedMood(draft.mood);
+                if (draft.campus) setSelectedCampus(draft.campus);
                 if (draft.policyAccepted) setPolicyAccepted(true);
 
                 if (draft.pollData) {
@@ -142,12 +145,13 @@ export default function PostForm({ onPosted }) {
     useEffect(() => {
         if (!draftLoaded) return;
 
-        const hasContent = text.trim().length > 0 || selectedMood || pollData || eventData || seriesData || lostFoundData;
+        const hasContent = text.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData;
 
         if (hasContent) {
             const draftState = {
                 text,
                 mood: selectedMood,
+                campus: selectedCampus,
                 pollData,
                 eventData,
                 seriesData,
@@ -159,7 +163,7 @@ export default function PostForm({ onPosted }) {
         } else {
             localStorage.removeItem(DRAFT_STORAGE_KEY);
         }
-    }, [text, selectedMood, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
+    }, [text, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
 
     useEffect(() => {
         if (audio) {
@@ -415,6 +419,7 @@ export default function PostForm({ onPosted }) {
                     comments_count: 0,
                     reported: false,
                     mood: moodData ? JSON.stringify(moodData) : null,
+                    campus: selectedCampus ? selectedCampus.label : null,
                     series_id: seriesData?.series_id || null,
                     series_name: seriesData?.series_name || null,
                     series_part: seriesData?.series_part || null,
@@ -528,6 +533,7 @@ export default function PostForm({ onPosted }) {
             setLostFoundData(null);
             setShowLostFoundCreator(false);
             setSelectedMood(null);
+            setSelectedCampus(null);
             setUploadProgress(0);
             setShowAudioOptions(false);
             setHistory([]);
@@ -794,7 +800,7 @@ export default function PostForm({ onPosted }) {
                             Share Your Confession
                         </h2>
                     </div>
-                    {(text || selectedMood || pollData || eventData || seriesData || lostFoundData) && (
+                    {(text || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData) && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
                             <Save className="w-3 h-3" />
                             <span>Draft Saved</span>
@@ -1260,6 +1266,11 @@ export default function PostForm({ onPosted }) {
                                     Series
                                 </span>
                             </button>
+
+                            <CampusSelector
+                                selectedCampus={selectedCampus}
+                                onSelectCampus={setSelectedCampus}
+                            />
 
                             <MoodSelector
                                 selectedMood={selectedMood}

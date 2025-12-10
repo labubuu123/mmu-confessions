@@ -8,6 +8,7 @@ import ImageGalleryModal from './ImageGalleryModal'
 import ReactionTooltip from './ReactionToolTip'
 import ShareButton from './ShareButton'
 import { MoodBadge } from './MoodSelector'
+import { CampusBadge } from './CampusSelector'
 import { supabase } from '../lib/supabaseClient'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -238,6 +239,7 @@ export default function PostCard({ post, onOpen }) {
                                     {post.author_name || 'Anonymous'}
                                 </div>
                                 {moodData && <MoodBadge mood={moodData} />}
+                                <CampusBadge campus={post.campus} />
                             </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
