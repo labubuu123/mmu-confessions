@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { calculateCompatibility } from '../../utils/compatibility';
-import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info, Loader2 } from 'lucide-react';
+import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info, Loader2, RotateCcw, SkipForward } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
+
+// --- Helper Components ---
 
 const AvatarGenerator = memo(({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -70,6 +72,8 @@ const MiniMatchPill = ({ myProfile, theirProfile }) => {
     );
 };
 
+// --- Main Component ---
+
 export default function MatchmakerBrowse({ user, userProfile }) {
     const [profiles, setProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -81,11 +85,23 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     const [messageTarget, setMessageTarget] = useState(null);
     const [connectMessage, setConnectMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
+
+    // Logic: Stack for Mobile, Grid for Desktop
+    const [isMobile, setIsMobile] = useState(false);
+    const [stackIndex, setStackIndex] = useState(0);
+
     const modalRef = useRef(null);
     const scrollContentRef = useRef(null);
     const isDragging = useRef(false);
     const dragStartY = useRef(0);
     const currentDragY = useRef(0);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -100,6 +116,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             });
             if (error) throw error;
             setProfiles(data || []);
+            setStackIndex(0); // Reset stack on fetch
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
@@ -134,6 +151,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         setMessageTarget(profile);
     };
 
+    const handleStackSwipe = (direction) => {
+        if (stackIndex >= filteredProfiles.length) return;
+        // NOTE: Swipe means skip/pass for BOTH directions as per request
+        // We only connect if the user explicitly clicks the Heart button
+        setTimeout(() => setStackIndex(prev => prev + 1), 200);
+    };
+
     const sendLove = async () => {
         if (!messageTarget || isSending) return;
 
@@ -149,6 +173,11 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
             setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
             if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
+
+            // NEW: If in stack mode, auto-advance after successful connection
+            if (isMobile) {
+                setTimeout(() => setStackIndex(prev => prev + 1), 500);
+            }
 
             setMessageTarget(null);
             setConnectMessage('');
@@ -174,41 +203,30 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         finally { setSubmittingReport(false); }
     };
 
-    const handleTouchStart = (e) => {
+    // --- Modal Swipe Logic ---
+    const handleModalTouchStart = (e) => {
         if (window.innerWidth >= 768) return;
-
         if (scrollContentRef.current && scrollContentRef.current.scrollTop > 0) return;
-
         isDragging.current = true;
         dragStartY.current = e.touches[0].clientY;
-
-        if (modalRef.current) {
-            modalRef.current.style.transition = 'none';
-        }
+        if (modalRef.current) modalRef.current.style.transition = 'none';
     };
 
-    const handleTouchMove = (e) => {
+    const handleModalTouchMove = (e) => {
         if (!isDragging.current) return;
         if (window.innerWidth >= 768) return;
-
         const currentY = e.touches[0].clientY;
         const delta = currentY - dragStartY.current;
-
         if (delta > 0) {
             if (e.cancelable) e.preventDefault();
-
             currentDragY.current = delta;
-
-            if (modalRef.current) {
-                modalRef.current.style.transform = `translateY(${delta}px)`;
-            }
+            if (modalRef.current) modalRef.current.style.transform = `translateY(${delta}px)`;
         }
     };
 
-    const handleTouchEnd = () => {
+    const handleModalTouchEnd = () => {
         if (!isDragging.current) return;
         isDragging.current = false;
-
         if (currentDragY.current > 120) {
             if (modalRef.current) {
                 modalRef.current.style.transition = 'transform 0.2s ease-out';
@@ -234,7 +252,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
     return (
         <div className="pb-24 min-h-screen">
             <div className="mb-4 flex flex-col gap-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl p-3 sm:p-4 rounded-b-2xl sm:rounded-2xl border-b sm:border border-white/50 dark:border-gray-700 shadow-sm sticky top-0 z-30">
-                <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 w-full">
+                <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 w-full gap-1">
                     {['all', 'male', 'female'].map(g => (
                         <button key={g} onClick={() => setFilters(prev => ({ ...prev, gender: g }))}
                             className={`flex-1 px-2 py-1.5 rounded-md text-[10px] sm:text-xs font-bold capitalize transition-all ${filters.gender === g ? 'bg-white dark:bg-gray-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
@@ -256,60 +274,129 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 px-2 sm:px-0">
-                {filteredProfiles.map(profile => (
-                    <div
-                        key={profile.author_id}
-                        onClick={() => setSelectedProfile(profile)}
-                        className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 dark:border-gray-700 flex flex-col h-full"
-                    >
-                        <div className={`h-14 sm:h-16 bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-400 to-indigo-500' : 'from-pink-400 to-rose-500'} relative flex-shrink-0`}>
-                            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-[3px] border-white dark:border-gray-800 shadow-sm bg-white overflow-hidden">
-                                <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+            {!isMobile ? (
+                /* GRID VIEW (Desktop / Tablet) */
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 px-2 sm:px-0">
+                    {filteredProfiles.map(profile => (
+                        <div
+                            key={profile.author_id}
+                            onClick={() => setSelectedProfile(profile)}
+                            className="relative group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 dark:border-gray-700 flex flex-col h-full"
+                        >
+                            <div className={`h-14 sm:h-16 bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-400 to-indigo-500' : 'from-pink-400 to-rose-500'} relative flex-shrink-0`}>
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-[3px] border-white dark:border-gray-800 shadow-sm bg-white overflow-hidden">
+                                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+                                </div>
+                            </div>
+
+                            <div className="pt-9 pb-3 px-2 flex-1 flex flex-col text-center">
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white leading-tight mb-0.5 truncate px-1">
+                                    {profile.nickname}, {profile.age}
+                                </h3>
+                                <p className="text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 mb-2">
+                                    <MapPin className="w-3 h-3" />
+                                    <span className="truncate max-w-[80px]">
+                                        {profile.distance_km ? `${profile.distance_km.toFixed(1)} km` : profile.city}
+                                    </span>
+                                </p>
+
+                                <div className="flex flex-wrap justify-center gap-1 mb-1 px-1">
+                                    {profile.mbti && (
+                                        <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full border dark:border-gray-600">
+                                            {profile.mbti}
+                                        </span>
+                                    )}
+                                    {profile.zodiac && (
+                                        <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full border dark:border-gray-600">
+                                            {profile.zodiac.split(' ')[1] || profile.zodiac}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
+
+                                <button
+                                    onClick={(e) => handleLove(e, profile.author_id)}
+                                    disabled={profile.hasSentLove}
+                                    className={`mt-auto w-full py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${profile.hasSentLove
+                                        ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
+                                        : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
+                                        }`}
+                                >
+                                    {profile.hasSentLove ? <Check className="w-3.5 h-3.5" /> : <Heart className="w-3.5 h-3.5 fill-current" />}
+                                    {profile.hasSentLove ? 'Sent' : 'Connect'}
+                                </button>
                             </div>
                         </div>
+                    ))}
+                </div>
+            ) : (
+                /* STACK VIEW (Mobile Only) */
+                <div className="flex flex-col items-center justify-start min-h-[75vh] px-2 relative max-w-sm mx-auto pt-2">
+                    {stackIndex < filteredProfiles.length ? (
+                        <div className="relative w-full aspect-[3/4.2] max-h-[70vh]">
+                            {/* Next Card Background (Depth Effect) */}
+                            {stackIndex + 1 < filteredProfiles.length && (
+                                <div className="absolute top-4 left-3 right-3 bottom-0 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 opacity-60 transform scale-95 translate-y-3"></div>
+                            )}
 
-                        <div className="pt-9 pb-3 px-2 flex-1 flex flex-col text-center">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white leading-tight mb-0.5 truncate px-1">
-                                {profile.nickname}, {profile.age}
-                            </h3>
-                            <p className="text-[10px] font-bold text-gray-400 flex items-center justify-center gap-1 mb-2">
-                                <MapPin className="w-3 h-3" />
-                                <span className="truncate max-w-[80px]">
-                                    {profile.distance_km ? `${profile.distance_km.toFixed(1)} km` : profile.city}
-                                </span>
-                            </p>
-
-                            <div className="flex flex-wrap justify-center gap-1 mb-1 px-1">
-                                {profile.mbti && (
-                                    <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full border dark:border-gray-600">
-                                        {profile.mbti}
-                                    </span>
-                                )}
-                                {profile.zodiac && (
-                                    <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full border dark:border-gray-600">
-                                        {profile.zodiac.split(' ')[1] || profile.zodiac}
-                                    </span>
-                                )}
+                            {/* Active Swipe Card */}
+                            <SwipeableCard
+                                key={filteredProfiles[stackIndex].author_id}
+                                profile={filteredProfiles[stackIndex]}
+                                userProfile={userProfile}
+                                onSwipe={(dir) => handleStackSwipe(dir)}
+                                onDetails={() => setSelectedProfile(filteredProfiles[stackIndex])}
+                            />
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 animate-in fade-in zoom-in duration-300">
+                            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                <Search className="w-10 h-10 text-gray-400" />
                             </div>
-
-                            <MiniMatchPill myProfile={userProfile} theirProfile={profile} />
-
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2">No more profiles</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-8 px-8">You've seen everyone nearby. Try adjusting your filters.</p>
                             <button
-                                onClick={(e) => handleLove(e, profile.author_id)}
-                                disabled={profile.hasSentLove}
-                                className={`mt-auto w-full py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${profile.hasSentLove
-                                    ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
-                                    : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md hover:shadow-lg'
-                                    }`}
+                                onClick={() => { setStackIndex(0); setFilters(prev => ({ ...prev })); }}
+                                className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 transition flex items-center gap-2 mx-auto active:scale-95"
                             >
-                                {profile.hasSentLove ? <Check className="w-3.5 h-3.5" /> : <Heart className="w-3.5 h-3.5 fill-current" />}
-                                {profile.hasSentLove ? 'Sent' : 'Connect'}
+                                <RotateCcw className="w-5 h-5" /> Start Over
                             </button>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    )}
+
+                    {/* Stack Controls - Floating Buttons */}
+                    {stackIndex < filteredProfiles.length && (
+                        <div className="flex items-center justify-center gap-6 mt-6 w-full max-w-[280px]">
+                            {/* Pass Button */}
+                            <button
+                                onClick={() => handleStackSwipe('left')}
+                                className="w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 text-red-500 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                                title="Skip / Pass"
+                            >
+                                <X className="w-8 h-8" />
+                            </button>
+
+                            {/* Info Button */}
+                            <button
+                                onClick={() => setSelectedProfile(filteredProfiles[stackIndex])}
+                                className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
+                            >
+                                <Info className="w-5 h-5" />
+                            </button>
+
+                            {/* Connect Button (Heart) - Only way to connect */}
+                            <button
+                                onClick={() => handleLove(null, filteredProfiles[stackIndex].author_id)}
+                                className="w-14 h-14 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-full shadow-xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                                title="Connect"
+                            >
+                                <Heart className="w-7 h-7 fill-current" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {selectedProfile && (
                 <div
@@ -320,9 +407,9 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                         ref={modalRef}
                         className="bg-white dark:bg-gray-900 w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col sm:animate-in sm:zoom-in-95 duration-300 overscroll-y-contain will-change-transform"
                         onClick={e => e.stopPropagation()}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
+                        onTouchStart={handleModalTouchStart}
+                        onTouchMove={handleModalTouchMove}
+                        onTouchEnd={handleModalTouchEnd}
                     >
                         <div className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center z-50 pointer-events-none md:hidden">
                             <div className="w-12 h-1.5 bg-white/40 rounded-full shadow-sm backdrop-blur-md"></div>
@@ -492,6 +579,139 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// Internal Component for the Swipeable Card logic
+// Now includes Mouse events for swiping on Desktop simulators too
+function SwipeableCard({ profile, userProfile, onSwipe, onDetails }) {
+    const cardRef = useRef(null);
+    const [startX, setStartX] = useState(0);
+    const [currentX, setCurrentX] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [exitDir, setExitDir] = useState(null);
+
+    // Touch Handlers
+    const handleTouchStart = (e) => {
+        setStartX(e.touches[0].clientX);
+        setIsDragging(true);
+    };
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        const x = e.touches[0].clientX - startX;
+        setCurrentX(x);
+    };
+
+    // Mouse Handlers (For desktop swiping support)
+    const handleMouseDown = (e) => {
+        setStartX(e.clientX);
+        setIsDragging(true);
+    };
+    const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        const x = e.clientX - startX;
+        setCurrentX(x);
+    };
+
+    // Unified End Handler
+    const handleEnd = () => {
+        setIsDragging(false);
+        if (currentX > 100) {
+            setExitDir('right');
+            onSwipe('right');
+        } else if (currentX < -100) {
+            setExitDir('left');
+            onSwipe('left');
+        } else {
+            setCurrentX(0); // Reset position if not swiped enough
+        }
+    };
+
+    const rotate = currentX * 0.04;
+    const opacity = exitDir ? 0 : 1;
+    const transition = isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease-out';
+    const transform = exitDir
+        ? `translateX(${exitDir === 'right' ? 1000 : -1000}px) rotate(${exitDir === 'right' ? 30 : -30}deg)`
+        : `translateX(${currentX}px) rotate(${rotate}deg)`;
+
+    return (
+        <div
+            ref={cardRef}
+            className="absolute inset-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 cursor-grab active:cursor-grabbing select-none"
+            style={{
+                transform,
+                transition,
+                opacity,
+                zIndex: 10,
+                touchAction: 'none' // Important: Prevents page scrolling while swiping card
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleEnd}
+            onMouseLeave={handleEnd}
+            onClick={(e) => { if (Math.abs(currentX) < 5) onDetails(); }}
+        >
+            {/* Upper Section: Avatar & Gradient Background (60% height) */}
+            <div className={`h-[60%] bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-500 to-indigo-600' : 'from-pink-500 to-rose-600'} relative flex items-center justify-center p-6`}>
+
+                {/* Decorative BG Circles */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white to-transparent"></div>
+
+                {/* Avatar Container */}
+                <div className="w-40 h-40 rounded-full border-[6px] border-white/30 bg-white shadow-2xl overflow-hidden relative z-10 backdrop-blur-sm">
+                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+                </div>
+
+                {/* Info Badge Overlay on Image */}
+                <div className="absolute bottom-4 right-4 bg-black/30 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/20">
+                    <MapPin className="w-3 h-3 inline mr-1" />
+                    {profile.city}
+                </div>
+
+                {/* Swipe Indicators (Stamps) */}
+                {currentX > 50 && (
+                    <div className="absolute left-6 top-6 border-[5px] border-gray-500 text-gray-500 rounded-xl px-4 py-2 text-4xl font-black uppercase tracking-widest transform -rotate-12 bg-white/40 backdrop-blur-md shadow-lg z-20 animate-in zoom-in duration-200">
+                        SKIP
+                    </div>
+                )}
+                {currentX < -50 && (
+                    <div className="absolute right-6 top-6 border-[5px] border-red-500 text-red-500 rounded-xl px-4 py-2 text-4xl font-black uppercase tracking-widest transform rotate-12 bg-black/20 backdrop-blur-md shadow-lg z-20 animate-in zoom-in duration-200">
+                        PASS
+                    </div>
+                )}
+            </div>
+
+            {/* Lower Section: Details (40% height) */}
+            <div className="h-[40%] bg-white dark:bg-gray-800 relative flex flex-col px-6 pt-5 pb-4">
+                {/* Gradient Separator */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent opacity-50"></div>
+
+                <div className="flex-1 flex flex-col items-center text-center">
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-white leading-none mb-2 truncate w-full tracking-tight">
+                        {profile.nickname}, <span className="font-light">{profile.age}</span>
+                    </h3>
+
+                    <div className="w-full mb-3 transform scale-95 origin-center">
+                        <CompatibilityBadge myProfile={userProfile} theirProfile={profile} />
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-2 overflow-hidden max-h-[70px] w-full">
+                        {profile.mbti && <span className="px-3 py-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-lg border border-indigo-100 dark:border-indigo-800">{profile.mbti}</span>}
+                        {profile.zodiac && <span className="px-3 py-1 text-[11px] font-bold bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-lg border border-purple-100 dark:border-purple-800">{profile.zodiac.split(' ')[1] || profile.zodiac}</span>}
+                        {profile.interests?.slice(0, 2).map(tag => (
+                            <span key={tag} className="px-3 py-1 text-[11px] font-bold bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-600">{tag}</span>
+                        ))}
+                    </div>
+                </div>
+
+                <p className="text-center text-[10px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest mt-auto mb-1">
+                    Tap card for full profile
+                </p>
+            </div>
         </div>
     );
 }
