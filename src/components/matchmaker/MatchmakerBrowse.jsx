@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { calculateCompatibility } from '../../utils/compatibility';
-import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info, Loader2, RotateCcw, SkipForward } from 'lucide-react';
+import { Heart, MapPin, Sparkles, AlertTriangle, X, Check, User, Search, Hash, Flag, Info, Loader2, RotateCcw, Quote } from 'lucide-react';
 import ShareProfileButton from './ShareProfileButton';
 import CompatibilityBadge from './CompatibilityBadge';
 
@@ -153,8 +153,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 
     const handleStackSwipe = (direction) => {
         if (stackIndex >= filteredProfiles.length) return;
-        // NOTE: Swipe means skip/pass for BOTH directions as per request
-        // We only connect if the user explicitly clicks the Heart button
+        // NOTE: Swipe means skip/pass for BOTH directions
         setTimeout(() => setStackIndex(prev => prev + 1), 200);
     };
 
@@ -174,7 +173,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
             setProfiles(prev => prev.map(p => p.author_id === targetId ? { ...p, hasSentLove: true } : p));
             if (selectedProfile?.author_id === targetId) setSelectedProfile(prev => ({ ...prev, hasSentLove: true }));
 
-            // NEW: If in stack mode, auto-advance after successful connection
+            // Auto-advance after successful connection in stack mode
             if (isMobile) {
                 setTimeout(() => setStackIndex(prev => prev + 1), 500);
             }
@@ -331,13 +330,13 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                     ))}
                 </div>
             ) : (
-                /* STACK VIEW (Mobile Only) */
-                <div className="flex flex-col items-center justify-start min-h-[75vh] px-2 relative max-w-sm mx-auto pt-2">
+                /* STACK VIEW (Mobile Only - EXTRA COMPACT) */
+                <div className="flex flex-col items-center justify-start min-h-[60vh] px-3 relative max-w-[280px] mx-auto pt-4">
                     {stackIndex < filteredProfiles.length ? (
-                        <div className="relative w-full aspect-[3/4.2] max-h-[70vh]">
+                        <div className="relative w-full aspect-[3/4.5] max-h-[480px]">
                             {/* Next Card Background (Depth Effect) */}
                             {stackIndex + 1 < filteredProfiles.length && (
-                                <div className="absolute top-4 left-3 right-3 bottom-0 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 opacity-60 transform scale-95 translate-y-3"></div>
+                                <div className="absolute top-2 left-2 right-2 bottom-0 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 opacity-60 transform scale-95 translate-y-2"></div>
                             )}
 
                             {/* Active Swipe Card */}
@@ -350,48 +349,49 @@ export default function MatchmakerBrowse({ user, userProfile }) {
                             />
                         </div>
                     ) : (
-                        <div className="text-center py-20 animate-in fade-in zoom-in duration-300">
-                            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                                <Search className="w-10 h-10 text-gray-400" />
+                        <div className="text-center py-16 animate-in fade-in zoom-in duration-300">
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <Search className="w-7 h-7 text-gray-400" />
                             </div>
-                            <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2">No more profiles</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-8 px-8">You've seen everyone nearby. Try adjusting your filters.</p>
+                            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-2">No more profiles</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-[10px] mb-6 px-6">You've seen everyone nearby.</p>
                             <button
                                 onClick={() => { setStackIndex(0); setFilters(prev => ({ ...prev })); }}
-                                className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 transition flex items-center gap-2 mx-auto active:scale-95"
+                                className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 transition flex items-center gap-2 mx-auto active:scale-95 text-sm"
                             >
-                                <RotateCcw className="w-5 h-5" /> Start Over
+                                <RotateCcw className="w-3.5 h-3.5" /> Start Over
                             </button>
                         </div>
                     )}
 
-                    {/* Stack Controls - Floating Buttons */}
+                    {/* Stack Controls - Tiny Bar */}
                     {stackIndex < filteredProfiles.length && (
-                        <div className="flex items-center justify-center gap-6 mt-6 w-full max-w-[280px]">
+                        <div className="flex items-center justify-between gap-3 mt-4 w-full px-3 py-1.5 rounded-2xl bg-white/50 dark:bg-black/30 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg">
                             {/* Pass Button */}
                             <button
                                 onClick={() => handleStackSwipe('left')}
-                                className="w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 text-red-500 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                                className="w-9 h-9 bg-white dark:bg-gray-800 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-red-500 flex items-center justify-center hover:bg-red-50 hover:scale-105 active:scale-95 transition-all"
                                 title="Skip / Pass"
                             >
-                                <X className="w-8 h-8" />
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            {/* Connect Button (Primary Action) */}
+                            <button
+                                onClick={() => handleLove(null, filteredProfiles[stackIndex].author_id)}
+                                className="w-12 h-12 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-full shadow-xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all transform -translate-y-1.5"
+                                title="Connect"
+                            >
+                                <Heart className="w-6 h-6 fill-current" />
                             </button>
 
                             {/* Info Button */}
                             <button
                                 onClick={() => setSelectedProfile(filteredProfiles[stackIndex])}
-                                className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
+                                className="w-9 h-9 bg-white dark:bg-gray-800 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-gray-400 flex items-center justify-center hover:bg-gray-50 hover:scale-105 active:scale-95 transition-all"
+                                title="View Details"
                             >
-                                <Info className="w-5 h-5" />
-                            </button>
-
-                            {/* Connect Button (Heart) - Only way to connect */}
-                            <button
-                                onClick={() => handleLove(null, filteredProfiles[stackIndex].author_id)}
-                                className="w-14 h-14 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-full shadow-xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-                                title="Connect"
-                            >
-                                <Heart className="w-7 h-7 fill-current" />
+                                <Info className="w-4 h-4" />
                             </button>
                         </div>
                     )}
@@ -584,7 +584,7 @@ export default function MatchmakerBrowse({ user, userProfile }) {
 }
 
 // Internal Component for the Swipeable Card logic
-// Now includes Mouse events for swiping on Desktop simulators too
+// EXTRA COMPACT VERSION
 function SwipeableCard({ profile, userProfile, onSwipe, onDetails }) {
     const cardRef = useRef(null);
     const [startX, setStartX] = useState(0);
@@ -603,7 +603,7 @@ function SwipeableCard({ profile, userProfile, onSwipe, onDetails }) {
         setCurrentX(x);
     };
 
-    // Mouse Handlers (For desktop swiping support)
+    // Mouse Handlers
     const handleMouseDown = (e) => {
         setStartX(e.clientX);
         setIsDragging(true);
@@ -638,7 +638,7 @@ function SwipeableCard({ profile, userProfile, onSwipe, onDetails }) {
     return (
         <div
             ref={cardRef}
-            className="absolute inset-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 cursor-grab active:cursor-grabbing select-none"
+            className="absolute inset-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 cursor-grab active:cursor-grabbing select-none"
             style={{
                 transform,
                 transition,
@@ -655,60 +655,67 @@ function SwipeableCard({ profile, userProfile, onSwipe, onDetails }) {
             onMouseLeave={handleEnd}
             onClick={(e) => { if (Math.abs(currentX) < 5) onDetails(); }}
         >
-            {/* Upper Section: Avatar & Gradient Background (60% height) */}
-            <div className={`h-[60%] bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-500 to-indigo-600' : 'from-pink-500 to-rose-600'} relative flex items-center justify-center p-6`}>
+            {/* Top Half: Visual Impact (45% now) */}
+            <div className={`h-[45%] bg-gradient-to-br ${profile.gender === 'male' ? 'from-blue-500 to-indigo-600' : 'from-pink-500 to-rose-600'} relative p-3 flex flex-col items-center pt-5`}>
 
                 {/* Decorative BG Circles */}
-                <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white to-transparent"></div>
+                <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white to-transparent pointer-events-none"></div>
 
-                {/* Avatar Container */}
-                <div className="w-40 h-40 rounded-full border-[6px] border-white/30 bg-white shadow-2xl overflow-hidden relative z-10 backdrop-blur-sm">
-                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
+                {/* Vibe Tags Overlay (Glassmorphism) - Tiny */}
+                <div className="absolute top-2 flex gap-1 z-10">
+                    {profile.mbti && <span className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-white text-[8px] font-bold rounded-full border border-white/20 shadow-sm">{profile.mbti}</span>}
+                    {profile.zodiac && <span className="px-1.5 py-0.5 bg-white/20 backdrop-blur-md text-white text-[8px] font-bold rounded-full border border-white/20 shadow-sm">{profile.zodiac.split(' ')[1] || profile.zodiac}</span>}
                 </div>
 
-                {/* Info Badge Overlay on Image */}
-                <div className="absolute bottom-4 right-4 bg-black/30 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/20">
-                    <MapPin className="w-3 h-3 inline mr-1" />
-                    {profile.city}
+                {/* Avatar Container - Mini (w-24) */}
+                <div className="w-24 h-24 rounded-full border-[3px] border-white/30 bg-white shadow-lg overflow-hidden relative z-10 backdrop-blur-md mt-4">
+                    <AvatarGenerator nickname={profile.nickname} gender={profile.gender} />
                 </div>
 
                 {/* Swipe Indicators (Stamps) */}
                 {currentX > 50 && (
-                    <div className="absolute left-6 top-6 border-[5px] border-gray-500 text-gray-500 rounded-xl px-4 py-2 text-4xl font-black uppercase tracking-widest transform -rotate-12 bg-white/40 backdrop-blur-md shadow-lg z-20 animate-in zoom-in duration-200">
+                    <div className="absolute left-3 top-12 border-[3px] border-gray-400 text-gray-400 rounded-lg px-2 py-0.5 text-2xl font-black uppercase tracking-widest transform -rotate-12 bg-white/90 backdrop-blur-xl shadow-lg z-20 animate-in zoom-in duration-200">
                         SKIP
                     </div>
                 )}
                 {currentX < -50 && (
-                    <div className="absolute right-6 top-6 border-[5px] border-red-500 text-red-500 rounded-xl px-4 py-2 text-4xl font-black uppercase tracking-widest transform rotate-12 bg-black/20 backdrop-blur-md shadow-lg z-20 animate-in zoom-in duration-200">
+                    <div className="absolute right-3 top-12 border-[3px] border-red-500 text-red-500 rounded-lg px-2 py-0.5 text-2xl font-black uppercase tracking-widest transform rotate-12 bg-white/90 backdrop-blur-xl shadow-lg z-20 animate-in zoom-in duration-200">
                         PASS
                     </div>
                 )}
             </div>
 
-            {/* Lower Section: Details (40% height) */}
-            <div className="h-[40%] bg-white dark:bg-gray-800 relative flex flex-col px-6 pt-5 pb-4">
-                {/* Gradient Separator */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent opacity-50"></div>
+            {/* Bottom Half: Info & Bio Snippet (55% now) */}
+            <div className="h-[55%] bg-white dark:bg-gray-800 relative flex flex-col px-3 pt-6 pb-2">
+                {/* Curve Divider */}
+                <div className="absolute top-[-14px] left-0 w-full h-5 bg-white dark:bg-gray-800 rounded-t-[20px]"></div>
 
-                <div className="flex-1 flex flex-col items-center text-center">
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-white leading-none mb-2 truncate w-full tracking-tight">
-                        {profile.nickname}, <span className="font-light">{profile.age}</span>
+                <div className="flex-1 flex flex-col items-center text-center relative z-10">
+                    <h3 className="text-xl font-black text-gray-900 dark:text-white leading-none mb-0.5 truncate w-full tracking-tight">
+                        {profile.nickname}, <span className="font-light text-gray-500">{profile.age}</span>
                     </h3>
 
-                    <div className="w-full mb-3 transform scale-95 origin-center">
+                    <p className="text-[9px] font-bold text-gray-400 flex items-center gap-1 mb-2">
+                        <MapPin className="w-2.5 h-2.5" /> {profile.city}
+                    </p>
+
+                    {/* Compatibility Score - Extra Compact */}
+                    <div className="w-full mb-1.5 transform scale-75 origin-center">
                         <CompatibilityBadge myProfile={userProfile} theirProfile={profile} />
                     </div>
 
-                    <div className="flex flex-wrap justify-center gap-2 overflow-hidden max-h-[70px] w-full">
-                        {profile.mbti && <span className="px-3 py-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-lg border border-indigo-100 dark:border-indigo-800">{profile.mbti}</span>}
-                        {profile.zodiac && <span className="px-3 py-1 text-[11px] font-bold bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-lg border border-purple-100 dark:border-purple-800">{profile.zodiac.split(' ')[1] || profile.zodiac}</span>}
-                        {profile.interests?.slice(0, 2).map(tag => (
-                            <span key={tag} className="px-3 py-1 text-[11px] font-bold bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-600">{tag}</span>
-                        ))}
-                    </div>
+                    {/* Bio Snippet - Micro */}
+                    {profile.self_intro && (
+                        <div className="relative w-full bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 mb-1 text-left border border-gray-100 dark:border-gray-700">
+                            <Quote className="absolute top-1 left-1 w-2 h-2 text-gray-300 dark:text-gray-500 fill-current opacity-50" />
+                            <p className="text-[9px] text-gray-600 dark:text-gray-300 line-clamp-2 pl-2.5 italic leading-tight">
+                                "{profile.self_intro}"
+                            </p>
+                        </div>
+                    )}
                 </div>
 
-                <p className="text-center text-[10px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest mt-auto mb-1">
+                <p className="text-center text-[8px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest mt-auto py-3">
                     Tap card for full profile
                 </p>
             </div>
