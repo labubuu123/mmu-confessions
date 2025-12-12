@@ -181,7 +181,7 @@ export default function MatchmakerFeed({ user, userProfile }) {
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95
                             ${hasConnected
                                     ? 'bg-green-50 text-green-600 cursor-default'
-                                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-200'}`}
+                                    : 'bg-violet-600 hover:bg-violet-700 text-white'}`}
                         >
                             {hasConnected ? (
                                 <><Check className="w-3.5 h-3.5" /> Sent</>
