@@ -5,13 +5,16 @@ import { MessageCircle, MapPin, Send, Loader2, Hand, Megaphone, Heart, Check, X,
 export default function MatchmakerFeed({ user, userProfile }) {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+
     const [showPostModal, setShowPostModal] = useState(false);
     const [newPost, setNewPost] = useState({ content: '', location_tag: '' });
     const [submitting, setSubmitting] = useState(false);
+
     const [messageTarget, setMessageTarget] = useState(null);
     const [connectMessage, setConnectMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [myConnections, setMyConnections] = useState(new Set());
+
     const fetchData = async () => {
         setLoading(true);
 
@@ -39,7 +42,12 @@ export default function MatchmakerFeed({ user, userProfile }) {
 
         const channel = supabase.channel('public:matchmaker_feed_realtime')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_feed', filter: "status=eq.approved" },
-                (payload) => setPosts(prev => [payload.new, ...prev]))
+                (payload) => {
+                    setPosts(prev => {
+                        if (prev.find(p => p.id === payload.new.id)) return prev;
+                        return [payload.new, ...prev];
+                    });
+                })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'matchmaker_feed' },
                 (payload) => setPosts(prev => prev.filter(p => p.id !== payload.old.id)))
             .subscribe();
@@ -53,17 +61,20 @@ export default function MatchmakerFeed({ user, userProfile }) {
         setSubmitting(true);
 
         try {
-            const { error } = await supabase.from('matchmaker_feed').insert({
+            const { data, error } = await supabase.from('matchmaker_feed').insert({
                 author_id: user.id,
                 content: newPost.content,
                 location_tag: newPost.location_tag || 'Campus',
                 gender: userProfile.gender,
                 status: 'approved'
-            });
+            }).select().single();
 
             if (error) throw error;
+
             setShowPostModal(false);
             setNewPost({ content: '', location_tag: '' });
+            setPosts(prev => [data, ...prev]);
+
         } catch (err) {
             alert("Failed to post: " + err.message);
         } finally {
@@ -73,12 +84,15 @@ export default function MatchmakerFeed({ user, userProfile }) {
 
     const handleDelete = async (postId) => {
         if (!confirm("Are you sure you want to delete this shoutout?")) return;
+
+        setPosts(prev => prev.filter(p => p.id !== postId));
+
         try {
             const { error } = await supabase.from('matchmaker_feed').delete().eq('id', postId);
             if (error) throw error;
-            setPosts(prev => prev.filter(p => p.id !== postId));
         } catch (err) {
             alert("Failed to delete: " + err.message);
+            fetchData();
         }
     };
 
@@ -152,7 +166,7 @@ export default function MatchmakerFeed({ user, userProfile }) {
                     </p>
                 </div>
 
-                <div className="relative z-10 flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700/50">
+                <div className="relative z-10 flex items-center justify-between mt-auto pt-2">
                     <div className="flex items-center gap-1.5">
                         <div className={`w-2 h-2 rounded-full ${isMale ? 'bg-indigo-400' : 'bg-pink-400'}`}></div>
                         <span className="text-xs text-gray-500 font-medium">
