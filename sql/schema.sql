@@ -346,6 +346,7 @@ DROP POLICY IF EXISTS "Enable delete for admin (matchmaker)" ON storage.objects;
 DROP POLICY IF EXISTS "Create feed posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Delete own posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Read approved feed" ON public.matchmaker_feed;
+DROP POLICY IF EXISTS "Admin delete feed" ON public.matchmaker_feed;
 
 DROP FUNCTION IF EXISTS get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT);
 
@@ -423,6 +424,7 @@ CREATE POLICY "Enable insert for all users" ON public.lost_and_found AS permissi
 CREATE POLICY "Read approved feed" ON public.matchmaker_feed FOR SELECT USING (status = 'approved');
 CREATE POLICY "Create feed posts" ON public.matchmaker_feed FOR INSERT WITH CHECK (auth.uid()::text = author_id);
 CREATE POLICY "Delete own posts" ON public.matchmaker_feed FOR DELETE USING (auth.uid()::text = author_id);
+CREATE POLICY "Admin delete feed" ON public.matchmaker_feed FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

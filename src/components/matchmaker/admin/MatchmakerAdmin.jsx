@@ -91,20 +91,24 @@ export default function MatchmakerAdmin() {
     const fetchReports = async () => { const { data } = await supabase.from('matchmaker_reports').select('*, reporter:reporter_id(nickname), reported:reported_id(nickname, warning_count, status)').order('created_at', { ascending: false }); setReports(data || []); };
 
     const fetchFeed = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('matchmaker_feed')
-            .select('*, author:author_id(nickname)')
+            .select('*, author:matchmaker_profiles(nickname)')
             .order('created_at', { ascending: false });
+
+        if (error) console.error("Error fetching feed:", error);
         setFeed(data || []);
     };
 
     const handleDeletePost = async (id) => {
         if (!confirm("Permanently delete this feed post?")) return;
         try {
-            await supabase.from('matchmaker_feed').delete().eq('id', id);
+            const { error } = await supabase.from('matchmaker_feed').delete().eq('id', id);
+            if (error) throw error;
+
             setFeed(prev => prev.filter(p => p.id !== id));
         } catch (err) {
-            alert("Failed to delete post");
+            alert("Failed to delete post: " + err.message);
         }
     };
 
