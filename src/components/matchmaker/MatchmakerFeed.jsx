@@ -225,7 +225,7 @@ export default function MatchmakerFeed({ user, userProfile }) {
                                 <textarea
                                     className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white resize-none"
                                     rows={3}
-                                    placeholder="e.g. To the girl reading Harry Potter at FCM..."
+                                    placeholder="e.g. the girl I saw in Ixora Block D lift, wearing a white shirt…"
                                     value={newPost.content}
                                     onChange={e => setNewPost({ ...newPost, content: e.target.value })}
                                     maxLength={150}
