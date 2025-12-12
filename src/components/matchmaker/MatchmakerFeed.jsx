@@ -241,7 +241,7 @@ export default function MatchmakerFeed({ user, userProfile }) {
                                     <input
                                         type="text"
                                         className="w-full pl-9 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white"
-                                        placeholder="e.g. Library, Cafe, CLC"
+                                        placeholder="e.g. Library, Ixora Lift, CLC, CDP"
                                         value={newPost.location_tag}
                                         onChange={e => setNewPost({ ...newPost, location_tag: e.target.value })}
                                         maxLength={20}
