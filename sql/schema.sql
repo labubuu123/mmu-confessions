@@ -168,6 +168,16 @@ CREATE TABLE IF NOT EXISTS public.marketplace_reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.matchmaker_feed (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    location_tag TEXT,
+    gender TEXT,
+    status TEXT DEFAULT 'approved', 
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.matchmaker_profiles
 ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS lat FLOAT,
@@ -283,6 +293,15 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('confessions', 'confessions', true)
 ON CONFLICT (id) DO NOTHING;
 
+ALTER TABLE public.matchmaker_feed
+DROP CONSTRAINT IF EXISTS matchmaker_feed_author_id_fkey;
+
+ALTER TABLE public.matchmaker_feed
+ADD CONSTRAINT matchmaker_feed_author_id_fkey
+FOREIGN KEY (author_id)
+REFERENCES public.matchmaker_profiles(author_id)
+ON DELETE CASCADE;
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
@@ -303,6 +322,7 @@ ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lost_and_found ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matchmaker_feed ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -323,6 +343,9 @@ DROP POLICY IF EXISTS "Enable insert for users (matchmaker_selfies)" ON storage.
 DROP POLICY IF EXISTS "Enable insert for users (matchmaker_verification)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable read for admin (matchmaker_verification)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable delete for admin (matchmaker)" ON storage.objects;
+DROP POLICY IF EXISTS "Create feed posts" ON public.matchmaker_feed;
+DROP POLICY IF EXISTS "Delete own posts" ON public.matchmaker_feed;
+DROP POLICY IF EXISTS "Read approved feed" ON public.matchmaker_feed;
 
 DROP FUNCTION IF EXISTS get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT);
 
@@ -397,6 +420,9 @@ CREATE POLICY "Admin can view all reports" ON public.marketplace_reports FOR SEL
 CREATE POLICY "Admin can delete reports" ON public.marketplace_reports FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable read access for all users" ON public.lost_and_found AS permissive FOR SELECT TO public USING (true);
 CREATE POLICY "Enable insert for all users" ON public.lost_and_found AS permissive FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Read approved feed" ON public.matchmaker_feed FOR SELECT USING (status = 'approved');
+CREATE POLICY "Create feed posts" ON public.matchmaker_feed FOR INSERT WITH CHECK (auth.uid()::text = author_id);
+CREATE POLICY "Delete own posts" ON public.matchmaker_feed FOR DELETE USING (auth.uid()::text = author_id);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

@@ -5,8 +5,9 @@ import MatchmakerWelcome from './MatchmakerWelcome';
 import MatchmakerProfileForm from './MatchmakerProfileForm';
 import MatchmakerBrowse from './MatchmakerBrowse';
 import MatchmakerConnections from './MatchmakerConnections';
+import MatchmakerFeed from './MatchmakerFeed';
 import MatchmakerAdmin from './admin/MatchmakerAdmin';
-import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Trash2, Heart } from 'lucide-react';
+import { Loader2, User, Shield, Sparkles, LogOut, AlertTriangle, Check, Heart, Megaphone } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Matchmaker() {
@@ -252,6 +253,15 @@ export default function Matchmaker() {
                         >
                             Find Love
                         </button>
+
+                        <button
+                            onClick={() => setView('feed')}
+                            className={`pb-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition-colors relative whitespace-nowrap flex items-center gap-1.5
+                            ${view === 'feed' ? 'border-pink-500 text-pink-600 dark:text-pink-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-pink-400'}`}
+                        >
+                            <Megaphone className="w-3.5 h-3.5" /> Missed Connections
+                        </button>
+
                         <button
                             onClick={() => setView('connections')}
                             className={`pb-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${view === 'connections' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-indigo-400'}`}
@@ -269,6 +279,7 @@ export default function Matchmaker() {
 
             <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6">
                 {view === 'browse' && <MatchmakerBrowse user={user} userProfile={profile} />}
+                {view === 'feed' && <MatchmakerFeed user={user} userProfile={profile} />}
                 {view === 'connections' && <MatchmakerConnections user={user} userProfile={profile} connectionCounts={connectionCounts} setConnectionCounts={setConnectionCounts} />}
                 {view === 'profile' && (
                     <MatchmakerProfileForm profile={profile} user={user} onSave={() => { refreshProfile(); setView('browse'); }} />

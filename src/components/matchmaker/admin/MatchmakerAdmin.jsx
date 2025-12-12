@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, KeyRound, MessageCircle } from 'lucide-react';
+import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, KeyRound, MessageCircle, Megaphone } from 'lucide-react';
 
 const AvatarGenerator = ({ nickname, gender }) => {
     const seed = useMemo(() => {
@@ -59,6 +59,7 @@ export default function MatchmakerAdmin() {
     const [rejected, setRejected] = useState([]);
     const [loves, setLoves] = useState([]);
     const [reports, setReports] = useState([]);
+    const [feed, setFeed] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
     const [activeTab, setActiveTab] = useState('pending');
@@ -69,7 +70,14 @@ export default function MatchmakerAdmin() {
     const refreshAll = async () => {
         setLoading(true);
         try {
-            await Promise.all([fetchPending(), fetchApproved(), fetchRejected(), fetchLoves(), fetchReports()]);
+            await Promise.all([
+                fetchPending(),
+                fetchApproved(),
+                fetchRejected(),
+                fetchLoves(),
+                fetchReports(),
+                fetchFeed()
+            ]);
             await fetchUsernames();
         } catch (error) { console.error("Error refreshing admin data:", error); }
         finally { setLoading(false); }
@@ -81,6 +89,24 @@ export default function MatchmakerAdmin() {
     const fetchRejected = async () => { const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'rejected').order('updated_at', { ascending: false }); setRejected(data || []); };
     const fetchLoves = async () => { const { data } = await supabase.from('matchmaker_loves').select('*, from:from_user_id(nickname), to:to_user_id(nickname)').order('created_at', { ascending: false }).limit(50); setLoves(data || []); };
     const fetchReports = async () => { const { data } = await supabase.from('matchmaker_reports').select('*, reporter:reporter_id(nickname), reported:reported_id(nickname, warning_count, status)').order('created_at', { ascending: false }); setReports(data || []); };
+
+    const fetchFeed = async () => {
+        const { data } = await supabase
+            .from('matchmaker_feed')
+            .select('*, author:author_id(nickname)')
+            .order('created_at', { ascending: false });
+        setFeed(data || []);
+    };
+
+    const handleDeletePost = async (id) => {
+        if (!confirm("Permanently delete this feed post?")) return;
+        try {
+            await supabase.from('matchmaker_feed').delete().eq('id', id);
+            setFeed(prev => prev.filter(p => p.id !== id));
+        } catch (err) {
+            alert("Failed to delete post");
+        }
+    };
 
     const updateStatus = async (id, status, reason = null) => {
         if (processingId) return; setProcessingId(id);
@@ -202,9 +228,9 @@ export default function MatchmakerAdmin() {
             )}
 
             <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto pb-1">
-                {['pending', 'approved', 'rejected'].map(t => (
+                {['pending', 'approved', 'rejected', 'feed'].map(t => (
                     <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-t-lg font-bold capitalize transition-colors ${activeTab === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}>
-                        {t} ({t === 'pending' ? pending.length : t === 'approved' ? approved.length : rejected.length})
+                        {t} ({t === 'pending' ? pending.length : t === 'approved' ? approved.length : t === 'feed' ? feed.length : rejected.length})
                     </button>
                 ))}
             </div>
@@ -228,8 +254,37 @@ export default function MatchmakerAdmin() {
                             <div className="col-span-2 text-center text-xs text-gray-400 italic py-2">Waiting for user update...</div>
                         </ProfileCard>
                     ))}
-                    {((activeTab === 'pending' && !pending.length) || (activeTab === 'approved' && !approved.length)) && (
-                        <div className="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">No profiles found.</div>
+
+                    {activeTab === 'feed' && feed.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${post.gender === 'male' ? 'bg-indigo-100 text-indigo-600' : 'bg-pink-100 text-pink-600'}`}>
+                                        <Megaphone className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                                            {post.author?.nickname || 'Unknown'}
+                                            <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">{post.location_tag}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400">{new Date(post.created_at).toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-300 italic">
+                                "{post.content}"
+                            </div>
+                            <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="w-full py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" /> Delete Post
+                            </button>
+                        </div>
+                    ))}
+
+                    {((activeTab === 'pending' && !pending.length) || (activeTab === 'approved' && !approved.length) || (activeTab === 'feed' && !feed.length)) && (
+                        <div className="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">No content found.</div>
                     )}
                 </div>
             )}
