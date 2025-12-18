@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_feed (
     content TEXT NOT NULL,
     location_tag TEXT,
     gender TEXT,
-    status TEXT DEFAULT 'approved', 
+    status TEXT DEFAULT 'approved',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -184,7 +184,8 @@ ADD COLUMN IF NOT EXISTS lat FLOAT,
 ADD COLUMN IF NOT EXISTS long FLOAT,
 ADD COLUMN IF NOT EXISTS mbti TEXT,
 ADD COLUMN IF NOT EXISTS zodiac TEXT,
-ADD COLUMN IF NOT EXISTS red_flags TEXT[] DEFAULT '{}';
+ADD COLUMN IF NOT EXISTS red_flags TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS avatar_config JSONB DEFAULT '{}'::jsonb;
 
 ALTER TABLE public.confessions
 ADD COLUMN IF NOT EXISTS is_permanent BOOLEAN DEFAULT FALSE,
@@ -1235,6 +1236,7 @@ RETURNS TABLE (
     self_intro TEXT,
     looking_for TEXT,
     avatar_seed TEXT,
+    avatar_config JSONB,
     created_at TIMESTAMP WITH TIME ZONE,
     distance_km FLOAT,
     has_sent_love BOOLEAN
@@ -1257,6 +1259,7 @@ BEGIN
         p.self_intro,
         p.looking_for,
         p.avatar_seed,
+        p.avatar_config,
         p.created_at,
         CASE
             WHEN filter_lat IS NOT NULL AND filter_long IS NOT NULL AND p.lat IS NOT NULL AND p.long IS NOT NULL THEN
@@ -1319,6 +1322,7 @@ RETURNS TABLE (
     other_user_id TEXT,
     nickname TEXT,
     avatar_seed TEXT,
+    avatar_config JSONB,
     gender TEXT,
     city TEXT,
     status TEXT,
@@ -1332,71 +1336,17 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT
-        l.id as connection_id,
-        p.author_id as other_user_id,
-        p.nickname,
-        p.avatar_seed,
-        p.gender,
-        p.city,
-        'pending_received'::text as status,
-        NULL::text as contact_info,
-        l.updated_at,
-        l.message
-    FROM public.matchmaker_loves l
-    JOIN public.matchmaker_profiles p ON l.from_user_id = p.author_id
-    WHERE l.to_user_id = viewer_id AND l.status = 'pending'
-
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.avatar_config, p.gender, p.city, 'pending_received', NULL::text, l.updated_at, l.message
+    FROM public.matchmaker_loves l JOIN public.matchmaker_profiles p ON l.from_user_id = p.author_id WHERE l.to_user_id = viewer_id AND l.status = 'pending'
     UNION ALL
-
-    SELECT
-        l.id as connection_id,
-        p.author_id as other_user_id,
-        p.nickname,
-        p.avatar_seed,
-        p.gender,
-        p.city,
-        'pending_sent'::text as status,
-        NULL::text as contact_info,
-        l.updated_at,
-        l.message
-    FROM public.matchmaker_loves l
-    JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
-    WHERE l.from_user_id = viewer_id AND l.status = 'pending'
-
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.avatar_config, p.gender, p.city, 'pending_sent', NULL::text, l.updated_at, l.message
+    FROM public.matchmaker_loves l JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id WHERE l.from_user_id = viewer_id AND l.status = 'pending'
     UNION ALL
-
-    SELECT
-        l.id as connection_id,
-        p.author_id as other_user_id,
-        p.nickname,
-        p.avatar_seed,
-        p.gender,
-        p.city,
-        'rejected'::text as status,
-        NULL::text as contact_info,
-        l.updated_at,
-        l.message
-    FROM public.matchmaker_loves l
-    JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id
-    WHERE l.from_user_id = viewer_id AND l.status = 'rejected'
-
+    SELECT l.id, p.author_id, p.nickname, p.avatar_seed, p.avatar_config, p.gender, p.city, 'rejected', NULL::text, l.updated_at, l.message
+    FROM public.matchmaker_loves l JOIN public.matchmaker_profiles p ON l.to_user_id = p.author_id WHERE l.from_user_id = viewer_id AND l.status = 'rejected'
     UNION ALL
-
-    SELECT
-        m.id as connection_id,
-        CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END as other_user_id,
-        p.nickname,
-        p.avatar_seed,
-        p.gender,
-        p.city,
-        'matched'::text as status,
-        p.contact_info,
-        m.matched_at as updated_at,
-        NULL::text as message
-    FROM public.matchmaker_matches m
-    JOIN public.matchmaker_profiles p ON p.author_id = (CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END)
-    WHERE m.user1_id = viewer_id OR m.user2_id = viewer_id;
+    SELECT m.id, CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END, p.nickname, p.avatar_seed, p.avatar_config, p.gender, p.city, 'matched', p.contact_info, m.matched_at, NULL::text
+    FROM public.matchmaker_matches m JOIN public.matchmaker_profiles p ON p.author_id = (CASE WHEN m.user1_id = viewer_id THEN m.user2_id ELSE m.user1_id END) WHERE m.user1_id = viewer_id OR m.user2_id = viewer_id;
 END;
 $$;
 
