@@ -346,26 +346,23 @@ const AvatarEditor = ({ config, onChange, gender }) => {
     );
 
     return (
-        <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-2xl animate-in slide-in-from-bottom-6 duration-500">
-            <div className="flex flex-col items-center">
-                <div className="w-32 h-32 rounded-3xl border-4 border-white dark:border-gray-700 shadow-xl overflow-hidden bg-gray-50 dark:bg-gray-900 mb-4 relative group">
-                    <CustomAvatar config={formData.avatar_config} gender={formData.gender} />
-                    <button
-                        type="button"
-                        onClick={() => setIsEditingAvatar(true)}
-                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                    >
-                        <Palette className="text-white w-8 h-8 drop-shadow-lg" />
-                    </button>
-                </div>
-
+        <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden shadow-2xl animate-in slide-in-from-bottom-6 duration-500">
+            <div className="w-full md:w-1/3 bg-gray-100 dark:bg-gray-950 flex flex-col items-center justify-center p-6 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 relative">
                 <button
                     type="button"
-                    onClick={() => setIsEditingAvatar(true)}
-                    className="mb-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-full flex items-center gap-2 mx-auto hover:shadow-lg hover:scale-105 transition-all"
+                    onClick={randomize}
+                    className="absolute top-4 right-4 p-2 bg-white dark:bg-gray-800 rounded-full shadow-md text-indigo-600 hover:scale-110 transition-transform z-10"
+                    title="Randomize Avatar"
                 >
-                    <Palette className="w-3 h-3" /> Customize Look
+                    <Dice5 className="w-5 h-5" />
                 </button>
+
+                <div className="w-48 h-48 rounded-full border-8 border-white dark:border-gray-800 shadow-xl overflow-hidden bg-white">
+                    <CustomAvatar config={config} gender={gender} />
+                </div>
+                <p className="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    {gender === 'male' ? 'Boy' : 'Girl'} Style
+                </p>
             </div>
 
             <div className="w-full md:w-2/3 flex flex-col h-[400px]">
