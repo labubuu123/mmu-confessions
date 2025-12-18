@@ -277,9 +277,42 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                     <div className={cardStyle}>
                         <h3 className="text-xl font-bold text-purple-600 mb-6 flex gap-2"><Sparkles className="w-6 h-6" /> What's your vibe?</h3>
                         <div className="space-y-8">
-                            <div><label className={labelStyle}>Zodiac</label><div className="grid grid-cols-3 gap-2">{ZODIAC_SIGNS.map(s => <button key={s} type="button" onClick={() => setFormData(p => ({ ...p, zodiac: s }))} className={`p-2 rounded-xl border text-[10px] ${formData.zodiac === s ? 'bg-purple-600 text-white' : 'bg-gray-50'}`}>{s.split(' ')[1]}</button>)}</div></div>
-                            <div><label className={labelStyle}>MBTI</label><div className="grid grid-cols-4 gap-2">{MBTI_TYPES.map(m => <button key={m} type="button" onClick={() => setFormData(p => ({ ...p, mbti: m }))} className={`py-2 rounded-lg text-[10px] font-bold border ${formData.mbti === m ? 'bg-blue-600 text-white' : 'bg-gray-50'}`}>{m}</button>)}</div></div>
-                            <div><label className={labelStyle} style={{ color: '#ef4444' }}>Red Flags</label><div className="flex flex-wrap gap-2">{RED_FLAG_OPTIONS.map(f => <button key={f} type="button" onClick={() => handleToggle('red_flags', f, 3)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${formData.red_flags.includes(f) ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-500'}`}>{f}</button>)}</div></div>
+                            <div>
+                                <label className={labelStyle}>Zodiac</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {ZODIAC_SIGNS.map(s => {
+                                        const [eng, icon, chi] = s.split(' ');
+                                        const isSelected = formData.zodiac === s;
+                                        return (
+                                            <button key={s} type="button" onClick={() => setFormData(p => ({ ...p, zodiac: s }))} className={`p-2 rounded-xl border flex flex-col items-center justify-center transition-all ${isSelected ? 'bg-purple-600 border-purple-600 text-white' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                                <span className="text-lg mb-1">{icon}</span>
+                                                <span className="text-[10px] font-bold leading-tight">{eng}</span>
+                                                <span className="text-[10px] leading-tight opacity-80">{chi}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelStyle}>MBTI</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {MBTI_TYPES.map(m => (
+                                        <button key={m} type="button" onClick={() => setFormData(p => ({ ...p, mbti: m }))} className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${formData.mbti === m ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                            {m}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelStyle} style={{ color: '#ef4444' }}>Red Flags</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {RED_FLAG_OPTIONS.map(f => (
+                                        <button key={f} type="button" onClick={() => handleToggle('red_flags', f, 3)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.red_flags.includes(f) ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -289,14 +322,27 @@ export default function MatchmakerProfileForm({ profile, user, onSave }) {
                         <div className="space-y-6">
                             <div><label className={labelStyle}>About Me</label><textarea name="self_intro" rows={4} value={formData.self_intro} onChange={handleChange} className={inputStyle} maxLength={500} /><p className="text-right text-[10px] text-gray-400">{formData.self_intro.length}/500</p></div>
                             <div><label className={labelStyle}>Looking For</label><textarea name="looking_for" rows={3} value={formData.looking_for} onChange={handleChange} className={inputStyle} maxLength={300} /></div>
-                            <div><label className={labelStyle}>Interests</label><div className="flex flex-wrap gap-2 mb-2">{INTEREST_OPTIONS.map(i => <button key={i} type="button" onClick={() => handleToggle('interests', i)} className={`px-4 py-2 rounded-full text-sm font-bold border ${formData.interests.includes(i) ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-500'}`}>{i}</button>)}</div><div className="flex gap-2"><input type="text" value={customInterest} onChange={e => setCustomInterest(e.target.value)} placeholder="Add custom..." className="flex-1 px-3 py-2 rounded-lg border bg-gray-50" /><button type="button" onClick={() => { if (customInterest) { handleToggle('interests', customInterest); setCustomInterest(""); } }} className="px-3 bg-indigo-100 text-indigo-600 rounded-lg"><Plus className="w-4 h-4" /></button></div></div>
+                            <div>
+                                <label className={labelStyle}>Interests</label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {INTEREST_OPTIONS.map(i => (
+                                        <button key={i} type="button" onClick={() => handleToggle('interests', i)} className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.interests.includes(i) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                            {i}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <input type="text" value={customInterest} onChange={e => setCustomInterest(e.target.value)} placeholder="Add custom..." className="flex-1 px-3 py-2 rounded-lg border bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500" />
+                                    <button type="button" onClick={() => { if (customInterest) { handleToggle('interests', customInterest); setCustomInterest(""); } }} className="px-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg border border-transparent dark:border-indigo-900"><Plus className="w-4 h-4" /></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
                 {step === 4 && (
                     <div className={cardStyle}>
                         <div className="text-center mb-8"><div className="w-20 h-20 mx-auto bg-green-500 rounded-3xl flex items-center justify-center text-white shadow-lg mb-4"><AtSign className="w-10 h-10" /></div><h3 className="text-2xl font-black">Final Step!</h3></div>
-                        <div className="bg-indigo-50 p-6 rounded-2xl mb-6"><div className="flex gap-3 mb-2"><Shield className="w-5 h-5 text-indigo-600" /><p className="text-sm font-bold text-indigo-800">Privacy Guarantee</p></div><p className="text-xs text-indigo-700">This info is <strong>encrypted</strong> and only revealed if matched.</p></div>
+                        <div className="bg-indigo-50 dark:bg-gray-900 border border-transparent dark:border-indigo-900/30 p-6 rounded-2xl mb-6"><div className="flex gap-3 mb-2"><Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /><p className="text-sm font-bold text-indigo-800 dark:text-indigo-300">Privacy Guarantee</p></div><p className="text-xs text-indigo-700 dark:text-indigo-400/80">This info is <strong>encrypted</strong> and only revealed if matched.</p></div>
                         <div className="relative group mb-8"><div className="absolute left-4 top-3.5 text-gray-400 font-bold">IG @</div><input type="text" name="contact_info" value={formData.contact_info} onChange={handleChange} className={`${inputStyle} pl-14 font-mono`} placeholder="username" required /></div>
                         <button type="submit" disabled={!formData.contact_info} className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold rounded-2xl shadow-xl transition-all">{profile ? 'Update Profile' : 'Submit Profile'}</button>
                         {profile && <button type="button" onClick={handleWithdraw} className="mt-4 w-full text-red-600 font-bold text-sm hover:underline flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /> Delete Identity</button>}

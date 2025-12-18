@@ -1,42 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
+import MatchmakerAvatar from '../MatchmakerAvatar';
 import { Check, X, ShieldAlert, Heart, UserCheck, Ban, Loader2, RefreshCw, Flag, Trash2, MapPin, User, Search, Hash, KeyRound, MessageCircle, Megaphone } from 'lucide-react';
-
-const AvatarGenerator = ({ nickname, gender }) => {
-    const seed = useMemo(() => {
-        const str = (nickname || 'User') + gender;
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        return Math.abs(hash);
-    }, [nickname, gender]);
-
-    const pick = (options, offset = 0) => options[(seed + offset) % options.length];
-    const skinColors = ['#f3d2c1', '#f5e0d7', '#e6c3b3', '#ffdfc4', '#dbb298'];
-    const bgColors = gender === 'male' ? ['#e0e7ff', '#dbeafe', '#ccfbf1', '#f3f4f6'] : ['#fce7f3', '#ffe4e6', '#fef3c7', '#fae8ff'];
-    const skin = pick(skinColors);
-    const bg = pick(bgColors, 1);
-    const eyesVariant = seed % 3;
-    const mouthVariant = (seed >> 1) % 3;
-
-    return (
-        <svg viewBox="0 0 100 100" className="w-full h-full bg-white">
-            <rect width="100" height="100" fill={bg} />
-            <path d="M20 100 Q50 80 80 100" fill={gender === 'male' ? '#6366f1' : '#ec4899'} opacity="0.8" />
-            <circle cx="50" cy="50" r="35" fill={skin} />
-            <g fill="#1f2937">
-                {eyesVariant === 0 && (<><circle cx="38" cy="48" r="4" /><circle cx="62" cy="48" r="4" /></>)}
-                {eyesVariant === 1 && (<><path d="M34 50 Q38 42 42 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M58 50 Q62 42 66 50" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" /></>)}
-                {eyesVariant === 2 && (<><circle cx="38" cy="48" r="4" /><path d="M58 48 L66 48" stroke="#1f2937" strokeWidth="3" strokeLinecap="round" /></>)}
-            </g>
-            <g stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round">
-                {mouthVariant === 0 && (<path d="M42 65 Q50 70 58 65" />)}
-                {mouthVariant === 1 && (<path d="M38 62 Q50 75 62 62" />)}
-                {mouthVariant === 2 && (<circle cx="50" cy="66" r="4" fill="#1f2937" stroke="none" />)}
-            </g>
-            {gender === 'male' ? (<path d="M25 40 Q50 15 75 40" fill="#1f2937" opacity="0.1" />) : (<path d="M20 45 Q50 10 80 45" fill="#1f2937" opacity="0.1" />)}
-        </svg>
-    );
-};
 
 const ExpandableText = ({ text, limit = 100 }) => {
     const [expanded, setExpanded] = useState(false);
@@ -162,8 +127,8 @@ export default function MatchmakerAdmin() {
     const ProfileCard = ({ p, children }) => (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
             <div className="p-4 flex items-center gap-4 bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-700">
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-white shadow-sm shrink-0">
-                    <AvatarGenerator nickname={p.nickname} gender={p.gender} />
+                <div className="w-16 h-16 rounded-3xl overflow-hidden bg-white shadow-sm shrink-0 border-2 border-white dark:border-gray-700">
+                    <MatchmakerAvatar config={p.avatar_config} gender={p.gender} />
                 </div>
                 <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">{p.nickname}</h3>
