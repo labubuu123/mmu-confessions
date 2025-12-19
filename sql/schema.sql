@@ -288,7 +288,8 @@ ADD CONSTRAINT matchmaker_reports_reported_id_fkey
 
 ALTER TABLE public.marketplace_items
 ADD COLUMN IF NOT EXISTS report_count INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS is_sold BOOLEAN DEFAULT false;
+ADD COLUMN IF NOT EXISTS is_sold BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active' CHECK (status IN ('active', 'sold', 'expired'));
 
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('confessions', 'confessions', true)
@@ -348,8 +349,6 @@ DROP POLICY IF EXISTS "Create feed posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Delete own posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Read approved feed" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Admin delete feed" ON public.matchmaker_feed;
-
-DROP FUNCTION IF EXISTS get_browse_profiles(TEXT, TEXT, INT, FLOAT, FLOAT, INT);
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
@@ -1217,6 +1216,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION get_browse_profiles(
     viewer_id TEXT,
+    viewer_interests TEXT[] DEFAULT '{}',
+    viewer_mbti TEXT DEFAULT '',
     filter_gender TEXT DEFAULT 'all',
     filter_max_age INT DEFAULT 100,
     filter_lat FLOAT DEFAULT NULL,
@@ -1239,7 +1240,8 @@ RETURNS TABLE (
     avatar_config JSONB,
     created_at TIMESTAMP WITH TIME ZONE,
     distance_km FLOAT,
-    has_sent_love BOOLEAN
+    has_sent_love BOOLEAN,
+    match_score INT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1263,22 +1265,22 @@ BEGIN
         p.created_at,
         CASE
             WHEN filter_lat IS NOT NULL AND filter_long IS NOT NULL AND p.lat IS NOT NULL AND p.long IS NOT NULL THEN
-                (
-                    6371 * acos(
-                        least(1.0, greatest(-1.0,
-                            cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) +
-                            sin(radians(filter_lat)) * sin(radians(p.lat))
-                        ))
-                    )
-                )
+                (6371 * acos(least(1.0, greatest(-1.0, cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) + sin(radians(filter_lat)) * sin(radians(p.lat))))))
             ELSE NULL
         END AS distance_km,
         EXISTS(
             SELECT 1 FROM public.matchmaker_loves l
-            WHERE l.from_user_id = viewer_id
-            AND l.to_user_id = p.author_id
-            AND l.status IN ('pending', 'accepted')
-        ) AS has_sent_love
+            WHERE l.from_user_id = viewer_id AND l.to_user_id = p.author_id AND l.status IN ('pending', 'accepted')
+        ) AS has_sent_love,
+        (
+            (COALESCE(array_length(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(viewer_interests)), 1), 0) * 2) +
+            (CASE WHEN length(p.mbti) = 4 AND length(viewer_mbti) = 4 THEN
+                (CASE WHEN substr(p.mbti, 1, 1) = substr(viewer_mbti, 1, 1) THEN 1 ELSE 0 END) +
+                (CASE WHEN substr(p.mbti, 2, 1) = substr(viewer_mbti, 2, 1) THEN 1 ELSE 0 END) +
+                (CASE WHEN substr(p.mbti, 3, 1) = substr(viewer_mbti, 3, 1) THEN 1 ELSE 0 END) +
+                (CASE WHEN substr(p.mbti, 4, 1) = substr(viewer_mbti, 4, 1) THEN 1 ELSE 0 END)
+            ELSE 0 END)
+        ) AS match_score
     FROM public.matchmaker_profiles p
     WHERE p.status = 'approved'
         AND p.is_visible = true
@@ -1287,31 +1289,16 @@ BEGIN
         AND p.age <= filter_max_age
         AND NOT EXISTS (
             SELECT 1 FROM public.matchmaker_loves l
-            WHERE (
-                (l.from_user_id = viewer_id AND l.to_user_id = p.author_id AND l.status IN ('pending', 'accepted'))
-                OR (l.to_user_id = viewer_id AND l.from_user_id = p.author_id AND l.status = 'accepted')
-            )
+            WHERE ((l.from_user_id = viewer_id AND l.to_user_id = p.author_id AND l.status IN ('pending', 'accepted'))
+                OR (l.to_user_id = viewer_id AND l.from_user_id = p.author_id AND l.status = 'accepted'))
         )
         AND (
-            filter_radius_km IS NULL
-            OR filter_radius_km <= 0
-            OR (
+            filter_radius_km IS NULL OR filter_radius_km <= 0 OR (
                 filter_lat IS NOT NULL AND p.lat IS NOT NULL AND
-                (
-                    6371 * acos(
-                        least(1.0, greatest(-1.0,
-                            cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) +
-                            sin(radians(filter_lat)) * sin(radians(p.lat))
-                        ))
-                    )
-                ) <= filter_radius_km
+                (6371 * acos(least(1.0, greatest(-1.0, cos(radians(filter_lat)) * cos(radians(p.lat)) * cos(radians(p.long) - radians(filter_long)) + sin(radians(filter_lat)) * sin(radians(p.lat)))))) <= filter_radius_km
             )
         )
-    ORDER BY
-        (CASE WHEN filter_lat IS NOT NULL AND p.lat IS NOT NULL THEN 0 ELSE 1 END) ASC,
-        distance_km ASC,
-        p.created_at DESC
-    LIMIT 50;
+    ORDER BY match_score DESC, distance_km ASC NULLS LAST, p.created_at DESC;
 END;
 $$;
 

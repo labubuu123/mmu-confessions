@@ -31,27 +31,37 @@ const GlobalNotificationHandler = () => {
     const handleNotification = (title, body, url, tag) => {
       if (document.visibilityState === 'visible') {
         info(`${title} - ${body}`, 5000);
+        return;
+      }
 
-      } else {
-        if (Notification.permission === 'granted') {
-          const n = new Notification(title, {
-            body: body,
-            icon: '/favicon.svg',
-            tag: tag,
-            silent: false
-          });
-          n.onclick = () => {
-            window.focus();
-            navigate(url);
-            n.close();
-          };
-        }
+      const lastNotifTag = localStorage.getItem('last_notif_tag');
+      const lastNotifTime = parseInt(localStorage.getItem('last_notif_time') || '0');
+      const now = Date.now();
+
+      if (lastNotifTag === tag && (now - lastNotifTime) < 3000) {
+        return;
+      }
+
+      localStorage.setItem('last_notif_tag', tag);
+      localStorage.setItem('last_notif_time', now.toString());
+
+      if (Notification.permission === 'granted') {
+        const n = new Notification(title, {
+          body: body,
+          icon: '/favicon.svg',
+          tag: tag,
+          silent: false
+        });
+        n.onclick = () => {
+          window.focus();
+          navigate(url);
+          n.close();
+        };
       }
     };
 
     const channel = supabase
       .channel('global-app-notifications')
-
       .on('postgres_changes', { event: '*', schema: 'public', table: 'confessions' }, (payload) => {
         if (payload.new && payload.new.approved === true) {
           const isNewlyVisible = payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.old && payload.old.approved === false);
@@ -66,7 +76,6 @@ const GlobalNotificationHandler = () => {
           }
         }
       })
-
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
         const newComment = payload.new;
         const myPostsRaw = localStorage.getItem('my_posts');
@@ -87,7 +96,6 @@ const GlobalNotificationHandler = () => {
           );
         }
       })
-
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polls' }, (payload) => {
         handleNotification(
           'New Poll! 📊',
@@ -96,7 +104,6 @@ const GlobalNotificationHandler = () => {
           `poll-${payload.new.id}`
         );
       })
-
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => {
         handleNotification(
           'New Event! 📅',
@@ -105,7 +112,6 @@ const GlobalNotificationHandler = () => {
           `event-${payload.new.id}`
         );
       })
-
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_loves' }, (payload) => {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && payload.new.to_user_id === myAnonId) {
@@ -117,7 +123,6 @@ const GlobalNotificationHandler = () => {
           );
         }
       })
-
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchmaker_loves' }, (payload) => {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && payload.new.status === 'accepted') {
@@ -131,7 +136,6 @@ const GlobalNotificationHandler = () => {
           }
         }
       })
-
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_matches' }, (payload) => {
         const myAnonId = localStorage.getItem('anonId');
         if (myAnonId && (payload.new.user1_id === myAnonId || payload.new.user2_id === myAnonId)) {
@@ -143,7 +147,6 @@ const GlobalNotificationHandler = () => {
           );
         }
       })
-
       .subscribe();
 
     return () => {
@@ -241,19 +244,19 @@ function App() {
               }`}>
               <div className="flex items-center gap-3 mx-auto max-w-5xl w-full overflow-hidden">
                 <Megaphone className="w-5 h-5 shrink-0 animate-pulse z-10 relative" />
-                <div className="flex-1 overflow-hidden relative">
+                <div className="flex-1 overflow-hidden relative h-5">
                   <style>{`
-                                @keyframes marquee {
-                                    0% { transform: translateX(0); }
-                                    100% { transform: translateX(-100%); }
-                                }
-                                .animate-marquee {
-                                    display: inline-block;
-                                    padding-left: 100%;
-                                    animation: marquee 20s linear infinite;
-                                }
-                            `}</style>
-                  <div className="animate-marquee whitespace-nowrap">
+                    @keyframes marquee {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-100%); }
+                    }
+                    .animate-marquee {
+                        display: inline-block;
+                        padding-left: 100%;
+                        animation: marquee 20s linear infinite;
+                    }
+                  `}</style>
+                  <div className="animate-marquee whitespace-nowrap absolute">
                     <span className="font-bold mr-2 text-sm opacity-90 tracking-wider">{announcement.title}:</span>
                     <span>{announcement.content}</span>
                   </div>

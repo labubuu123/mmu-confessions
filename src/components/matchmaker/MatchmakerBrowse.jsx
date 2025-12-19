@@ -67,15 +67,22 @@ export default function MatchmakerBrowse({ user, userProfile }) {
         try {
             const { data, error } = await supabase.rpc('get_browse_profiles', {
                 viewer_id: user.id,
+                viewer_interests: userProfile?.interests || [],
+                viewer_mbti: userProfile?.mbti || '',
                 filter_gender: filters.gender,
                 filter_max_age: filters.maxAge,
-                filter_lat: filters.radius > 0 ? filters.userLat : null,
-                filter_long: filters.radius > 0 ? filters.userLong : null,
-                filter_radius_km: filters.radius > 0 ? filters.radius : null
+                filter_lat: userProfile?.lat || null,
+                filter_long: userProfile?.long || null,
+                filter_radius_km: filters.radius === 'all' ? null : parseInt(filters.radius)
             });
+
             if (error) throw error;
             setProfiles(data || []);
-        } catch (err) { console.error(err); } finally { setLoading(false); }
+        } catch (err) {
+            console.error("Error fetching profiles:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
