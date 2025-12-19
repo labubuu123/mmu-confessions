@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -16,9 +16,21 @@ import { useNotifications } from './NotificationSystem';
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
 const MAX_AUDIO_SIZE_MB = 10;
-const MAX_RECORDING_DURATION = 30;
 const MAX_TEXT_LENGTH = 5000;
 const DRAFT_STORAGE_KEY = 'mmu_confession_draft_v1';
+
+const MEME_TEMPLATES = [
+    { id: 'fine', name: 'This is Fine' },
+    { id: 'drake', name: 'Drake Hotline Bling' },
+    { id: 'disastergirl', name: 'Disaster Girl' },
+    { id: 'success', name: 'Success Kid' },
+    { id: 'mw', name: 'Mind Blown' },
+    { id: 'wonka', name: 'Condescending Wonka' },
+    { id: 'pooh', name: 'Tuxedo Pooh' },
+    { id: 'pigeon', name: 'Is this a pigeon?' },
+    { id: 'mocking', name: 'Mocking Spongebob' },
+    { id: 'toy', name: 'Toy Story Everywhere' }
+];
 
 function getAnonId() {
     let anonId = localStorage.getItem('anonId');
@@ -103,6 +115,9 @@ export default function PostForm({ onPosted }) {
     const [showRewriteOptions, setShowRewriteOptions] = useState(false);
     const [history, setHistory] = useState([]);
     const [draftLoaded, setDraftLoaded] = useState(false);
+    const [isGeneratingMeme, setIsGeneratingMeme] = useState(false);
+    const [viralData, setViralData] = useState(null);
+    const [isCheckingViral, setIsCheckingViral] = useState(false);
 
     useEffect(() => {
         const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -164,6 +179,10 @@ export default function PostForm({ onPosted }) {
         } else {
             localStorage.removeItem(DRAFT_STORAGE_KEY);
         }
+
+        if (viralData && Math.abs(text.length - (viralData.textLength || 0)) > 20) {
+            setViralData(null);
+        }
     }, [text, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
 
     useEffect(() => {
@@ -177,6 +196,118 @@ export default function PostForm({ onPosted }) {
             setAudioPreviewUrl(null);
         }
     }, [audio]);
+
+    const handleMemeify = async () => {
+        if (!text.trim()) {
+            warning('Write a confession to meme-ify!');
+            return;
+        }
+
+        if (images.length > 0 || video || audio) {
+            if (!window.confirm("This will replace your current media. Continue?")) return;
+        }
+
+        setIsGeneratingMeme(true);
+        info("Cooking up a meme... 🍳");
+
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error("Missing API Key");
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const templateIds = MEME_TEMPLATES.map(t => t.id).join(', ');
+            const prompt = `
+                Analyze this confession: "${text}".
+                Choose the best meme template ID from this list: [${templateIds}].
+                Generate a short, funny TOP text and BOTTOM text for the meme based on the confession.
+                Output ONLY JSON: { "template_id": "string", "top": "string", "bottom": "string" }
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const data = JSON.parse(response.text().trim().replace(/```json|```/g, ''));
+
+            const clean = (str) => {
+                if (!str) return '_';
+                return encodeURIComponent(
+                    str.replace(/_/g, '__')
+                        .replace(/-/g, '--')
+                        .replace(/\n/g, '~n')
+                        .replace(/\?/g, '~q')
+                        .replace(/%/g, '~p')
+                        .replace(/#/g, '~h')
+                        .replace(/\//g, '~s')
+                        .replace(/"/g, "''")
+                );
+            };
+
+            const memeUrl = `https://api.memegen.link/images/${data.template_id}/${clean(data.top)}/${clean(data.bottom)}.png`;
+
+            const res = await fetch(memeUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `meme_${Date.now()}.png`, { type: "image/png" });
+
+            setVideo(null);
+            setVideoPreview(null);
+            setAudio(null);
+            setOriginalAudio(null);
+            setImages([file]);
+
+            const reader = new FileReader();
+            reader.onloadend = () => setPreviews([reader.result]);
+            reader.readAsDataURL(file);
+
+            success("Meme generated! 😂");
+
+        } catch (err) {
+            console.error("Meme error:", err);
+            error("Failed to generate meme. Try again.");
+        } finally {
+            setIsGeneratingMeme(false);
+        }
+    };
+
+    const handleViralCheck = async () => {
+        if (!text.trim()) {
+            warning('Write something first to analyze!');
+            return;
+        }
+
+        setIsCheckingViral(true);
+
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error("Missing API Key");
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const prompt = `
+                Analyze this confession text intended for a university student page: "${text.substring(0, 1000)}"
+                Predict its "Virality Score" from 0 to 100 based on humor, relatability, drama, or shock value.
+                Provide 3 short, punchy tips to make it spicier or get more engagement.
+                Output ONLY JSON: { "score": number, "tips": ["string", "string", "string"] }
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const data = JSON.parse(response.text().trim().replace(/```json|```/g, ''));
+
+            setViralData({
+                ...data,
+                textLength: text.length
+            });
+            success('Analysis complete!');
+
+        } catch (err) {
+            console.error("Viral check error:", err);
+            error('Failed to analyze. Try again later.');
+        } finally {
+            setIsCheckingViral(false);
+        }
+    };
 
     const analyzeContentWithAI = async (content) => {
         try {
@@ -581,6 +712,7 @@ export default function PostForm({ onPosted }) {
             setUploadProgress(0);
             setShowAudioOptions(false);
             setHistory([]);
+            setViralData(null);
 
             if (!aiAnalysis.toxic) {
                 success('Posted successfully!');
@@ -622,6 +754,7 @@ export default function PostForm({ onPosted }) {
 
                 setAudio(audioFile);
                 setOriginalAudio(audioFile);
+                setVoiceEffect('normal');
 
                 stream.getTracks().forEach(track => track.stop());
                 setIsRecording(false);
@@ -635,14 +768,7 @@ export default function PostForm({ onPosted }) {
             setIsRecording(true);
 
             timerRef.current = setInterval(() => {
-                setRecordingDuration(prev => {
-                    if (prev >= MAX_RECORDING_DURATION - 1) {
-                        stopRecording();
-                        warning('Recording limit reached (30s)');
-                        return MAX_RECORDING_DURATION;
-                    }
-                    return prev + 1;
-                });
+                setRecordingDuration(prev => prev + 1);
             }, 1000);
 
         } catch (err) {
@@ -727,6 +853,7 @@ export default function PostForm({ onPosted }) {
 
         if (file.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
             error(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`);
+            e.target.value = null;
             return;
         }
 
@@ -762,7 +889,7 @@ export default function PostForm({ onPosted }) {
         }
 
         setIsProcessingAudio(true);
-        info(type === 'deep' ? 'Anonymizing voice...' : 'Applying effect...');
+        info('Applying voice effect...');
 
         try {
             const arrayBuffer = await fileToProcess.arrayBuffer();
@@ -789,10 +916,10 @@ export default function PostForm({ onPosted }) {
             const newFile = new File([wavBlob], `processed_${fileToProcess.name.replace(/\.[^/.]+$/, "")}.wav`, { type: 'audio/wav' });
 
             setAudio(newFile);
-            if (type === 'deep') success('Voice automatically anonymized! 🎭');
+            success('Voice effect applied!');
         } catch (err) {
             console.error('Audio processing error:', err);
-            error('Failed to process audio.');
+            error('Failed to apply voice effect. Try a different file.');
             setVoiceEffect('normal');
             setAudio(fileToProcess);
         } finally {
@@ -887,6 +1014,28 @@ export default function PostForm({ onPosted }) {
                                 disabled={isRewriting}
                             />
 
+                            {viralData && (
+                                <div className="mt-2 mb-2 p-3 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-xl border border-orange-100 dark:border-orange-900/30 animate-in slide-in-from-top-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4 text-orange-500" />
+                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Viral Potential</span>
+                                        </div>
+                                        <div className={`px-2 py-0.5 rounded-full text-xs font-black ${viralData.score >= 80 ? 'bg-green-100 text-green-700' : viralData.score >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                            {viralData.score}/100
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {viralData.tips.map((tip, idx) => (
+                                            <div key={idx} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                                <span className="text-orange-400">•</span>
+                                                <span>{tip}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-center mt-2 mb-2 relative px-1">
                                 <div className="flex items-center gap-2">
                                     <div className="relative">
@@ -938,6 +1087,34 @@ export default function PostForm({ onPosted }) {
                                             </div>
                                         )}
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleMemeify}
+                                        disabled={isGeneratingMeme || !text.trim()}
+                                        className={`group flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 transition-all shadow-sm ${isGeneratingMeme ? 'opacity-70 cursor-wait' : ''}`}
+                                    >
+                                        {isGeneratingMeme ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                            <Palette className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                                        )}
+                                        <span className="leading-none hidden sm:inline">Memeify</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleViralCheck}
+                                        disabled={isCheckingViral || !text.trim()}
+                                        className={`group flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400 transition-all shadow-sm ${isCheckingViral ? 'opacity-70 cursor-wait' : ''}`}
+                                    >
+                                        {isCheckingViral ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                            <TrendingUp className="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" />
+                                        )}
+                                        <span className="leading-none hidden sm:inline">Viral Check</span>
+                                    </button>
 
                                     {history.length > 0 && !isRewriting && (
                                         <button
@@ -1023,28 +1200,16 @@ export default function PostForm({ onPosted }) {
 
                     {audio && (
                         <div className="my-3 sm:my-4 space-y-3">
-                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl relative border border-gray-200 dark:border-gray-700">
+                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl relative">
                                 <div className="flex items-center gap-3 mb-2">
                                     <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                             {audio.name}
                                         </p>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                                {(audio.size / 1024 / 1024).toFixed(2)} MB
-                                            </p>
-                                            {voiceEffect === 'deep' && (
-                                                <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded border border-green-200 dark:border-green-800">
-                                                    <Lock className="w-3 h-3" /> ANONYMIZED
-                                                </span>
-                                            )}
-                                            {voiceEffect === 'chipmunk' && (
-                                                <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded">
-                                                    CHIPMUNK
-                                                </span>
-                                            )}
-                                        </div>
+                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                            {(audio.size / 1024 / 1024).toFixed(2)} MB {voiceEffect !== 'normal' && <span className="text-indigo-500 font-bold">• {voiceEffect.toUpperCase()} Effect</span>}
+                                        </p>
                                     </div>
                                     <button
                                         type="button"
@@ -1069,19 +1234,7 @@ export default function PostForm({ onPosted }) {
                                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
                                 >
-                                    <Volume2 className="w-4 h-4" /> Raw
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={isProcessingAudio}
-                                    onClick={() => applyVoiceEffect('deep')}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'deep'
-                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 ring-2 ring-green-500/20'
-                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                        }`}
-                                >
-                                    {isProcessingAudio && voiceEffect === 'deep' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ghost className="w-4 h-4" />}
-                                    Deep (Safe)
+                                    <Volume2 className="w-4 h-4" /> Normal
                                 </button>
                                 <button
                                     type="button"
@@ -1095,6 +1248,18 @@ export default function PostForm({ onPosted }) {
                                     {isProcessingAudio && voiceEffect === 'chipmunk' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
                                     Chipmunk
                                 </button>
+                                <button
+                                    type="button"
+                                    disabled={isProcessingAudio}
+                                    onClick={() => applyVoiceEffect('deep')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'deep'
+                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {isProcessingAudio && voiceEffect === 'deep' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ghost className="w-4 h-4" />}
+                                    Deep
+                                </button>
                             </div>
                         </div>
                     )}
@@ -1103,23 +1268,16 @@ export default function PostForm({ onPosted }) {
                         <div className="my-3 sm:my-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800 flex items-center justify-between animate-pulse">
                             <div className="flex items-center gap-3">
                                 <div className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                                <div>
-                                    <span className="text-red-600 dark:text-red-400 font-bold font-mono text-lg">{formatTime(recordingDuration)}</span>
-                                    <span className="text-xs text-red-400 ml-2">/ {formatTime(MAX_RECORDING_DURATION)}</span>
-                                </div>
+                                <span className="text-red-600 dark:text-red-400 font-bold font-mono">{formatTime(recordingDuration)}</span>
+                                <span className="text-xs text-red-500">Recording...</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="h-1.5 w-16 bg-red-200 rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-500 transition-all duration-1000 ease-linear" style={{ width: `${(recordingDuration / MAX_RECORDING_DURATION) * 100}%` }} />
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={stopRecording}
-                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-sm"
-                                >
-                                    <StopCircle className="w-4 h-4" /> Stop
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={stopRecording}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                            >
+                                <StopCircle className="w-4 h-4" /> Stop
+                            </button>
                         </div>
                     )}
 
@@ -1127,7 +1285,7 @@ export default function PostForm({ onPosted }) {
                         <div className="my-3 sm:my-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
                             <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
                                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-indigo-500" />
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File (Max 30s)</span>
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File</span>
                                 <input type="file" accept="audio/*" onChange={handleAudioChange} className="hidden" />
                             </label>
                             <button
@@ -1136,7 +1294,7 @@ export default function PostForm({ onPosted }) {
                                 className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition group"
                             >
                                 <Disc className="w-6 h-6 text-gray-400 group-hover:text-red-500" />
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Record (Max 30s)</span>
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Record Voice</span>
                             </button>
                         </div>
                     )}
