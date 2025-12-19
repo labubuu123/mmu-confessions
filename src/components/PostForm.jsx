@@ -11,6 +11,7 @@ import SeriesManager from './SeriesManager';
 import MoodSelector from './MoodSelector';
 import CampusSelector from './CampusSelector';
 import LostFoundCreator from './LostFoundCreator';
+import ImageGalleryModal from './ImageGalleryModal';
 import { useNotifications } from './NotificationSystem';
 
 const MAX_VIDEO_SIZE_MB = 25;
@@ -118,6 +119,7 @@ export default function PostForm({ onPosted }) {
     const [isGeneratingMeme, setIsGeneratingMeme] = useState(false);
     const [viralData, setViralData] = useState(null);
     const [isCheckingViral, setIsCheckingViral] = useState(false);
+    const [zoomedIndex, setZoomedIndex] = useState(null);
 
     useEffect(() => {
         const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -930,6 +932,7 @@ export default function PostForm({ onPosted }) {
     function removeImage(index) {
         setImages(prev => prev.filter((_, i) => i !== index));
         setPreviews(prev => prev.filter((_, i) => i !== index));
+        if (zoomedIndex === index) setZoomedIndex(null);
     }
 
     function removeVideo() {
@@ -1171,12 +1174,16 @@ export default function PostForm({ onPosted }) {
                                     <img
                                         src={preview}
                                         alt={`Preview ${idx + 1}`}
-                                        className="w-full h-24 sm:h-32 object-cover rounded-lg"
+                                        className="w-full h-24 sm:h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition"
+                                        onClick={() => setZoomedIndex(idx)}
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => removeImage(idx)}
-                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeImage(idx);
+                                        }}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm z-10"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
@@ -1283,7 +1290,7 @@ export default function PostForm({ onPosted }) {
 
                     {showAudioOptions && !audio && !isRecording && (
                         <div className="my-3 sm:my-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
-                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
+                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-50 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
                                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-indigo-500" />
                                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File</span>
                                 <input type="file" accept="audio/*" onChange={handleAudioChange} className="hidden" />
@@ -1538,6 +1545,14 @@ export default function PostForm({ onPosted }) {
                     </div>
                 </form>
             </div>
+
+            {zoomedIndex !== null && (
+                <ImageGalleryModal
+                    images={previews}
+                    initialIndex={zoomedIndex}
+                    onClose={() => setZoomedIndex(null)}
+                />
+            )}
         </>
     );
 }
