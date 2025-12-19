@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -16,6 +16,7 @@ import { useNotifications } from './NotificationSystem';
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
 const MAX_AUDIO_SIZE_MB = 10;
+const MAX_RECORDING_DURATION = 30;
 const MAX_TEXT_LENGTH = 5000;
 const DRAFT_STORAGE_KEY = 'mmu_confession_draft_v1';
 
@@ -177,6 +178,32 @@ export default function PostForm({ onPosted }) {
         }
     }, [audio]);
 
+    const analyzeContentWithAI = async (content) => {
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) return { toxic: false, sentiment: 'neutral' };
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const prompt = `
+                Analyze the following text for toxicity (hate speech, severe harassment, dangerous threats) and sentiment. 
+                Output ONLY a JSON object with this structure: 
+                { "toxic": boolean, "sentiment": "positive" | "neutral" | "negative", "reason": "short explanation if toxic" }
+                
+                Text: "${content.substring(0, 1000)}"
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const textResponse = response.text().trim().replace(/```json|```/g, '');
+            return JSON.parse(textResponse);
+        } catch (error) {
+            console.error("AI Analysis failed:", error);
+            return { toxic: false, sentiment: 'neutral' };
+        }
+    };
+
     const handleSmartRewrite = async (mode) => {
         if (!text.trim()) {
             warning('Please write something first!');
@@ -312,6 +339,16 @@ export default function PostForm({ onPosted }) {
                 throw new Error(cooldownError.message);
             }
 
+            let aiAnalysis = { toxic: false, sentiment: 'neutral' };
+            if (text.trim()) {
+                info('Analyzing content...');
+                aiAnalysis = await analyzeContentWithAI(text);
+
+                if (aiAnalysis.toxic) {
+                    warning('Your post has been flagged by AI for potential toxicity and submitted for manual review.');
+                }
+            }
+
             let media_urls = [];
             let media_type = null;
             let single_media_url = null;
@@ -398,10 +435,12 @@ export default function PostForm({ onPosted }) {
             }
 
             let moodData = null;
-            if (selectedMood || (voiceEffect && voiceEffect !== 'normal')) {
+            if (selectedMood || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment) {
                 moodData = {
                     ...(selectedMood || {}),
-                    voice_effect: voiceEffect !== 'normal' ? voiceEffect : null
+                    voice_effect: voiceEffect !== 'normal' ? voiceEffect : null,
+                    ai_sentiment: aiAnalysis.sentiment,
+                    toxicity_flag: aiAnalysis.toxic
                 };
             }
 
@@ -414,10 +453,10 @@ export default function PostForm({ onPosted }) {
                     media_urls: media_urls.length > 0 ? media_urls : null,
                     media_type,
                     tags: finalTags,
-                    approved: true,
+                    approved: aiAnalysis.toxic ? false : true,
+                    reported: aiAnalysis.toxic ? true : false,
                     likes_count: 0,
                     comments_count: 0,
-                    reported: false,
                     mood: moodData ? JSON.stringify(moodData) : null,
                     campus: selectedCampus ? selectedCampus.label : null,
                     series_id: seriesData?.series_id || null,
@@ -500,7 +539,12 @@ export default function PostForm({ onPosted }) {
             }
 
             if (onPosted && data && data.length > 0) {
-                onPosted(data[0]);
+
+                if (!aiAnalysis.toxic) {
+                    onPosted(data[0]);
+                } else {
+                    onPosted(null);
+                }
 
                 window.dispatchEvent(new CustomEvent('challengeProgress', {
                     detail: { type: 'post' }
@@ -537,7 +581,10 @@ export default function PostForm({ onPosted }) {
             setUploadProgress(0);
             setShowAudioOptions(false);
             setHistory([]);
-            success('Posted successfully!');
+
+            if (!aiAnalysis.toxic) {
+                success('Posted successfully!');
+            }
 
         } catch (err) {
             console.error('Post error:', err);
@@ -575,19 +622,27 @@ export default function PostForm({ onPosted }) {
 
                 setAudio(audioFile);
                 setOriginalAudio(audioFile);
-                setVoiceEffect('normal');
 
                 stream.getTracks().forEach(track => track.stop());
                 setIsRecording(false);
                 setRecordingDuration(0);
                 setShowAudioOptions(false);
+
+                applyVoiceEffect('deep', audioFile);
             };
 
             mediaRecorderRef.current.start();
             setIsRecording(true);
 
             timerRef.current = setInterval(() => {
-                setRecordingDuration(prev => prev + 1);
+                setRecordingDuration(prev => {
+                    if (prev >= MAX_RECORDING_DURATION - 1) {
+                        stopRecording();
+                        warning('Recording limit reached (30s)');
+                        return MAX_RECORDING_DURATION;
+                    }
+                    return prev + 1;
+                });
             }, 1000);
 
         } catch (err) {
@@ -672,37 +727,45 @@ export default function PostForm({ onPosted }) {
 
         if (file.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
             error(`Audio must be under ${MAX_AUDIO_SIZE_MB}MB`);
-            e.target.value = null;
             return;
         }
 
-        setImages([]);
-        setPreviews([]);
-        setVideo(null);
-        setVideoPreview(null);
-        setShowAudioOptions(false);
+        const audioEl = new Audio(URL.createObjectURL(file));
+        audioEl.onloadedmetadata = () => {
+            if (audioEl.duration > MAX_RECORDING_DURATION + 1) {
+                error(`Audio too long! Max ${MAX_RECORDING_DURATION} seconds allowed.`);
+                URL.revokeObjectURL(audioEl.src);
+                e.target.value = null;
+                return;
+            }
 
-        setAudio(file);
-        setOriginalAudio(file);
-        setVoiceEffect('normal');
+            setImages([]);
+            setPreviews([]);
+            setVideo(null);
+            setVideoPreview(null);
+            setShowAudioOptions(false);
+
+            setAudio(file);
+            setOriginalAudio(file);
+
+            applyVoiceEffect('deep', file);
+        };
     }
 
-    async function applyVoiceEffect(type) {
-        if (!originalAudio) return;
-        if (type === voiceEffect) return;
-
+    async function applyVoiceEffect(type, fileToProcess = originalAudio) {
+        if (!fileToProcess) return;
         setVoiceEffect(type);
 
         if (type === 'normal') {
-            setAudio(originalAudio);
+            setAudio(fileToProcess);
             return;
         }
 
         setIsProcessingAudio(true);
-        info('Applying voice effect...');
+        info(type === 'deep' ? 'Anonymizing voice...' : 'Applying effect...');
 
         try {
-            const arrayBuffer = await originalAudio.arrayBuffer();
+            const arrayBuffer = await fileToProcess.arrayBuffer();
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
@@ -723,15 +786,15 @@ export default function PostForm({ onPosted }) {
 
             const wavBlob = encodeWAV(renderedBuffer.getChannelData(0), renderedBuffer.sampleRate);
 
-            const newFile = new File([wavBlob], `processed_${originalAudio.name.replace(/\.[^/.]+$/, "")}.wav`, { type: 'audio/wav' });
+            const newFile = new File([wavBlob], `processed_${fileToProcess.name.replace(/\.[^/.]+$/, "")}.wav`, { type: 'audio/wav' });
 
             setAudio(newFile);
-            success('Voice effect applied!');
+            if (type === 'deep') success('Voice automatically anonymized! 🎭');
         } catch (err) {
             console.error('Audio processing error:', err);
-            error('Failed to apply voice effect. Try a different file.');
+            error('Failed to process audio.');
             setVoiceEffect('normal');
-            setAudio(originalAudio);
+            setAudio(fileToProcess);
         } finally {
             setIsProcessingAudio(false);
         }
@@ -960,16 +1023,28 @@ export default function PostForm({ onPosted }) {
 
                     {audio && (
                         <div className="my-3 sm:my-4 space-y-3">
-                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl relative">
+                            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-900 rounded-xl relative border border-gray-200 dark:border-gray-700">
                                 <div className="flex items-center gap-3 mb-2">
                                     <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                             {audio.name}
                                         </p>
-                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                            {(audio.size / 1024 / 1024).toFixed(2)} MB {voiceEffect !== 'normal' && <span className="text-indigo-500 font-bold">• {voiceEffect.toUpperCase()} Effect</span>}
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                                {(audio.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                            {voiceEffect === 'deep' && (
+                                                <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded border border-green-200 dark:border-green-800">
+                                                    <Lock className="w-3 h-3" /> ANONYMIZED
+                                                </span>
+                                            )}
+                                            {voiceEffect === 'chipmunk' && (
+                                                <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded">
+                                                    CHIPMUNK
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <button
                                         type="button"
@@ -994,7 +1069,19 @@ export default function PostForm({ onPosted }) {
                                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
                                 >
-                                    <Volume2 className="w-4 h-4" /> Normal
+                                    <Volume2 className="w-4 h-4" /> Raw
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isProcessingAudio}
+                                    onClick={() => applyVoiceEffect('deep')}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'deep'
+                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 ring-2 ring-green-500/20'
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {isProcessingAudio && voiceEffect === 'deep' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ghost className="w-4 h-4" />}
+                                    Deep (Safe)
                                 </button>
                                 <button
                                     type="button"
@@ -1008,18 +1095,6 @@ export default function PostForm({ onPosted }) {
                                     {isProcessingAudio && voiceEffect === 'chipmunk' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
                                     Chipmunk
                                 </button>
-                                <button
-                                    type="button"
-                                    disabled={isProcessingAudio}
-                                    onClick={() => applyVoiceEffect('deep')}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition ${voiceEffect === 'deep'
-                                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                        }`}
-                                >
-                                    {isProcessingAudio && voiceEffect === 'deep' ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Ghost className="w-4 h-4" />}
-                                    Deep
-                                </button>
                             </div>
                         </div>
                     )}
@@ -1028,16 +1103,23 @@ export default function PostForm({ onPosted }) {
                         <div className="my-3 sm:my-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800 flex items-center justify-between animate-pulse">
                             <div className="flex items-center gap-3">
                                 <div className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                                <span className="text-red-600 dark:text-red-400 font-bold font-mono">{formatTime(recordingDuration)}</span>
-                                <span className="text-xs text-red-500">Recording...</span>
+                                <div>
+                                    <span className="text-red-600 dark:text-red-400 font-bold font-mono text-lg">{formatTime(recordingDuration)}</span>
+                                    <span className="text-xs text-red-400 ml-2">/ {formatTime(MAX_RECORDING_DURATION)}</span>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={stopRecording}
-                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                            >
-                                <StopCircle className="w-4 h-4" /> Stop
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <div className="h-1.5 w-16 bg-red-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500 transition-all duration-1000 ease-linear" style={{ width: `${(recordingDuration / MAX_RECORDING_DURATION) * 100}%` }} />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={stopRecording}
+                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-sm"
+                                >
+                                    <StopCircle className="w-4 h-4" /> Stop
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -1045,7 +1127,7 @@ export default function PostForm({ onPosted }) {
                         <div className="my-3 sm:my-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
                             <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
                                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-indigo-500" />
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File</span>
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File (Max 30s)</span>
                                 <input type="file" accept="audio/*" onChange={handleAudioChange} className="hidden" />
                             </label>
                             <button
@@ -1054,7 +1136,7 @@ export default function PostForm({ onPosted }) {
                                 className="flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition group"
                             >
                                 <Disc className="w-6 h-6 text-gray-400 group-hover:text-red-500" />
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Record Voice</span>
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Record (Max 30s)</span>
                             </button>
                         </div>
                     )}
