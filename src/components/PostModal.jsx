@@ -175,21 +175,40 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
     const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
+
+    const getDynamicOgImage = () => {
+        if (internalPost.media_url) return internalPost.media_url;
+        if (internalPost.media_urls && internalPost.media_urls.length > 0) return internalPost.media_urls[0];
+
+        const text = encodeURIComponent(internalPost.text.slice(0, 100) + (internalPost.text.length > 100 ? '...' : ''));
+        return `https://og-image.vercel.app/${text}.png?theme=dark&md=1&fontSize=75px&images=https%3A%2F%2Fassets.vercel.com%2Fimage%2Fupload%2Ffront%2Fassets%2Fdesign%2Fvercel-triangle-white.svg&widths=auto&heights=auto`;
+    };
+
     const metaDescription = `MMU Confession #${internalPost.id}: ${internalPost.text.slice(0, 150)}...`;
     const metaTitle = `Confession #${internalPost.id} | MMU Confessions`;
     const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
-    const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : 'https://mmuconfessions.fun/default-og-image.png');
+    const metaImage = getDynamicOgImage();
 
     return ReactDOM.createPortal(
         <>
             <Helmet>
                 <title>{metaTitle}</title>
                 <meta name="description" content={metaDescription} />
+
+                {/* Open Graph / Facebook / WhatsApp */}
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={metaUrl} />
                 <meta property="og:title" content={metaTitle} />
                 <meta property="og:description" content={metaDescription} />
                 <meta property="og:image" content={metaImage} />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={metaTitle} />
+                <meta name="twitter:description" content={metaDescription} />
+                <meta name="twitter:image" content={metaImage} />
             </Helmet>
 
             <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
