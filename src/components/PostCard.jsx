@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -59,7 +59,7 @@ const LANGUAGES = [
     { code: 'Tamil', label: 'Tamil' },
 ];
 
-export default function PostCard({ post, onOpen }) {
+export default function PostCard({ post, onOpen, onQuote }) {
     const [reactions, setReactions] = useState({})
     const [isReported, setIsReported] = useState(post.reported || false)
     const [poll, setPoll] = useState(null)
@@ -73,12 +73,6 @@ export default function PostCard({ post, onOpen }) {
     const [targetLanguage, setTargetLanguage] = useState('English')
     const [showLangMenu, setShowLangMenu] = useState(false)
     const langMenuRef = useRef(null)
-
-    const triggerHaptic = () => {
-        if (navigator.vibrate) {
-            navigator.vibrate(10);
-        }
-    };
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
@@ -206,7 +200,6 @@ export default function PostCard({ post, onOpen }) {
 
     const triggerHeartExplosion = (e) => {
         e.stopPropagation();
-        triggerHaptic();
         setShowHeartAnimation(true);
         setTimeout(() => setShowHeartAnimation(false), 1200);
     };
@@ -253,10 +246,10 @@ export default function PostCard({ post, onOpen }) {
                 style={containerStyle}
                 className={`
                     relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group
-                    ${showLangMenu ? 'z-30' : 'z-0'}
+                    ${showLangMenu ? 'z-30' : 'z-0'} 
                     ${post.is_sponsored
-                        ? 'bg-white dark:bg-slate-800 border-2 transform hover:-translate-y-1'
-                        : 'bg-white dark:bg-slate-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-slate-700'}
+                        ? 'bg-white dark:bg-gray-800 border-2 transform hover:-translate-y-1'
+                        : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
                 `}
             >
                 {post.is_sponsored && (
@@ -317,7 +310,7 @@ export default function PostCard({ post, onOpen }) {
                                 )}
                             </div>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                             {post.is_sponsored ? (
                                 <span className="tracking-widest font-bold text-[12px] opacity-80">
                                     Ads
@@ -337,6 +330,24 @@ export default function PostCard({ post, onOpen }) {
                 </div>
 
                 <div className="px-4 pb-3 relative z-10">
+                    {post.reply_to_id && (
+                        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-indigo-500 text-sm opacity-90 transition-opacity hover:opacity-100">
+                            <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                <Quote className="w-3 h-3" />
+                                <span>Replying to a Confession</span>
+                            </div>
+                            <div
+                                className="text-gray-700 dark:text-gray-300 italic cursor-pointer hover:underline hover:text-indigo-600 dark:hover:text-indigo-300"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onOpen) onOpen({ id: post.reply_to_id });
+                                }}
+                            >
+                                Click to view original...
+                            </div>
+                        </div>
+                    )}
+
                     <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`}>
                         {renderedText}
                     </p>
@@ -436,7 +447,7 @@ export default function PostCard({ post, onOpen }) {
                                     target="_blank"
                                     rel="noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 py-2 sm:py-2.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
+                                    className="flex-1 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
                                 >
                                     <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
                                     Visit Site
@@ -461,24 +472,29 @@ export default function PostCard({ post, onOpen }) {
                             {(currentTotalReactions > 0) && <div className="mb-2"><ReactionTooltip reactions={reactions} /></div>}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 sm:gap-3">
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                        <Heart className="w-5 h-5" /> <span className="font-medium hidden sm:inline">React</span>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                        <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
+                                    </button>
+
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            triggerHaptic();
-                                            onOpen && onOpen(post)
+                                            if (onQuote) onQuote(post);
                                         }}
-                                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                                        title="Quote this confession"
                                     >
-                                        <Heart className="w-5 h-5" /> <span className="font-medium hidden sm:inline">React</span>
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
-                                        <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
+                                        <Quote className="w-5 h-5" />
+                                        <span className="font-medium hidden sm:inline">Quote</span>
                                     </button>
 
                                     <div className="relative flex items-center" ref={langMenuRef}>
                                         <button
                                             onClick={handleTranslate}
-                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
+                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
                                             disabled={isTranslating}
                                         >
                                             {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
@@ -488,19 +504,19 @@ export default function PostCard({ post, onOpen }) {
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
-                                            className="px-1.5 py-1.5 text-gray-500 dark:text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-r-lg border-l border-gray-200 dark:border-slate-700/50"
+                                            className="px-1.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-r-lg border-l border-gray-200 dark:border-gray-700/50"
                                             title="Select Language"
                                         >
                                             <ChevronDown className="w-4 h-4" />
                                         </button>
 
                                         {showLangMenu && (
-                                            <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                                            <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
                                                 {LANGUAGES.map((lang) => (
                                                     <button
                                                         key={lang.code}
                                                         onClick={(e) => { e.stopPropagation(); handleLanguageSelect(lang.code); }}
-                                                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-slate-700 ${targetLanguage === lang.code ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-slate-300'}`}
+                                                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${targetLanguage === lang.code ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-gray-300'}`}
                                                     >
                                                         {lang.label}
                                                     </button>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -78,7 +78,7 @@ const encodeWAV = (samples, sampleRate) => {
     return new Blob([view], { type: 'audio/wav' });
 };
 
-export default function PostForm({ onPosted }) {
+export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [text, setText] = useState('');
     const [images, setImages] = useState([]);
     const [video, setVideo] = useState(null);
@@ -120,6 +120,13 @@ export default function PostForm({ onPosted }) {
     const [viralData, setViralData] = useState(null);
     const [isCheckingViral, setIsCheckingViral] = useState(false);
     const [zoomedIndex, setZoomedIndex] = useState(null);
+
+    const textAreaRef = useRef(null);
+    useEffect(() => {
+        if (replyingTo && textAreaRef.current) {
+            textAreaRef.current.focus();
+        }
+    }, [replyingTo]);
 
     useEffect(() => {
         const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -596,6 +603,7 @@ export default function PostForm({ onPosted }) {
                     series_name: seriesData?.series_name || null,
                     series_part: seriesData?.series_part || null,
                     series_total: seriesData?.series_total || null,
+                    reply_to_id: replyingTo?.id || null
                 }])
                 .select();
 
@@ -689,6 +697,8 @@ export default function PostForm({ onPosted }) {
                     }));
                 }
             }
+
+            if (onCancelReply) onCancelReply();
 
             localStorage.removeItem(DRAFT_STORAGE_KEY);
 
@@ -1007,10 +1017,35 @@ export default function PostForm({ onPosted }) {
                             A
                         </div>
                         <div className="flex-1">
+                            {replyingTo && (
+                                <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border-l-4 border-indigo-500 flex justify-between items-start animate-in fade-in slide-in-from-top-1 shadow-sm">
+                                    <div className="flex-1 min-w-0 mr-2">
+                                        <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Quote className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">
+                                                Replying to a Confession
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 italic font-medium">
+                                            "{replyingTo.text}"
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={onCancelReply}
+                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
+                                        title="Cancel Quote Reply"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+
                             <textarea
+                                ref={textAreaRef}
                                 value={text}
                                 onChange={e => setText(e.target.value)}
-                                placeholder="What's on your mind? Share anonymously... (Use #hashtags to categorize)"
+                                placeholder={replyingTo ? "Share your thoughts on this..." : "What's on your mind? Share anonymously... (Use #hashtags to categorize)"}
                                 className="w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100"
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
@@ -1290,7 +1325,7 @@ export default function PostForm({ onPosted }) {
 
                     {showAudioOptions && !audio && !isRecording && (
                         <div className="my-3 sm:my-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
-                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-50 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
+                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition group">
                                 <Upload className="w-6 h-6 text-gray-400 group-hover:text-indigo-500" />
                                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Upload File</span>
                                 <input type="file" accept="audio/*" onChange={handleAudioChange} className="hidden" />

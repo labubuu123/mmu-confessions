@@ -193,7 +193,9 @@ ADD COLUMN IF NOT EXISTS is_sponsored BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS sponsor_url TEXT,
 ADD COLUMN IF NOT EXISTS whatsapp_number TEXT,
 ADD COLUMN IF NOT EXISTS brand_color TEXT DEFAULT '#EAB308',
-ADD COLUMN IF NOT EXISTS campus TEXT;
+ADD COLUMN IF NOT EXISTS campus TEXT,
+ADD COLUMN IF NOT EXISTS reply_to_id BIGINT,
+ADD CONSTRAINT fk_reply_to_post FOREIGN KEY (reply_to_id) REFERENCES public.confessions (id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
     id BIGSERIAL PRIMARY KEY,
@@ -1471,6 +1473,7 @@ CREATE INDEX IF NOT EXISTS idx_events_confession_id ON public.events(confession_
 CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DESC);
 CREATE INDEX IF NOT EXISTS idx_post_user_reactions_user_id ON public.post_user_reactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_comment_user_reactions_user_id ON public.comment_user_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_confessions_reply_to_id ON public.confessions(reply_to_id);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

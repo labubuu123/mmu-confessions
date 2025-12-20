@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import CommentSection from './CommentSection'
 import ReactionsBar from './ReactionsBar'
 import AnonAvatar from './AnonAvatar'
@@ -8,7 +9,7 @@ import EventDisplay from './EventDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
 import ShareButton from './ShareButton'
 import { supabase } from '../lib/supabaseClient'
-import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check, Quote } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
@@ -18,7 +19,9 @@ import SeriesIndicator from './SeriesIndicator';
 dayjs.extend(relativeTime)
 
 export default function PostModal({ post, postId, onClose, onNavigate }) {
+    const navigate = useNavigate()
     const [internalPost, setInternalPost] = useState(post)
+    const [parentPost, setParentPost] = useState(null)
     const [loading, setLoading] = useState(!post)
     const [error, setError] = useState(null)
     const [reportLoading, setReportLoading] = useState(false)
@@ -83,6 +86,25 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             return () => supabase.removeChannel(channel)
         }
     }, [post, postId])
+
+    useEffect(() => {
+        if (internalPost?.reply_to_id) {
+            async function fetchParent() {
+                const { data, error } = await supabase
+                    .from('confessions')
+                    .select('*')
+                    .eq('id', internalPost.reply_to_id)
+                    .single()
+
+                if (!error && data) {
+                    setParentPost(data)
+                }
+            }
+            fetchParent()
+        } else {
+            setParentPost(null)
+        }
+    }, [internalPost])
 
     async function fetchPollAndEvent(id) {
         const { data: eventData } = await supabase
@@ -175,40 +197,21 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
     const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
-
-    const getDynamicOgImage = () => {
-        if (internalPost.media_url) return internalPost.media_url;
-        if (internalPost.media_urls && internalPost.media_urls.length > 0) return internalPost.media_urls[0];
-
-        const text = encodeURIComponent(internalPost.text.slice(0, 100) + (internalPost.text.length > 100 ? '...' : ''));
-        return `https://og-image.vercel.app/${text}.png?theme=dark&md=1&fontSize=75px&images=https%3A%2F%2Fassets.vercel.com%2Fimage%2Fupload%2Ffront%2Fassets%2Fdesign%2Fvercel-triangle-white.svg&widths=auto&heights=auto`;
-    };
-
     const metaDescription = `MMU Confession #${internalPost.id}: ${internalPost.text.slice(0, 150)}...`;
     const metaTitle = `Confession #${internalPost.id} | MMU Confessions`;
     const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
-    const metaImage = getDynamicOgImage();
+    const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : 'https://mmuconfessions.fun/default-og-image.png');
 
     return ReactDOM.createPortal(
         <>
             <Helmet>
                 <title>{metaTitle}</title>
                 <meta name="description" content={metaDescription} />
-
-                {/* Open Graph / Facebook / WhatsApp */}
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={metaUrl} />
                 <meta property="og:title" content={metaTitle} />
                 <meta property="og:description" content={metaDescription} />
                 <meta property="og:image" content={metaImage} />
-                <meta property="og:image:width" content="1200" />
-                <meta property="og:image:height" content="630" />
-
-                {/* Twitter */}
-                <meta name="twitter:card" content="summary_large_image" />
-                <meta name="twitter:title" content={metaTitle} />
-                <meta name="twitter:description" content={metaDescription} />
-                <meta name="twitter:image" content={metaImage} />
             </Helmet>
 
             <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
@@ -268,6 +271,24 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                         </div>
 
                         <div className="p-4 sm:p-6">
+                            {parentPost && (
+                                <div
+                                    className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border-l-4 border-indigo-500 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        navigate(`/post/${parentPost.id}`)
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2 mb-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                        <Quote className="w-3 h-3" />
+                                        <span>Replying to {parentPost.author_name || 'Anonymous'}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 italic group-hover:text-gray-900 dark:group-hover:text-gray-100">
+                                        "{parentPost.text}"
+                                    </p>
+                                </div>
+                            )}
+
                             <p className="text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
                                 {renderTextWithHashtags(internalPost.text)}
                             </p>

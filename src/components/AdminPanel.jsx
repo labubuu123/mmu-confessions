@@ -5,7 +5,7 @@ import {
     MessageCircle, ChevronDown, ChevronUp, Pin, PinOff, CheckSquare, Square,
     ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
     Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap,
-    Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag
+    Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag, Quote
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -30,6 +30,7 @@ export default function AdminPanel() {
     const [error, setError] = useState(null)
     const [posts, setPosts] = useState([])
     const [polls, setPolls] = useState({})
+    const [parentPosts, setParentPosts] = useState({})
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
     const [activeTab, setActiveTab] = useState('moderation')
@@ -77,7 +78,10 @@ export default function AdminPanel() {
     }, [])
 
     useEffect(() => {
-        if (activeTab === 'moderation' && posts.length > 0) fetchPollsForPosts();
+        if (activeTab === 'moderation' && posts.length > 0) {
+            fetchPollsForPosts();
+            fetchParentsForPosts();
+        }
         if (activeTab === 'support') fetchSupportUsers();
         if (activeTab === 'announcements') fetchAnnouncements();
         if (activeTab === 'marketplace') fetchMarketItems();
@@ -139,6 +143,18 @@ export default function AdminPanel() {
         if (data) {
             const pollMap = {}; data.forEach(p => pollMap[p.confession_id] = p);
             setPolls(prev => ({ ...prev, ...pollMap }));
+        }
+    }
+
+    async function fetchParentsForPosts() {
+        const parentIds = posts.filter(p => p.reply_to_id).map(p => p.reply_to_id);
+        if (parentIds.length === 0) return;
+
+        const { data } = await supabase.from('confessions').select('id, text, author_name').in('id', parentIds);
+        if (data) {
+            const parentMap = {};
+            data.forEach(p => parentMap[p.id] = p);
+            setParentPosts(prev => ({ ...prev, ...parentMap }));
         }
     }
 
@@ -544,6 +560,23 @@ export default function AdminPanel() {
                                                                 {p.reported && <Badge color="red" icon={AlertTriangle} label="Reported" />}
                                                             </div>
                                                         </div>
+
+                                                        {p.reply_to_id && parentPosts[p.reply_to_id] && (
+                                                            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-l-4 border-indigo-500 text-sm">
+                                                                <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                                                    <Quote className="w-3 h-3" />
+                                                                    <span>Replying to #{p.reply_to_id} ({parentPosts[p.reply_to_id].author_name || 'Anonymous'})</span>
+                                                                </div>
+                                                                <p className="text-gray-600 dark:text-gray-400 line-clamp-2 italic">
+                                                                    "{parentPosts[p.reply_to_id].text}"
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {p.reply_to_id && !parentPosts[p.reply_to_id] && (
+                                                            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-l-4 border-gray-300 text-sm">
+                                                                <span className="text-xs text-gray-400">Replying to Post #{p.reply_to_id} (Not found or deleted)</span>
+                                                            </div>
+                                                        )}
 
                                                         <div className="prose dark:prose-invert max-w-none mb-4 text-sm">
                                                             <p className="whitespace-pre-wrap">{p.text}</p>
