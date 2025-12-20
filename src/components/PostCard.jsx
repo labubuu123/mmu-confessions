@@ -246,7 +246,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 style={containerStyle}
                 className={`
                     relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group
-                    ${showLangMenu ? 'z-30' : 'z-0'} 
+                    ${showLangMenu ? 'z-30' : 'z-0'}
                     ${post.is_sponsored
                         ? 'bg-white dark:bg-gray-800 border-2 transform hover:-translate-y-1'
                         : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
@@ -470,64 +470,63 @@ export default function PostCard({ post, onOpen, onQuote }) {
                     ) : (
                         <div>
                             {(currentTotalReactions > 0) && <div className="mb-2"><ReactionTooltip reactions={reactions} /></div>}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
-                                        <Heart className="w-5 h-5" /> <span className="font-medium hidden sm:inline">React</span>
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
-                                        <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
-                                    </button>
+                            <div className="flex items-center justify-between w-full sm:justify-start sm:gap-3">
+                                <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                    <Heart className="w-5 h-5" /> <span className="font-medium hidden sm:inline">React</span>
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); onOpen && onOpen(post) }} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                                    <MessageCircle className="w-5 h-5" /> <span className="font-medium">{post.comments_count || 0}</span>
+                                </button>
 
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onQuote) onQuote(post);
+                                    }}
+                                    className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                                    title="Quote this confession"
+                                >
+                                    <Quote className="w-5 h-5" />
+                                    <span className="font-medium hidden sm:inline">Quote</span>
+                                </button>
+
+                                <div className="relative flex items-center" ref={langMenuRef}>
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (onQuote) onQuote(post);
-                                        }}
-                                        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
-                                        title="Quote this confession"
+                                        onClick={handleTranslate}
+                                        className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
+                                        disabled={isTranslating}
                                     >
-                                        <Quote className="w-5 h-5" />
-                                        <span className="font-medium hidden sm:inline">Quote</span>
+                                        {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
+                                        <span className="font-medium hidden sm:inline">
+                                            {showTranslation ? 'Original' : 'Translate'}
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
+                                        className="px-1.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-r-lg border-l border-gray-200 dark:border-gray-700/50"
+                                        title="Select Language"
+                                    >
+                                        <ChevronDown className="w-4 h-4" />
                                     </button>
 
-                                    <div className="relative flex items-center" ref={langMenuRef}>
-                                        <button
-                                            onClick={handleTranslate}
-                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-l-lg transition-all ${isTranslating ? 'opacity-50' : ''}`}
-                                            disabled={isTranslating}
-                                        >
-                                            {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
-                                            <span className="font-medium hidden sm:inline">
-                                                {showTranslation ? 'Original' : 'Translate'}
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
-                                            className="px-1.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-r-lg border-l border-gray-200 dark:border-gray-700/50"
-                                            title="Select Language"
-                                        >
-                                            <ChevronDown className="w-4 h-4" />
-                                        </button>
-
-                                        {showLangMenu && (
-                                            <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                                                {LANGUAGES.map((lang) => (
-                                                    <button
-                                                        key={lang.code}
-                                                        onClick={(e) => { e.stopPropagation(); handleLanguageSelect(lang.code); }}
-                                                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${targetLanguage === lang.code ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-gray-300'}`}
-                                                    >
-                                                        {lang.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <ShareButton post={post} />
+                                    {showLangMenu && (
+                                        <div className="absolute top-full left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                                            {LANGUAGES.map((lang) => (
+                                                <button
+                                                    key={lang.code}
+                                                    onClick={(e) => { e.stopPropagation(); handleLanguageSelect(lang.code); }}
+                                                    className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${targetLanguage === lang.code ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-gray-300'}`}
+                                                >
+                                                    {lang.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <button onClick={handleReport} disabled={isReported} className={`p-2 rounded-lg transition-all ${isReported ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'}`}>
+
+                                <ShareButton post={post} />
+
+                                <button onClick={handleReport} disabled={isReported} className={`p-2 rounded-lg transition-all sm:ml-auto ${isReported ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'}`}>
                                     <AlertTriangle className="w-5 h-5" />
                                 </button>
                             </div>
