@@ -121,8 +121,24 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [viralData, setViralData] = useState(null);
     const [isCheckingViral, setIsCheckingViral] = useState(false);
     const [zoomedIndex, setZoomedIndex] = useState(null);
-
+    const [placeholderText, setPlaceholderText] = useState('Display Name (Optional, defaults to Anonymous)');
     const textAreaRef = useRef(null);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 640) {
+                setPlaceholderText('Display Name (Default: Anonymous)');
+            } else {
+                setPlaceholderText('Display Name (Optional, defaults to Anonymous)');
+            }
+        };
+
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     useEffect(() => {
         if (replyingTo && textAreaRef.current) {
             textAreaRef.current.focus();
@@ -1038,8 +1054,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     type="text"
                                     value={customName}
                                     onChange={(e) => setCustomName(e.target.value)}
-                                    placeholder="Display Name (Optional, defaults to Anonymous)"
-                                    className="w-full pl-9 pr-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
+                                    placeholder={placeholderText}
+                                    className="w-full pl-9 pr-3 py-2 text-base sm:text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
                                     maxLength={30}
                                 />
                             </div>
