@@ -266,6 +266,39 @@ CREATE TABLE IF NOT EXISTS public.lost_and_found (
     constraint lost_and_found_confession_id_fkey foreign key (confession_id) references confessions (id) on delete cascade
 );
 
+CREATE TABLE IF NOT EXISTS public.adult_confessions (
+    id BIGSERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    author_alias TEXT DEFAULT 'Anonymous',
+    author_id TEXT NOT NULL,
+    tags TEXT[],
+    likes_count INTEGER DEFAULT 0,
+    report_count INTEGER DEFAULT 0,
+    ai_flagged BOOLEAN DEFAULT FALSE,
+    ai_score FLOAT DEFAULT 0,
+    is_approved BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.adult_reactions (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES public.adult_confessions(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(post_id, user_id, type)
+);
+
+CREATE TABLE IF NOT EXISTS public.adult_comments (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES public.adult_confessions(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    author_alias TEXT DEFAULT 'NightOwl',
+    author_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -308,7 +341,7 @@ FOREIGN KEY (author_id)
 REFERENCES public.matchmaker_profiles(author_id)
 ON DELETE CASCADE;
 
-ALTER TABLE public.comments 
+ALTER TABLE public.comments
 ADD COLUMN IF NOT EXISTS debate_side TEXT CHECK (debate_side IN ('agree', 'disagree'));
 
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
@@ -332,6 +365,9 @@ ALTER TABLE public.marketplace_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lost_and_found ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matchmaker_feed ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.adult_confessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.adult_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.adult_comments ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -432,6 +468,12 @@ CREATE POLICY "Read approved feed" ON public.matchmaker_feed FOR SELECT USING (s
 CREATE POLICY "Create feed posts" ON public.matchmaker_feed FOR INSERT WITH CHECK (auth.uid()::text = author_id);
 CREATE POLICY "Delete own posts" ON public.matchmaker_feed FOR DELETE USING (auth.uid()::text = author_id);
 CREATE POLICY "Admin delete feed" ON public.matchmaker_feed FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Anyone can read approved adult posts" ON public.adult_confessions FOR SELECT USING (is_approved = true);
+CREATE POLICY "Anyone can insert adult posts" ON public.adult_confessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can read adult comments" ON public.adult_comments FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert adult comments" ON public.adult_comments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public read reactions" ON public.adult_reactions FOR SELECT USING (true);
+CREATE POLICY "Public insert reactions" ON public.adult_reactions FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

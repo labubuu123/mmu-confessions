@@ -16,6 +16,7 @@ import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
 import Marketplace from "./components/Marketplace";
 import { Megaphone, X } from "lucide-react";
+import AdultSection from "./components/adult/AdultSection";
 
 const GlobalNotificationHandler = () => {
   const navigate = useNavigate();
@@ -288,6 +289,7 @@ function App() {
             <Route path="/post-direct/:id" element={<PostModalWrapper />} />
             <Route path="/matchmaker" element={<Matchmaker />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/secrets" element={<AdultSection />} />
           </Routes>
         </main>
 
