@@ -9,7 +9,7 @@ import EventDisplay from './EventDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
 import ShareButton from './ShareButton'
 import { supabase } from '../lib/supabaseClient'
-import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check, Quote } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check, Quote, Scale } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
@@ -27,6 +27,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     const [reportLoading, setReportLoading] = useState(false)
     const [poll, setPoll] = useState(null)
     const [event, setEvent] = useState(null)
+    const [lostFound, setLostFound] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
 
     useEffect(() => {
@@ -47,7 +48,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         if (post) {
             setInternalPost(post)
             setLoading(false)
-            fetchPollAndEvent(post.id)
+            fetchAttachments(post.id)
         } else if (postId) {
             setLoading(true)
             async function fetchPost() {
@@ -62,7 +63,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                     setError('Post not found.')
                 } else {
                     setInternalPost(data)
-                    fetchPollAndEvent(data.id)
+                    fetchAttachments(data.id)
                 }
                 setLoading(false)
             }
@@ -106,7 +107,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
         }
     }, [internalPost])
 
-    async function fetchPollAndEvent(id) {
+    async function fetchAttachments(id) {
         const { data: eventData } = await supabase
             .from('events')
             .select('*')
@@ -115,16 +116,28 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
         if (eventData) {
             setEvent(eventData)
-        } else {
-            const { data: pollData } = await supabase
-                .from('polls')
-                .select('*')
-                .eq('confession_id', id)
-                .single()
+            return;
+        }
 
-            if (pollData) {
-                setPoll(pollData)
-            }
+        const { data: pollData } = await supabase
+            .from('polls')
+            .select('*')
+            .eq('confession_id', id)
+            .single()
+
+        if (pollData) {
+            setPoll(pollData)
+            return;
+        }
+
+        const { data: lfData } = await supabase
+            .from('lost_and_found')
+            .select('*')
+            .eq('confession_id', id)
+            .single()
+
+        if (lfData) {
+            setLostFound(lfData)
         }
     }
 
@@ -202,6 +215,23 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
     const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : 'https://mmuconfessions.fun/default-og-image.png');
 
+    const getPostStyle = () => {
+        const shadow = (r, g, b) => `0 4px 20px -5px rgba(${r}, ${g}, ${b}, 0.2)`;
+
+        if (internalPost.is_debate) return { borderColor: '#f97316', boxShadow: shadow(249, 115, 22) };
+        if (event) return { borderColor: '#fbbf24', boxShadow: shadow(251, 191, 36) };
+        if (poll) return { borderColor: '#6366f1', boxShadow: shadow(99, 102, 241) };
+        if (lostFound) {
+            if (lostFound.type === 'lost') return { borderColor: '#ef4444', boxShadow: shadow(239, 68, 68) };
+            return { borderColor: '#22c55e', boxShadow: shadow(34, 197, 94) };
+        }
+        if (internalPost.series_id) return { borderColor: '#a855f7', boxShadow: shadow(168, 85, 247) };
+        return {};
+    };
+
+    const containerStyle = getPostStyle();
+    const isSpecialPost = internalPost.is_debate || !!event || !!poll || !!lostFound || !!internalPost.series_id;
+
     return ReactDOM.createPortal(
         <>
             <Helmet>
@@ -236,7 +266,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                     </>
                 )}
 
-                <div className="relative max-w-3xl w-full bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+                <div
+                    style={containerStyle}
+                    className={`relative max-w-3xl w-full bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col
+                    ${isSpecialPost ? 'border-2' : 'border border-gray-200 dark:border-gray-700'}
+                `}>
                     <div className="flex-1 overflow-y-auto">
                         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex items-center justify-between z-10">
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
@@ -251,6 +285,12 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                {internalPost.is_debate && (
+                                    <div className="px-2 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 mr-1">
+                                        <Scale className="w-3 h-3" />
+                                        <span className="hidden sm:inline">DEBATE</span>
+                                    </div>
+                                )}
                                 <ShareButton post={internalPost} />
                                 <button
                                     onClick={handleReport}
@@ -394,7 +434,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             </div>
 
                             <div className="mt-4 sm:mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 sm:pt-6">
-                                <CommentSection postId={internalPost.id} />
+                                <CommentSection postId={internalPost.id} isDebate={internalPost.is_debate} />
                             </div>
                         </div>
                     </div>

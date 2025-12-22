@@ -195,6 +195,7 @@ ADD COLUMN IF NOT EXISTS whatsapp_number TEXT,
 ADD COLUMN IF NOT EXISTS brand_color TEXT DEFAULT '#EAB308',
 ADD COLUMN IF NOT EXISTS campus TEXT,
 ADD COLUMN IF NOT EXISTS reply_to_id BIGINT,
+ADD COLUMN IF NOT EXISTS is_debate BOOLEAN DEFAULT FALSE,
 DROP CONSTRAINT IF EXISTS fk_reply_to_post,
 ADD CONSTRAINT fk_reply_to_post FOREIGN KEY (reply_to_id) REFERENCES public.confessions (id) ON DELETE SET NULL;
 
@@ -306,6 +307,9 @@ ADD CONSTRAINT matchmaker_feed_author_id_fkey
 FOREIGN KEY (author_id)
 REFERENCES public.matchmaker_profiles(author_id)
 ON DELETE CASCADE;
+
+ALTER TABLE public.comments 
+ADD COLUMN IF NOT EXISTS debate_side TEXT CHECK (debate_side IN ('agree', 'disagree'));
 
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
@@ -1480,6 +1484,7 @@ CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events(start_time DES
 CREATE INDEX IF NOT EXISTS idx_post_user_reactions_user_id ON public.post_user_reactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_comment_user_reactions_user_id ON public.comment_user_reactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_confessions_reply_to_id ON public.confessions(reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_comments_debate_side ON public.comments(debate_side);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

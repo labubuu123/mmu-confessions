@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -122,6 +122,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [isCheckingViral, setIsCheckingViral] = useState(false);
     const [zoomedIndex, setZoomedIndex] = useState(null);
     const [placeholderText, setPlaceholderText] = useState('Display Name (Optional, defaults to Anonymous)');
+    const [isDebate, setIsDebate] = useState(false);
     const textAreaRef = useRef(null);
 
     useEffect(() => {
@@ -156,6 +157,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 if (draft.mood) setSelectedMood(draft.mood);
                 if (draft.campus) setSelectedCampus(draft.campus);
                 if (draft.policyAccepted) setPolicyAccepted(true);
+                if (draft.isDebate) setIsDebate(draft.isDebate);
 
                 if (draft.pollData) {
                     setPollData(draft.pollData);
@@ -188,7 +190,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     useEffect(() => {
         if (!draftLoaded) return;
 
-        const hasContent = text.trim().length > 0 || customName.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData;
+        const hasContent = text.trim().length > 0 || customName.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate;
 
         if (hasContent) {
             const draftState = {
@@ -201,6 +203,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 seriesData,
                 lostFoundData,
                 policyAccepted,
+                isDebate,
                 lastSaved: Date.now()
             };
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftState));
@@ -211,7 +214,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         if (viralData && Math.abs(text.length - (viralData.textLength || 0)) > 20) {
             setViralData(null);
         }
-    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
+    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded, isDebate]);
 
     useEffect(() => {
         if (audio) {
@@ -599,6 +602,10 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 if (!finalTags.includes('lost&found')) finalTags.push('lost&found');
             }
 
+            if (isDebate) {
+                if (!finalTags.includes('debate')) finalTags.push('debate');
+            }
+
             let moodData = null;
             if (selectedMood || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment) {
                 moodData = {
@@ -630,7 +637,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                     series_name: seriesData?.series_name || null,
                     series_part: seriesData?.series_part || null,
                     series_total: seriesData?.series_total || null,
-                    reply_to_id: replyingTo?.id || null
+                    reply_to_id: replyingTo?.id || null,
+                    is_debate: isDebate
                 }])
                 .select();
 
@@ -753,6 +761,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             setShowAudioOptions(false);
             setHistory([]);
             setViralData(null);
+            setIsDebate(false);
 
             if (!aiAnalysis.toxic) {
                 success('Posted successfully!');
@@ -1005,6 +1014,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             info('Loading your series...');
             await fetchExistingSeries();
             setShowSeriesManager(true);
+            setIsDebate(false);
         } else {
             setShowSeriesManager(false);
         }
@@ -1023,15 +1033,26 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6 transition-colors">
+            <div className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border p-4 sm:p-6 mb-4 sm:mb-6 transition-colors ${isDebate ? 'border-orange-500 dark:border-orange-500 shadow-orange-100 dark:shadow-orange-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
-                        <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Share Your Confession
-                        </h2>
+                        {isDebate ? (
+                            <>
+                                <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-500" />
+                                <h2 className="text-base sm:text-lg font-bold text-orange-600 dark:text-orange-500">
+                                    Start a Debate 🔥
+                                </h2>
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400" />
+                                <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    Share Your Confession
+                                </h2>
+                            </>
+                        )}
                     </div>
-                    {(text || customName || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData) && (
+                    {(text || customName || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate) && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
                             <Save className="w-3 h-3" />
                             <span>Draft Saved</span>
@@ -1088,8 +1109,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 ref={textAreaRef}
                                 value={text}
                                 onChange={e => setText(e.target.value)}
-                                placeholder={replyingTo ? "Share your thoughts on this..." : "What's on your mind? Share anonymously... (Use #hashtags to categorize)"}
-                                className="w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100"
+                                placeholder={isDebate ? "State your hot take! (e.g., 'Pineapple belongs on pizza')" : (replyingTo ? "Share your thoughts on this..." : "What's on your mind? Share anonymously... (Use #hashtags to categorize)")}
+                                className={`w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100 ${isDebate ? 'ring-2 ring-orange-500/50' : 'focus:ring-2 focus:ring-indigo-500'}`}
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
                                 disabled={isRewriting}
@@ -1520,16 +1541,38 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    setIsDebate(!isDebate);
+                                    setShowPollCreator(false);
+                                    setShowEventCreator(false);
+                                    setShowLostFoundCreator(false);
+                                    setShowSeriesManager(false);
+                                }}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${isDebate
+                                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || showLostFoundCreator}
+                            >
+                                <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Debate
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
                                     setShowPollCreator(!showPollCreator);
                                     setShowEventCreator(false);
                                     setShowLostFoundCreator(false);
                                     setShowSeriesManager(false);
+                                    setIsDebate(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator}
+                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator || isDebate}
                             >
                                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1544,12 +1587,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowPollCreator(false);
                                     setShowLostFoundCreator(false);
                                     setShowSeriesManager(false);
+                                    setIsDebate(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator}
+                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator || isDebate}
                             >
                                 <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1564,12 +1608,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowEventCreator(false);
                                     setShowPollCreator(false);
                                     setShowSeriesManager(false);
+                                    setIsDebate(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showLostFoundCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || isDebate}
                             >
                                 <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1584,7 +1629,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator}
+                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate}
                             >
                                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1606,7 +1651,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                         <button
                             type="submit"
                             disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
-                            className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0"
+                            className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 ${isDebate ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         >
                             {loading ? (
                                 <>

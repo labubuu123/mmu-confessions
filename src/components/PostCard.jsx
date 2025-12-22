@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -215,10 +215,41 @@ export default function PostCard({ post, onOpen, onQuote }) {
     }
     const brandRgb = hexToRgb(brandColor);
 
-    const containerStyle = post.is_sponsored ? {
-        borderColor: brandColor,
-        boxShadow: `0 8px 32px -8px rgba(${brandRgb}, 0.25)`,
-    } : {};
+    const getPostStyle = () => {
+        if (post.is_sponsored) {
+            return {
+                borderColor: brandColor,
+                boxShadow: `0 8px 32px -8px rgba(${brandRgb}, 0.25)`,
+            };
+        }
+
+        const shadow = (r, g, b) => `0 4px 20px -5px rgba(${r}, ${g}, ${b}, 0.2)`;
+
+        if (post.is_debate) {
+            return { borderColor: '#f97316', boxShadow: shadow(249, 115, 22) };
+        }
+        if (event) {
+            return { borderColor: '#fbbf24', boxShadow: shadow(251, 191, 36) };
+        }
+        if (poll) {
+            return { borderColor: '#6366f1', boxShadow: shadow(99, 102, 241) };
+        }
+        if (lostFound) {
+            if (lostFound.type === 'lost') {
+                return { borderColor: '#ef4444', boxShadow: shadow(239, 68, 68) }; // Red
+            } else {
+                return { borderColor: '#22c55e', boxShadow: shadow(34, 197, 94) }; // Green
+            }
+        }
+        if (post.series_id) {
+            return { borderColor: '#a855f7', boxShadow: shadow(168, 85, 247) };
+        }
+
+        return {};
+    };
+
+    const containerStyle = getPostStyle();
+    const isSpecialPost = post.is_sponsored || post.is_debate || !!event || !!poll || !!lostFound || !!post.series_id;
 
     const shimmerStyle = post.is_sponsored ? {
         background: `linear-gradient(110deg, transparent 30%, rgba(${brandRgb}, 0.15) 50%, transparent 70%)`,
@@ -247,8 +278,9 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 className={`
                     relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group
                     ${showLangMenu ? 'z-30' : 'z-0'}
-                    ${post.is_sponsored
-                        ? 'bg-white dark:bg-gray-800 border-2 transform hover:-translate-y-1'
+                    ${post.is_sponsored ? 'transform hover:-translate-y-1' : ''}
+                    ${isSpecialPost
+                        ? 'bg-white dark:bg-gray-800 border-2'
                         : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
                 `}
             >
@@ -285,6 +317,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         {post.pinned && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">📌 PINNED</div>}
                         {isHotPost && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1 animate-pulse">🔥 HOT</div>}
                         {isTrendingPost && !isHotPost && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><TrendingUp className="w-3 h-3" /> TRENDING</div>}
+                        {post.is_debate && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Scale className="w-3 h-3" /> DEBATE</div>}
                         {poll && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><BarChart3 className="w-3 h-3" /> POLL</div>}
                         {event && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Calendar className="w-3 h-3" /> EVENT</div>}
                         {lostFound && <div className={`px-2 sm:px-3 py-0.5 sm:py-1 ${lostFound.type === 'lost' ? 'bg-red-500' : 'bg-green-500'} text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1`}><AlertTriangle className="w-3 h-3" /> {lostFound.type.toUpperCase()}</div>}
