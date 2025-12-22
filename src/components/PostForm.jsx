@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import PollCreator from './PollCreator';
@@ -80,6 +80,7 @@ const encodeWAV = (samples, sampleRate) => {
 
 export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [text, setText] = useState('');
+    const [customName, setCustomName] = useState('');
     const [images, setImages] = useState([]);
     const [video, setVideo] = useState(null);
     const [audio, setAudio] = useState(null);
@@ -135,6 +136,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 const draft = JSON.parse(savedDraft);
 
                 if (draft.text) setText(draft.text);
+                if (draft.customName) setCustomName(draft.customName);
                 if (draft.mood) setSelectedMood(draft.mood);
                 if (draft.campus) setSelectedCampus(draft.campus);
                 if (draft.policyAccepted) setPolicyAccepted(true);
@@ -170,11 +172,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     useEffect(() => {
         if (!draftLoaded) return;
 
-        const hasContent = text.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData;
+        const hasContent = text.trim().length > 0 || customName.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData;
 
         if (hasContent) {
             const draftState = {
                 text,
+                customName,
                 mood: selectedMood,
                 campus: selectedCampus,
                 pollData,
@@ -192,7 +195,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         if (viralData && Math.abs(text.length - (viralData.textLength || 0)) > 20) {
             setViralData(null);
         }
-    }, [text, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
+    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded]);
 
     useEffect(() => {
         if (audio) {
@@ -423,6 +426,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     async function handleSubmit(e) {
         e.preventDefault();
 
+        const forbiddenNames = ['admin', 'administrator', 'moderator', 'staff', 'support', 'mmu'];
+        if (customName.trim() && forbiddenNames.includes(customName.trim().toLowerCase())) {
+            error('This display name is reserved and cannot be used.');
+            return;
+        }
+
         if (showEventCreator && (!eventData || !eventData.event_name || !eventData.start_time)) {
             error('Please fill in all required event fields (Event Name and Start Time).');
             return;
@@ -584,11 +593,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 };
             }
 
+            const finalAuthorName = isAdmin ? 'Admin' : (customName.trim() || 'Anonymous');
+
             const { data, error: insertError } = await supabase.from('confessions')
                 .insert([{
                     text: text.trim(),
                     author_id: anonId,
-                    author_name: isAdmin ? 'Admin' : null,
+                    author_name: finalAuthorName,
                     media_url: single_media_url,
                     media_urls: media_urls.length > 0 ? media_urls : null,
                     media_type,
@@ -703,6 +714,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             localStorage.removeItem(DRAFT_STORAGE_KEY);
 
             setText('');
+            setCustomName('');
             setImages([]);
             setVideo(null);
             setAudio(null);
@@ -1003,7 +1015,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                             Share Your Confession
                         </h2>
                     </div>
-                    {(text || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData) && (
+                    {(text || customName || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData) && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
                             <Save className="w-3 h-3" />
                             <span>Draft Saved</span>
@@ -1014,9 +1026,24 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 <form onSubmit={handleSubmit}>
                     <div className="flex gap-2 sm:gap-3 mb-1">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0 text-sm sm:text-base">
-                            A
+                            {customName && customName.trim() ? customName.trim()[0].toUpperCase() : 'A'}
                         </div>
                         <div className="flex-1">
+
+                            <div className="mb-2 relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <User className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={customName}
+                                    onChange={(e) => setCustomName(e.target.value)}
+                                    placeholder="Display Name (Optional, defaults to Anonymous)"
+                                    className="w-full pl-9 pr-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
+                                    maxLength={30}
+                                />
+                            </div>
+
                             {replyingTo && (
                                 <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border-l-4 border-indigo-500 flex justify-between items-start animate-in fade-in slide-in-from-top-1 shadow-sm">
                                     <div className="flex-1 min-w-0 mr-2">

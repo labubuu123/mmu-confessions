@@ -195,6 +195,7 @@ ADD COLUMN IF NOT EXISTS whatsapp_number TEXT,
 ADD COLUMN IF NOT EXISTS brand_color TEXT DEFAULT '#EAB308',
 ADD COLUMN IF NOT EXISTS campus TEXT,
 ADD COLUMN IF NOT EXISTS reply_to_id BIGINT,
+DROP CONSTRAINT IF EXISTS fk_reply_to_post,
 ADD CONSTRAINT fk_reply_to_post FOREIGN KEY (reply_to_id) REFERENCES public.confessions (id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
@@ -1367,11 +1368,16 @@ $$;
 CREATE OR REPLACE FUNCTION public.force_admin_name()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.author_name = 'Admin' THEN
+    IF NEW.author_name ILIKE 'Admin' THEN
         IF (SELECT email FROM auth.users WHERE id = auth.uid()) != 'admin@mmu.edu' THEN
-            NEW.author_name := NULL;
+            NEW.author_name := 'Anonymous';
         END IF;
     END IF;
+    
+    IF NEW.author_name IS NULL OR TRIM(NEW.author_name) = '' THEN
+        NEW.author_name := 'Anonymous';
+    END IF;
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
