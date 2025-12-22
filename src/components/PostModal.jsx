@@ -13,8 +13,8 @@ import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as Link
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
-import { Helmet } from 'react-helmet-async'
 import SeriesIndicator from './SeriesIndicator';
+import SEO from './SEO'
 
 dayjs.extend(relativeTime)
 
@@ -210,10 +210,32 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     const hasMultipleImages = internalPost.media_urls && internalPost.media_urls.length > 1
     const displayImages = hasMultipleImages ? internalPost.media_urls : (internalPost.media_url ? [internalPost.media_url] : [])
+
     const metaDescription = `MMU Confession #${internalPost.id}: ${internalPost.text.slice(0, 150)}...`;
-    const metaTitle = `Confession #${internalPost.id} | MMU Confessions`;
+    const metaTitle = `Confession #${internalPost.id}`;
     const metaUrl = `https://mmuconfessions.fun/post/${internalPost.id}`;
-    const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : 'https://mmuconfessions.fun/default-og-image.png');
+    const metaImage = internalPost.media_url || (internalPost.media_urls ? internalPost.media_urls[0] : null);
+
+    const schemaData = {
+        "@context": "https://schema.org",
+        "@type": "SocialMediaPosting",
+        "headline": metaTitle,
+        "datePublished": internalPost.created_at,
+        "author": {
+            "@type": "Person",
+            "name": internalPost.author_name || "Anonymous"
+        },
+        "articleBody": internalPost.text,
+        "image": metaImage ? [metaImage] : [],
+        "url": metaUrl,
+        "interactionStatistic": [
+            {
+                "@type": "InteractionCounter",
+                "interactionType": "https://schema.org/CommentAction",
+                "userInteractionCount": internalPost.comments_count || 0
+            }
+        ]
+    };
 
     const getPostStyle = () => {
         const shadow = (r, g, b) => `0 4px 20px -5px rgba(${r}, ${g}, ${b}, 0.2)`;
@@ -234,15 +256,16 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     return ReactDOM.createPortal(
         <>
-            <Helmet>
-                <title>{metaTitle}</title>
-                <meta name="description" content={metaDescription} />
-                <meta property="og:type" content="article" />
-                <meta property="og:url" content={metaUrl} />
-                <meta property="og:title" content={metaTitle} />
-                <meta property="og:description" content={metaDescription} />
-                <meta property="og:image" content={metaImage} />
-            </Helmet>
+            <SEO
+                title={metaTitle}
+                description={metaDescription}
+                image={metaImage}
+                url={metaUrl}
+                type="article"
+                publishedTime={internalPost.created_at}
+                author={internalPost.author_name}
+                schema={schemaData}
+            />
 
             <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
                 <div className="absolute inset-0" onClick={onClose} />

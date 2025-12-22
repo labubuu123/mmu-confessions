@@ -236,9 +236,9 @@ export default function PostCard({ post, onOpen, onQuote }) {
         }
         if (lostFound) {
             if (lostFound.type === 'lost') {
-                return { borderColor: '#ef4444', boxShadow: shadow(239, 68, 68) }; // Red
+                return { borderColor: '#ef4444', boxShadow: shadow(239, 68, 68) };
             } else {
-                return { borderColor: '#22c55e', boxShadow: shadow(34, 197, 94) }; // Green
+                return { borderColor: '#22c55e', boxShadow: shadow(34, 197, 94) };
             }
         }
         if (post.series_id) {
@@ -272,7 +272,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: scale(1.2); } 100% { transform: translateY(-100px) scale(1); opacity: 0; } }
             `}</style>
 
-            <div
+            <article
                 onClick={() => onOpen && onOpen(post)}
                 style={containerStyle}
                 className={`
@@ -283,6 +283,8 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         ? 'bg-white dark:bg-gray-800 border-2'
                         : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
                 `}
+                itemScope
+                itemType="http://schema.org/SocialMediaPosting"
             >
                 {post.is_sponsored && (
                     <div className="absolute inset-0 pointer-events-none z-0" style={shimmerStyle} />
@@ -332,6 +334,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                                 <div
                                     className="font-bold text-base truncate flex items-center gap-1.5"
                                     style={{ color: post.is_sponsored ? brandColor : undefined }}
+                                    itemProp="author"
                                 >
                                     {post.author_name || 'Anonymous'}
                                 </div>
@@ -348,7 +351,11 @@ export default function PostCard({ post, onOpen, onQuote }) {
                                 <span className="tracking-widest font-bold text-[12px] opacity-80">
                                     Ads
                                 </span>
-                            ) : dayjs(post.created_at).fromNow()}
+                            ) : (
+                                <time itemProp="datePublished" dateTime={post.created_at}>
+                                    {dayjs(post.created_at).fromNow()}
+                                </time>
+                            )}
                         </div>
                     </div>
 
@@ -381,7 +388,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         </div>
                     )}
 
-                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`}>
+                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`} itemProp="articleBody">
                         {renderedText}
                     </p>
 
@@ -433,6 +440,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                                     sizes={getImageSizes()}
                                     alt={`media ${idx + 1}`}
                                     className={`w-full transition-transform group-hover/img:scale-105 ${displayImages.length === 1 ? 'max-h-[75vh]' : 'object-cover h-40 sm:h-48 rounded-lg'}`}
+                                    itemProp="image"
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition" />
                                 {idx === 3 && displayImages.length > 4 && (
@@ -566,7 +574,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         </div>
                     )}
                 </div>
-            </div>
+            </article>
 
             {zoomedImage && <ImageGalleryModal images={displayImages} initialIndex={displayImages.indexOf(zoomedImage)} onClose={() => setZoomedImage(null)} />}
         </>

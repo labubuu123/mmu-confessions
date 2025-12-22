@@ -236,7 +236,7 @@ function App() {
       <GlobalNotificationHandler />
 
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-        <div className="sticky top-0 z-50 flex flex-col w-full">
+        <header className="sticky top-0 z-50 flex flex-col w-full">
           {announcement && (
             <div className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
               announcement.type === 'success' ? 'bg-green-600 text-white' :
@@ -272,22 +272,24 @@ function App() {
             </div>
           )}
           <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
-        </div>
+        </header>
 
-        <Routes>
-          <Route path="/" element={<Feed />} />
-          <Route path="/post/:id" element={<Feed />} />
-          <Route path="/top" element={<TopConfessions />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/policy" element={<PolicyPage />} />
-          <Route path="/analytics" element={<UserAnalytics />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-          <Route path="/matchmaker" element={<Matchmaker />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-        </Routes>
+        <main>
+          <Routes>
+            <Route path="/" element={<Feed />} />
+            <Route path="/post/:id" element={<Feed />} />
+            <Route path="/top" element={<TopConfessions />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/policy" element={<PolicyPage />} />
+            <Route path="/analytics" element={<UserAnalytics />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/post-direct/:id" element={<PostModalWrapper />} />
+            <Route path="/matchmaker" element={<Matchmaker />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+          </Routes>
+        </main>
 
         <FloatingActionMenu />
 

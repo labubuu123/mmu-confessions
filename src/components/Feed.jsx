@@ -6,7 +6,7 @@ import PostModal from './PostModal'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowUp } from 'lucide-react'
 import { FeedSkeleton } from './LoadingSkeleton'
-import { Helmet } from 'react-helmet-async'
+import SEO from './SEO'
 
 const debounce = (func, wait) => {
     let timeout;
@@ -149,12 +149,26 @@ export default function Feed() {
         setReplyingTo(null)
     }
 
+    const websiteSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "MMU Confessions",
+        "url": "https://mmuconfessions.fun/",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://mmuconfessions.fun/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    };
+
     return (
         <>
-            <Helmet>
-                <title>MMU Confessions - Anonymous Student Community</title>
-                <meta name="description" content="The #1 anonymous confession platform for MMU students. Share secrets, read stories, and connect with your campus community." />
-            </Helmet>
+            <SEO
+                title="Home"
+                description="The #1 anonymous confession platform for MMU students. Share secrets, read stories, and connect with your campus community."
+                url="https://mmuconfessions.fun/"
+                schema={websiteSchema}
+            />
 
             <div className="max-w-2xl mx-auto px-4 py-8">
                 <PostForm
