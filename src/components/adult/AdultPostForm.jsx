@@ -1,57 +1,68 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { checkContentSafety } from '../../utils/geminiModeration';
-import { Shield, Flame, Sparkles, UserCircle2, Send, Lock } from 'lucide-react';
+import { Shield, Lock, Send, Sparkles, AlertCircle, Loader2, BarChart2, X } from 'lucide-react';
 
 const IDENTITIES = [
     { id: 'M', label: 'Boy', icon: '♂️' },
     { id: 'F', label: 'Girl', icon: '♀️' },
     { id: 'Couple', label: 'Couple', icon: '💞' },
     { id: 'LGBTQ+', label: 'Rainbow', icon: '🏳️‍🌈' },
-    { id: 'Secret', label: 'Secret', icon: '🎭' }
+    { id: 'Secret', label: 'Anon', icon: '🎭' }
 ];
 
 const MOODS = [
-    { id: 'Confession', label: 'Confession', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    { id: 'Horny', label: 'Thirsty', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-    { id: 'Curious', label: 'Curious', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-    { id: 'Rant', label: 'Rant', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-    { id: 'Story', label: 'Story time', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }
+    { id: 'Confession', label: 'Confession', color: 'text-sky-400 bg-sky-950/30 border-sky-900' },
+    { id: 'Horny', label: 'Thirsty', color: 'text-rose-400 bg-rose-950/30 border-rose-900' },
+    { id: 'Curious', label: 'Curious', color: 'text-violet-400 bg-violet-950/30 border-violet-900' },
+    { id: 'Rant', label: 'Rant', color: 'text-amber-400 bg-amber-950/30 border-amber-900' },
+    { id: 'Story', label: 'Story', color: 'text-emerald-400 bg-emerald-950/30 border-emerald-900' }
 ];
 
-export default function AdultPostForm({ onSuccess }) {
+export default function AdultPostForm({ onSuccess, onCancel }) {
     const [content, setContent] = useState("");
     const [selectedIdentity, setSelectedIdentity] = useState(IDENTITIES[4]);
     const [selectedMood, setSelectedMood] = useState(MOODS[0]);
-    const [submitting, setSubmitting] = useState(false);
-    const [aiStatus, setAiStatus] = useState("idle");
+    
+    const [showPoll, setShowPoll] = useState(false);
+    const [pollOptions, setPollOptions] = useState({ a: "", b: "" });
+
+    const [status, setStatus] = useState("idle"); 
+    const [errorMsg, setErrorMsg] = useState("");
     const [isFocused, setIsFocused] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!content.trim()) return;
 
-        setSubmitting(true);
-        setAiStatus("analyzing");
+        setStatus("analyzing");
+        setErrorMsg("");
 
         try {
             const safetyResult = await checkContentSafety(content);
 
             if (!safetyResult.safe) {
-                setAiStatus("blocked");
-                setSubmitting(false);
-                alert(`⚠️ Post Blocked by AI Safety:\n\n${safetyResult.reason}\n\nWe strictly prohibit illegal content, CSAM, and non-consensual material.`);
+                setStatus("blocked");
+                setErrorMsg(safetyResult.reason || "Content violated safety policies.");
                 return;
             }
 
+            setStatus("posting");
             const anonId = localStorage.getItem('anonId') || 'anon_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('anonId', anonId);
 
-            const tags = [
-                '18+',
-                `ID:${selectedIdentity.id}`,
-                `Mood:${selectedMood.id}`
-            ];
+            const tags = ['18+', `ID:${selectedIdentity.id}`, `Mood:${selectedMood.id}`];
+
+            let pollData = null;
+            let hasPoll = false;
+            
+            if (showPoll && pollOptions.a && pollOptions.b) {
+                hasPoll = true;
+                pollData = [
+                    { id: 0, text: pollOptions.a, votes: 0 },
+                    { id: 1, text: pollOptions.b, votes: 0 }
+                ];
+            }
 
             const { error } = await supabase.from('adult_confessions').insert({
                 content: content,
@@ -59,91 +70,141 @@ export default function AdultPostForm({ onSuccess }) {
                 author_alias: selectedIdentity.label,
                 ai_flagged: false,
                 ai_score: 0,
-                tags: tags
+                tags: tags,
+                is_approved: true,
+                has_poll: hasPoll,
+                poll_options: pollData
             });
 
             if (error) throw error;
 
+            setStatus("success");
             setContent("");
-            setAiStatus("idle");
-            if (onSuccess) onSuccess();
+            setPollOptions({ a: "", b: "" });
+            setShowPoll(false);
+            
+            setTimeout(() => {
+                setStatus("idle");
+                if (onSuccess) onSuccess();
+            }, 1000);
 
         } catch (error) {
             console.error(error);
-            alert("Failed to post. Please try again.");
-            setSubmitting(false);
-        } finally {
-            setSubmitting(false);
+            setStatus("error");
+            setErrorMsg("Connection error. Please try again.");
         }
     };
 
     return (
         <div
-            className={`bg-zinc-950 border transition-all duration-300 rounded-2xl p-5 mb-8 relative group overflow-hidden ${isFocused ? 'border-red-900 shadow-[0_0_30px_rgba(127,29,29,0.2)]' : 'border-zinc-900'}`}
+            className={`bg-slate-900 border transition-all duration-300 rounded-2xl p-1 mb-8 relative group ${isFocused ? 'border-rose-900/50 shadow-[0_0_30px_rgba(225,29,72,0.1)]' : 'border-slate-800'}`}
             onFocus={() => setIsFocused(true)}
             onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) {
-                    setIsFocused(false);
-                }
+                if (!e.currentTarget.contains(e.relatedTarget)) setIsFocused(false);
             }}
         >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-900/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            <div className="bg-slate-900 rounded-xl p-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-900/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
 
-            <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 relative z-10">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-red-950/30 flex items-center justify-center border border-red-900/50 text-red-500">
-                            <Lock className="w-4 h-4" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border border-slate-800 text-rose-500 shadow-inner">
+                            <Lock className="w-3.5 h-3.5" />
                         </div>
-                        <h2 className="text-zinc-200 font-bold text-sm tracking-wide">POST SECRET <span className="text-red-600 text-[10px] ml-1 border border-red-900 px-1 rounded bg-red-950/50">18+</span></h2>
+                        <h2 className="text-slate-200 font-bold text-sm tracking-wide">POST SECRET</h2>
                     </div>
-                    <div className="text-[10px] text-zinc-600 font-mono flex items-center gap-1">
+                    <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1 border border-slate-800 bg-slate-950/50 px-2 py-1 rounded-full">
                         <Shield className="w-3 h-3" />
                         AI MODERATED
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
                     <div className="relative">
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="What keeps you awake at night? (Anonymous)"
-                            className="w-full h-32 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-red-900/50 focus:bg-zinc-900 focus:ring-1 focus:ring-red-900/30 resize-none transition-all text-sm font-serif leading-relaxed"
+                            className="w-full h-32 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-900/50 focus:bg-slate-950 focus:ring-1 focus:ring-rose-900/30 resize-none transition-all text-sm font-serif leading-relaxed"
+                            maxLength={1000}
                         />
-                        <div className="absolute bottom-3 right-3 text-[10px] text-zinc-600 font-mono">
-                            {content.length} chars
+                        <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
+                            {content.length}/1000
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 sm:items-end justify-between border-t border-zinc-900 pt-4">
-                        <div className="space-y-3 flex-1">
-                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {showPoll ? (
+                        <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                                    <BarChart2 className="w-3 h-3" /> Add Poll
+                                </span>
+                                <button type="button" onClick={() => setShowPoll(false)} className="text-slate-500 hover:text-slate-300">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                <input 
+                                    type="text" 
+                                    placeholder="Option 1 (e.g., Do it)"
+                                    value={pollOptions.a}
+                                    onChange={(e) => setPollOptions({...pollOptions, a: e.target.value})}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                />
+                                <input 
+                                    type="text" 
+                                    placeholder="Option 2 (e.g., Don't do it)"
+                                    value={pollOptions.b}
+                                    onChange={(e) => setPollOptions({...pollOptions, b: e.target.value})}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <button 
+                            type="button" 
+                            onClick={() => setShowPoll(true)}
+                            className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-rose-400 transition-colors px-1"
+                        >
+                            <BarChart2 className="w-3.5 h-3.5" /> 
+                            <span>Add a Poll</span>
+                        </button>
+                    )}
+
+                    <div className="border-t border-slate-800 my-2"></div>
+
+                    <div className="flex flex-col gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">Identity</label>
+                            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
                                 {IDENTITIES.map(id => (
                                     <button
                                         key={id.id}
                                         type="button"
                                         onClick={() => setSelectedIdentity(id)}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all whitespace-nowrap ${selectedIdentity.id === id.id
-                                            ? 'bg-zinc-100 text-black border-white font-bold shadow-md shadow-white/5'
-                                            : 'bg-zinc-900/50 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all whitespace-nowrap ${selectedIdentity.id === id.id
+                                            ? 'bg-slate-100 text-slate-950 border-slate-100 font-bold shadow-md shadow-slate-500/10'
+                                            : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-600 hover:text-slate-300'
                                             }`}
                                     >
-                                        <span>{id.icon}</span>
+                                        <span className="text-sm">{id.icon}</span>
                                         <span>{id.label}</span>
                                     </button>
                                 ))}
                             </div>
+                        </div>
 
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">Mood</label>
                             <div className="flex flex-wrap gap-2">
                                 {MOODS.map(m => (
                                     <button
                                         key={m.id}
                                         type="button"
                                         onClick={() => setSelectedMood(m)}
-                                        className={`px-2 py-1 rounded-md border text-[10px] uppercase tracking-wider transition-all ${selectedMood.id === m.id
-                                            ? `${m.color} border-current font-bold ring-1 ring-current bg-opacity-20`
-                                            : 'bg-zinc-900/50 text-zinc-600 border-zinc-800 hover:bg-zinc-800'
+                                        className={`px-3 py-1.5 rounded-md border text-[10px] uppercase tracking-wider transition-all ${selectedMood.id === m.id
+                                            ? `${m.color} font-bold ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.2)] bg-opacity-20`
+                                            : 'bg-slate-950 text-slate-600 border-slate-800 hover:bg-slate-900 hover:text-slate-400'
                                             }`}
                                     >
                                         {m.label}
@@ -152,30 +213,49 @@ export default function AdultPostForm({ onSuccess }) {
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={submitting || !content.trim()}
-                            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 active:scale-95 shrink-0"
-                        >
-                            {submitting ? (
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <span>CONFESS</span>
-                                    <Send className="w-4 h-4" />
-                                </>
-                            )}
-                        </button>
-                    </div>
+                        <div className="flex items-center justify-between pt-2">
+                            <div className="text-xs">
+                                {status === 'analyzing' && <span className="text-slate-400 flex items-center gap-2"><Sparkles className="w-3 h-3 animate-spin text-violet-500" /> AI Analyzing...</span>}
+                                {status === 'blocked' && <span className="text-rose-500 font-bold flex items-center gap-2"><AlertCircle className="w-3 h-3" /> {errorMsg}</span>}
+                                {status === 'success' && <span className="text-emerald-500 font-bold flex items-center gap-2"><CheckCircle2 className="w-3 h-3" /> Posted!</span>}
+                                {status === 'error' && <span className="text-rose-500 flex items-center gap-2"><AlertCircle className="w-3 h-3" /> {errorMsg}</span>}
+                            </div>
 
-                    {aiStatus !== 'idle' && (
-                        <div className="text-center text-xs animate-in fade-in">
-                            {aiStatus === 'analyzing' && <span className="text-zinc-500">Encrypting & Analyzing...</span>}
-                            {aiStatus === 'blocked' && <span className="text-red-500 font-bold">🚫 Blocked by Safety Policy</span>}
+                            <div className="flex gap-3">
+                                {onCancel && (
+                                    <button 
+                                        type="button" 
+                                        onClick={onCancel}
+                                        className="text-slate-500 text-sm font-medium hover:text-slate-300 px-3"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'analyzing' || status === 'posting' || !content.trim()}
+                                    className="bg-rose-700 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 active:scale-95 min-w-[120px]"
+                                >
+                                    {status === 'analyzing' || status === 'posting' ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span>CONFESS</span>
+                                            <Send className="w-3.5 h-3.5" />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </form>
             </div>
         </div>
+    );
+}
+
+function CheckCircle2(props) {
+    return (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
     );
 }

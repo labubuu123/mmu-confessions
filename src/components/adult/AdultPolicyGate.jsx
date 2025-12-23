@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Lock, ShieldAlert } from 'lucide-react';
 
 export default function AdultPolicyGate({ onAgree, onDecline }) {
     const [canAgree, setCanAgree] = useState(false);
@@ -8,7 +8,7 @@ export default function AdultPolicyGate({ onAgree, onDecline }) {
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
-        if (scrollHeight - scrollTop - clientHeight < 10) {
+        if (scrollHeight - scrollTop - clientHeight < 20) {
             setCanAgree(true);
         }
     };
@@ -24,90 +24,102 @@ export default function AdultPolicyGate({ onAgree, onDecline }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
-            <div className={`max-w-md w-full bg-zinc-900 border border-red-900/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh] transition-all duration-300 ${showDoubleCheck ? 'scale-95 opacity-50 blur-sm pointer-events-none' : 'scale-100 opacity-100'}`}>
-                <div className="p-6 bg-gradient-to-b from-red-950/50 to-zinc-900 border-b border-red-900/30 text-center shrink-0">
-                    <div className="w-16 h-16 bg-red-950 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-800 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
-                        <span className="text-2xl font-black text-red-500">18+</span>
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+
+            <div className={`relative max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] transition-all duration-500 ${showDoubleCheck ? 'scale-95 opacity-50 blur-sm pointer-events-none' : 'scale-100 opacity-100'}`}>
+                <div className="p-8 pb-6 bg-gradient-to-b from-slate-800 to-slate-900 border-b border-slate-800 text-center shrink-0">
+                    <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-slate-800 shadow-xl shadow-black/50 relative group">
+                        <Lock className="w-8 h-8 text-rose-600" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white mb-1">Restricted Zone</h1>
-                    <p className="text-zinc-400 text-sm">Strict Moderation & Adult Themes</p>
+                    <h1 className="text-3xl font-black text-white mb-2 tracking-tight">RESTRICTED AREA</h1>
+                    <p className="text-rose-500 text-xs font-mono tracking-widest uppercase font-bold">Strictly 18+ Only</p>
                 </div>
 
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="p-6 overflow-y-auto space-y-4 text-zinc-300 text-sm leading-relaxed border-b border-zinc-800 bg-zinc-900/50"
+                    className="p-6 overflow-y-auto space-y-6 text-slate-400 text-sm leading-relaxed bg-slate-900 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
                 >
-                    <div className="bg-red-950/30 p-3 rounded-lg border border-red-900/30 flex gap-3 mb-4">
-                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                        <p className="text-red-200 font-bold text-xs">WARNING: This section contains user-generated content intended for mature audiences only.</p>
+                    <div className="bg-rose-950/30 p-4 rounded-xl border border-rose-900/50 flex gap-3">
+                        <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-rose-400 font-bold text-xs uppercase mb-1">Content Warning</p>
+                            <p className="text-rose-200/70 text-xs">This section contains unfiltered user-generated content regarding adult themes, relationships, and confessions.</p>
+                        </div>
                     </div>
 
-                    <h3 className="font-bold text-white uppercase tracking-wider text-xs">1. Age Requirement</h3>
-                    <p>By entering, you confirm you are at least 18 years old. Access by minors is strictly prohibited.</p>
+                    <div className="space-y-2">
+                        <h3 className="font-bold text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span> 1. Age Requirement
+                        </h3>
+                        <p>You must be at least 18 years of age to access this section. Access by minors is illegal and strictly prohibited.</p>
+                    </div>
 
-                    <h3 className="font-bold text-white uppercase tracking-wider text-xs">2. Prohibited Content</h3>
-                    <p>No illegal acts, CSAM, non-consensual content, doxxing, or solicitation. Zero tolerance policy.</p>
+                    <div className="space-y-2">
+                        <h3 className="font-bold text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span> 2. Zero Tolerance
+                        </h3>
+                        <p>We do not tolerate CSAM, non-consensual content, violence, or doxxing. All content is passed through AI moderation before posting.</p>
+                    </div>
 
-                    <h3 className="font-bold text-white uppercase tracking-wider text-xs">3. AI Moderation</h3>
-                    <p>All posts are analyzed by Gemini AI. Unsafe content is automatically blocked.</p>
-
-                    <p className="pt-4 text-center text-zinc-500 italic text-xs">
-                        (Please scroll to the bottom to agree)
-                    </p>
+                    {!canAgree && (
+                        <div className="py-8 text-center animate-pulse">
+                            <p className="text-slate-500 text-xs font-mono">↓ Scroll to the bottom to proceed ↓</p>
+                        </div>
+                    )}
                 </div>
 
-                <div className="p-4 bg-zinc-900 flex flex-col gap-3 shrink-0">
+                <div className="p-5 bg-slate-950 border-t border-slate-900 flex flex-col gap-3 shrink-0">
                     <button
                         onClick={handleInitialAgree}
                         disabled={!canAgree}
-                        className={`w-full py-4 rounded-xl font-bold transition-all uppercase tracking-wider flex items-center justify-center gap-2 ${canAgree
-                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20'
-                            : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                        className={`w-full py-4 rounded-xl font-bold transition-all uppercase tracking-wider flex items-center justify-center gap-2 text-sm ${canAgree
+                            ? 'bg-rose-700 hover:bg-rose-600 text-white shadow-lg shadow-rose-900/50 transform hover:-translate-y-0.5'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-70'
                             }`}
                     >
-                        {canAgree ? <><CheckCircle2 className="w-5 h-5" /> I Understand & Agree</> : 'Scroll to Read Full Policy'}
+                        {canAgree ? <><CheckCircle2 className="w-5 h-5" /> I Understand & Enter</> : 'Read Policy to Unlock'}
                     </button>
                     <button
                         onClick={onDecline}
-                        className="w-full py-3 text-zinc-500 hover:text-white font-medium transition-colors text-sm"
+                        className="w-full py-3 text-slate-500 hover:text-slate-300 font-medium transition-colors text-xs uppercase tracking-widest hover:bg-slate-800 rounded-lg"
                     >
-                        Decline & Exit
+                        Decline & Return Home
                     </button>
                 </div>
             </div>
 
             {showDoubleCheck && (
-                <div className="absolute inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-                    <div className="bg-zinc-950 border-2 border-red-600 p-8 rounded-2xl max-w-sm w-full shadow-[0_0_50px_rgba(220,38,38,0.4)] text-center animate-in zoom-in-95 duration-200">
-                        <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4 animate-bounce" />
+                <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300 p-6">
+                    <div className="bg-slate-900 border border-rose-900/50 p-8 rounded-2xl max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 duration-300 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-600 to-transparent"></div>
+
+                        <AlertTriangle className="w-14 h-14 text-rose-600 mx-auto mb-6 animate-bounce" />
 
                         <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Final Confirmation</h2>
-                        <p className="text-zinc-400 mb-6 leading-relaxed">
-                            Are you strictly over the age of 18?
+                        <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+                            By clicking "Enter", you legally confirm you are over 18.
                             <br />
-                            <span className="text-red-500 text-xs font-bold uppercase mt-2 block">Lying about age is a violation of our terms.</span>
+                            <span className="text-rose-500 font-bold mt-2 block">False declaration is a violation of our terms.</span>
                         </p>
 
                         <div className="space-y-3">
                             <button
                                 onClick={handleFinalConfirmation}
-                                className="w-full bg-red-600 hover:bg-red-500 text-white py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-lg shadow-red-900/30 transition-transform active:scale-95"
+                                className="w-full bg-white text-slate-900 hover:bg-slate-200 py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg transition-transform active:scale-95"
                             >
-                                Yes, I am 18+
+                                Enter (I am 18+)
                             </button>
                             <button
                                 onClick={() => setShowDoubleCheck(false)}
-                                className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-400 py-3 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 py-3 rounded-xl font-medium text-xs uppercase tracking-wider transition-colors"
                             >
-                                <XCircle className="w-4 h-4" /> Cancel
+                                Cancel
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 }

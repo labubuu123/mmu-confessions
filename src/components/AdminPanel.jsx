@@ -6,7 +6,8 @@ import {
     ShieldOff, BarChart3, Calendar, Users, Heart, MessageSquare, Send,
     Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap,
     Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag, Quote,
-    Activity, MapPin, ClipboardList, Check, Search as SearchIcon, FileText
+    Activity, MapPin, ClipboardList, Check, Search as SearchIcon, FileText,
+    Flame
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -16,6 +17,7 @@ import EventDisplay from './EventDisplay'
 import UserManagement from './UserManagement'
 import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
 import PostModal from './PostModal'
+import AdultAdmin from './adult/AdultAdmin'
 import imageCompression from 'browser-image-compression';
 
 dayjs.extend(relativeTime)
@@ -574,6 +576,7 @@ export default function AdminPanel() {
     const menuItems = [
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'moderation', label: 'Moderation', icon: Shield },
+        { id: 'adult', label: 'Adult/NSFW', icon: Flame },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
         { id: 'lostfound', label: 'Lost & Found', icon: ClipboardList },
@@ -621,7 +624,7 @@ export default function AdminPanel() {
                 <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300"><Menu className="w-6 h-6" /></button>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white capitalize">{activeTab.replace('lostfound', 'Lost & Found')}</h1>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white capitalize">{activeTab === 'adult' ? 'Adult/NSFW' : activeTab.replace('lostfound', 'Lost & Found')}</h1>
                     </div>
                     <div className="flex gap-2">
                         {activeTab === 'moderation' && (
@@ -658,6 +661,8 @@ export default function AdminPanel() {
                 </header>
 
                 <div className="p-4 md:p-6 max-w-7xl mx-auto">
+                    {activeTab === 'adult' && <AdultAdmin />}
+
                     {activeTab === 'analytics' && (
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
