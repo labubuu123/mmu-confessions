@@ -357,6 +357,9 @@ ADD column IF NOT EXISTS has_poll BOOLEAN DEFAULT false,
 ADD column IF NOT EXISTS poll_question TEXT,
 ADD column IF NOT EXISTS poll_options jsonb;
 
+ALTER TABLE public.events
+ADD CONSTRAINT events_confession_id_key UNIQUE (confession_id);
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;

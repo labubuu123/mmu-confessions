@@ -121,7 +121,12 @@ export default function PostCard({ post, onOpen, onQuote }) {
     }
 
     async function fetchAttachments() {
-        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).maybeSingle()
+        const { data: eventData } = await supabase
+            .from('events')
+            .select('*')
+            .eq('confession_id', post.id)
+            .limit(1)
+            .maybeSingle()
         if (eventData) {
             setEvent(eventData)
             return;
