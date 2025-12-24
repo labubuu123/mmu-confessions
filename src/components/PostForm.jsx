@@ -1068,7 +1068,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                         <div className="flex-1">
 
                             <div className="mb-2 relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <div className="absolute inset-y-0 left-0 pl-0 flex items-center pointer-events-none">
                                     <User className="h-4 w-4 text-gray-400" />
                                 </div>
                                 <input
@@ -1076,7 +1076,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     value={customName}
                                     onChange={(e) => setCustomName(e.target.value)}
                                     placeholder={placeholderText}
-                                    className="w-full pl-9 pr-3 py-2 text-base sm:text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
+                                    className="w-full pl-6 pr-3 py-2 text-base sm:text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
                                     maxLength={30}
                                 />
                             </div>

@@ -294,7 +294,7 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                     className={`relative max-w-3xl w-full bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col
                     ${isSpecialPost ? 'border-2' : 'border border-gray-200 dark:border-gray-700'}
                 `}>
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto overscroll-contain">
                         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex items-center justify-between z-10">
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
                                 <AnonAvatar authorId={internalPost.author_id} size="sm" />

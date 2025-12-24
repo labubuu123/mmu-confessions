@@ -85,7 +85,7 @@ export default function CommentSection({ postId }) {
     }
 
     return (
-        <div className="mt-4 sm:mt-6">
+        <div className="mt-4 sm:mt-6 pb-40">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">
                 Comments ({allComments.length})
             </h3>
