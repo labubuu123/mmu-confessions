@@ -79,7 +79,7 @@ export default function ShareButton({ post }) {
             .select('text')
             .eq('post_id', post.id)
             .order('created_at', { ascending: false })
-            .limit(2)
+            .limit(1)
 
         if (!error && data) {
             setComments(data)
