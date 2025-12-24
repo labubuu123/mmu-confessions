@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Loader2, MessageSquare, Heart, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function UserStatsWidget({ userId, fetchKey }) {
@@ -44,21 +44,21 @@ function UserStatsWidget({ userId, fetchKey }) {
                 </div>
 
                 <div className="flex justify-between items-end">
-                    <div className="text-center">
-                        <p className="text-xl font-black">{stats.postCount}</p>
-                        <p className="text-[10px] text-gray-300">Posts</p>
+                    <div className="text-center min-w-0 flex-1">
+                        <p className="text-xl font-black truncate">{stats.postCount}</p>
+                        <p className="text-[10px] text-gray-300 uppercase">Posts</p>
                     </div>
-                    <div className="text-center border-l border-white/10 pl-4">
-                        <p className="text-xl font-black">{stats.commentCount}</p>
-                        <p className="text-[10px] text-gray-300">Comments</p>
+                    <div className="text-center border-l border-white/10 pl-2 flex-1 min-w-0">
+                        <p className="text-xl font-black truncate">{stats.commentCount}</p>
+                        <p className="text-[10px] text-gray-300 uppercase">Comments</p>
                     </div>
-                    <div className="text-center border-l border-white/10 pl-4">
-                        <p className="text-xl font-black">{stats.totalLikes}</p>
-                        <p className="text-[10px] text-gray-300">Likes</p>
+                    <div className="text-center border-l border-white/10 pl-2 flex-1 min-w-0">
+                        <p className="text-xl font-black truncate">{stats.totalLikes}</p>
+                        <p className="text-[10px] text-gray-300 uppercase">Likes</p>
                     </div>
                 </div>
 
-                <Link to="/stats" className="block mt-4 text-center text-xs font-bold bg-white/10 hover:bg-white/20 py-2 rounded-lg transition">
+                <Link to="/stats" className="block mt-4 text-center text-xs font-bold bg-white/10 hover:bg-white/20 py-2 rounded-lg transition active:scale-95">
                     View Full Analytics
                 </Link>
             </div>
