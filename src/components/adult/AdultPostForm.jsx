@@ -23,11 +23,11 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
     const [content, setContent] = useState("");
     const [selectedIdentity, setSelectedIdentity] = useState(IDENTITIES[4]);
     const [selectedMood, setSelectedMood] = useState(MOODS[0]);
-    
+
     const [showPoll, setShowPoll] = useState(false);
     const [pollOptions, setPollOptions] = useState({ a: "", b: "" });
 
-    const [status, setStatus] = useState("idle"); 
+    const [status, setStatus] = useState("idle");
     const [errorMsg, setErrorMsg] = useState("");
     const [isFocused, setIsFocused] = useState(false);
 
@@ -55,7 +55,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
 
             let pollData = null;
             let hasPoll = false;
-            
+
             if (showPoll && pollOptions.a && pollOptions.b) {
                 hasPoll = true;
                 pollData = [
@@ -82,7 +82,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             setContent("");
             setPollOptions({ a: "", b: "" });
             setShowPoll(false);
-            
+
             setTimeout(() => {
                 setStatus("idle");
                 if (onSuccess) onSuccess();
@@ -144,29 +144,29 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 </button>
                             </div>
                             <div className="space-y-2">
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Option 1 (e.g., Do it)"
                                     value={pollOptions.a}
-                                    onChange={(e) => setPollOptions({...pollOptions, a: e.target.value})}
+                                    onChange={(e) => setPollOptions({ ...pollOptions, a: e.target.value })}
                                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                 />
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Option 2 (e.g., Don't do it)"
                                     value={pollOptions.b}
-                                    onChange={(e) => setPollOptions({...pollOptions, b: e.target.value})}
+                                    onChange={(e) => setPollOptions({ ...pollOptions, b: e.target.value })}
                                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                 />
                             </div>
                         </div>
                     ) : (
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => setShowPoll(true)}
                             className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-rose-400 transition-colors px-1"
                         >
-                            <BarChart2 className="w-3.5 h-3.5" /> 
+                            <BarChart2 className="w-3.5 h-3.5" />
                             <span>Add a Poll</span>
                         </button>
                     )}
@@ -223,8 +223,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
 
                             <div className="flex gap-3">
                                 {onCancel && (
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={onCancel}
                                         className="text-slate-500 text-sm font-medium hover:text-slate-300 px-3"
                                     >
@@ -256,6 +256,6 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
 
 function CheckCircle2(props) {
     return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></svg>
     );
 }

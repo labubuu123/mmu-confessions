@@ -117,8 +117,8 @@ export default function AdultSection() {
                             key={f}
                             onClick={() => { setFilter(f); if (posts.length === 1) fetchPosts(); }}
                             className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider whitespace-nowrap border transition-all ${filter === f
-                                    ? 'bg-rose-600 text-white border-rose-500 shadow-[0_0_15px_rgba(225,29,72,0.3)]'
-                                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                                ? 'bg-rose-600 text-white border-rose-500 shadow-[0_0_15px_rgba(225,29,72,0.3)]'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
                                 }`}
                         >
                             {f}

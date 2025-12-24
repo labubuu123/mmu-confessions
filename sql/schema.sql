@@ -381,6 +381,7 @@ ALTER TABLE public.matchmaker_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.adult_poll_votes ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
