@@ -98,7 +98,7 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setTimeout(() => setIsFocused(false), 100)}
                         placeholder={parentId ? "Write a reply..." : "Write a comment..."}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm sm:text-base resize-none"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-base resize-none"
                         maxLength={500}
                         rows={isFocused ? 3 : 1}
                         style={{ minHeight: isFocused ? '80px' : '44px' }}

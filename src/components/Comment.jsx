@@ -221,8 +221,8 @@ export default function Comment({ comment, postId, depth = 0 }) {
                                         className="fixed inset-0 z-30"
                                         onClick={() => setShowEmojiPicker(false)}
                                     />
-                                    <div className="absolute top-0 left-full ml-2 z-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 w-fit">
-                                        <div className="flex flex-nowrap gap-1">
+                                    <div className="absolute top-full left-0 mt-2 sm:top-0 sm:left-full sm:ml-2 sm:mt-0 z-40 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-2 w-max max-w-[280px] sm:max-w-none">
+                                        <div className="flex flex-wrap sm:flex-nowrap gap-1">
                                             {COMMENT_EMOJIS.map(emoji => (
                                                 <button
                                                     key={emoji}

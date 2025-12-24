@@ -85,8 +85,8 @@ export default function CommentSection({ postId }) {
     }
 
     return (
-        <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="mt-4 sm:mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">
                 Comments ({allComments.length})
             </h3>
 
@@ -99,7 +99,7 @@ export default function CommentSection({ postId }) {
             )}
 
             {!loading && !error && (
-                <div className="space-y-5 mt-6">
+                <div className="space-y-5 mt-4 sm:mt-6">
                     {renderedComments.length > 0 ? (
                         renderedComments.map(comment => (
                             <Comment
