@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
     Shield, Trash2, CheckCircle, AlertTriangle, Search,
     MessageCircle, ChevronDown, ChevronUp, XCircle,
-    Flame, Lock, RefreshCw, Tag
+    CornerDownRight, RefreshCw
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -105,18 +105,75 @@ export default function AdultAdmin() {
     };
 
     const handleDeleteComment = async (commentId, postId) => {
-        if (!window.confirm("Delete this comment?")) return;
+        if (!window.confirm("Delete this comment? (Any replies to it will also be deleted)")) return;
+
         const { error } = await supabase.from('adult_comments').delete().eq('id', commentId);
+
         if (!error) {
-            setComments(prev => ({
-                ...prev,
-                [postId]: prev[postId].filter(c => c.id !== commentId)
-            }));
+            setComments(prev => {
+                const postComments = prev[postId] || [];
+
+                const getDescendants = (parentId, all) => {
+                    const children = all.filter(c => c.parent_id === parentId);
+                    let ids = children.map(c => c.id);
+                    children.forEach(child => {
+                        ids = [...ids, ...getDescendants(child.id, all)];
+                    });
+                    return ids;
+                };
+
+                const idsToDelete = [commentId, ...getDescendants(commentId, postComments)];
+
+                return {
+                    ...prev,
+                    [postId]: postComments.filter(c => !idsToDelete.includes(c.id))
+                };
+            });
+        } else {
+            alert("Failed to delete comment");
         }
     };
 
     const updateLocalPost = (id, updates) => {
         setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    };
+
+    const renderComments = (postComments) => {
+        if (!postComments) return null;
+
+        return postComments.map(comment => {
+            const isReply = !!comment.parent_id;
+            const aliasColor = comment.author_alias === 'Boy' ? 'text-cyan-600 dark:text-cyan-400' : 'text-pink-600 dark:text-pink-400';
+
+            return (
+                <div
+                    key={comment.id}
+                    className={`flex justify-between items-start gap-3 bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 ${isReply ? 'ml-8 border-l-4 border-l-gray-300 dark:border-l-gray-600' : ''}`}
+                >
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            {isReply && <CornerDownRight className="w-3 h-3 text-gray-400" />}
+                            <span className={`text-xs font-bold ${aliasColor}`}>
+                                {comment.author_alias}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                                {dayjs(comment.created_at).format('MMM D, h:mm A')}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {comment.text}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleDeleteComment(comment.id, comment.post_id)}
+                        className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        title="Delete Comment"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        });
     };
 
     return (
@@ -161,7 +218,7 @@ export default function AdultAdmin() {
                         <div className="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 flex justify-between items-center border-b border-gray-100 dark:border-gray-700 text-xs">
                             <div className="flex items-center gap-3">
                                 <span className="font-mono text-gray-500">#{post.id}</span>
-                                <span className="flex items-center gap-1 font-bold text-gray-700 dark:text-gray-300">
+                                <span className={`flex items-center gap-1 font-bold ${post.author_alias === 'Boy' ? 'text-cyan-600' : post.author_alias === 'Girl' ? 'text-pink-600' : 'text-gray-700 dark:text-gray-300'}`}>
                                     {post.author_alias}
                                 </span>
                                 <span className="text-gray-400">{dayjs(post.created_at).format('MMM D, h:mm A')}</span>
@@ -237,24 +294,7 @@ export default function AdultAdmin() {
                                     )}
 
                                     <div className="space-y-3">
-                                        {comments[post.id]?.map(comment => (
-                                            <div key={comment.id} className="flex justify-between items-start gap-3 bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
-                                                <div>
-                                                    <div className="flex items-baseline gap-2 mb-1">
-                                                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{comment.author_alias}</span>
-                                                        <span className="text-[10px] text-gray-400">{dayjs(comment.created_at).fromNow()}</span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-700 dark:text-gray-300">{comment.text}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => handleDeleteComment(comment.id, post.id)}
-                                                    className="text-gray-400 hover:text-red-500 p-1"
-                                                    title="Delete Comment"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {renderComments(comments[post.id])}
                                     </div>
                                 </div>
                             )}
@@ -280,8 +320,8 @@ function FilterButton({ active, onClick, label, icon: Icon, color }) {
         <button
             onClick={onClick}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${active
-                    ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700'
+                ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700'
                 }`}
         >
             {Icon && <Icon className={`w-3.5 h-3.5 ${color === 'red' ? 'text-red-500' : color === 'green' ? 'text-green-500' : 'text-yellow-500'}`} />}

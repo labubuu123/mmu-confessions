@@ -2,23 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import AdultComments from './AdultComments';
 import AdultShareButton from './AdultShareButton';
-import { Flame, Heart, HeartCrack, MessageCircle, User, Flag, BarChart2 } from 'lucide-react';
+import AdultAvatar from './AdultAvatar';
+import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2 } from 'lucide-react';
 
 export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
     const [reactionCounts, setReactionCounts] = useState({ like: 0, fire: 0, broken_heart: 0 });
-    const [userReaction, setUserReaction] = useState(null);
+    const [userReactions, setUserReactions] = useState(new Set());
 
     const [pollOptions, setPollOptions] = useState(post.poll_options || []);
     const [hasVoted, setHasVoted] = useState(false);
     const [totalVotes, setTotalVotes] = useState(0);
 
-    const identityTag = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
+    const identityId = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
+    const genderLabel = identityId === 'M' ? 'Boy' : identityId === 'F' ? 'Girl' : 'Secret';
+
     const moodTag = post.tags?.find(t => t.startsWith('Mood:'))?.replace('Mood:', '') || null;
     const cleanTags = post.tags?.filter(t => !t.startsWith('ID:') && !t.startsWith('Mood:') && t !== '18+');
 
     useEffect(() => {
         fetchReactions();
+        fetchUserReactions();
         if (post.has_poll) {
             checkPollVote();
             calculateTotalVotes(post.poll_options);
@@ -53,15 +57,50 @@ export default function AdultPostCard({ post }) {
         }
     };
 
+    const fetchUserReactions = async () => {
+        const anonId = localStorage.getItem('anonId');
+        if (!anonId) return;
+
+        const { data, error } = await supabase
+            .from('adult_reactions')
+            .select('type')
+            .eq('post_id', post.id)
+            .eq('user_id', anonId);
+
+        if (!error && data) {
+            const myReactions = new Set(data.map(r => r.type));
+            setUserReactions(myReactions);
+        }
+    };
+
     const handleReaction = async (type) => {
-        const anonId = localStorage.getItem('anonId') || 'anon_guest';
-        setReactionCounts(prev => ({ ...prev, [type]: prev[type] + 1 }));
-        setUserReaction(type);
-        await supabase.from('adult_reactions').insert({
-            post_id: post.id,
-            user_id: anonId,
-            type: type
-        });
+        const anonId = localStorage.getItem('anonId') || 'anon_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('anonId', anonId);
+
+        const hasReacted = userReactions.has(type);
+
+        if (hasReacted) {
+            setReactionCounts(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }));
+            setUserReactions(prev => {
+                const next = new Set(prev);
+                next.delete(type);
+                return next;
+            });
+
+            await supabase.from('adult_reactions')
+                .delete()
+                .match({ post_id: post.id, user_id: anonId, type: type });
+        } else {
+            setReactionCounts(prev => ({ ...prev, [type]: prev[type] + 1 }));
+            setUserReactions(prev => {
+                const next = new Set(prev);
+                next.add(type);
+                return next;
+            });
+
+            await supabase.from('adult_reactions')
+                .insert({ post_id: post.id, user_id: anonId, type: type });
+        }
     };
 
     const handleVote = async (optionId) => {
@@ -103,12 +142,13 @@ export default function AdultPostCard({ post }) {
 
             <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 text-slate-500 shadow-inner">
-                        <User className="w-5 h-5" />
-                    </div>
+                    <AdultAvatar gender={genderLabel} size="md" />
+
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="text-slate-200 text-sm font-bold tracking-wide">{identityTag}</span>
+                            <span className={`text-sm font-bold tracking-wide ${genderLabel === 'Boy' ? 'text-cyan-400' : genderLabel === 'Girl' ? 'text-pink-400' : 'text-slate-200'}`}>
+                                {genderLabel}
+                            </span>
                             {moodTag && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 uppercase tracking-wider font-medium">
                                     {moodTag}
@@ -189,9 +229,27 @@ export default function AdultPostCard({ post }) {
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
                 <div className="flex gap-1">
-                    <ReactionBtn icon={Heart} label={reactionCounts.like} onClick={() => handleReaction('like')} color="text-rose-500" isActive={userReaction === 'like'} />
-                    <ReactionBtn icon={Flame} label={reactionCounts.fire} onClick={() => handleReaction('fire')} color="text-amber-500" isActive={userReaction === 'fire'} />
-                    <ReactionBtn icon={HeartCrack} label={reactionCounts.broken_heart} onClick={() => handleReaction('broken_heart')} color="text-violet-500" isActive={userReaction === 'broken_heart'} />
+                    <ReactionBtn
+                        icon={Heart}
+                        label={reactionCounts.like}
+                        onClick={() => handleReaction('like')}
+                        color="text-rose-500"
+                        isActive={userReactions.has('like')}
+                    />
+                    <ReactionBtn
+                        icon={Flame}
+                        label={reactionCounts.fire}
+                        onClick={() => handleReaction('fire')}
+                        color="text-amber-500"
+                        isActive={userReactions.has('fire')}
+                    />
+                    <ReactionBtn
+                        icon={HeartCrack}
+                        label={reactionCounts.broken_heart}
+                        onClick={() => handleReaction('broken_heart')}
+                        color="text-violet-500"
+                        isActive={userReactions.has('broken_heart')}
+                    />
                 </div>
                 <button
                     onClick={() => setShowComments(!showComments)}
@@ -210,7 +268,7 @@ export default function AdultPostCard({ post }) {
 const ReactionBtn = ({ icon: Icon, label, onClick, color, isActive }) => (
     <button
         onClick={onClick}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all active:scale-95 group ${isActive ? 'bg-slate-800 ' + color : 'text-slate-600 hover:bg-slate-800 hover:text-slate-400'}`}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all active:scale-95 group ${isActive ? 'bg-slate-800 ' + color + ' shadow-inner border border-slate-700' : 'text-slate-600 hover:bg-slate-800 hover:text-slate-400'}`}
     >
         <Icon className={`w-4 h-4 ${isActive ? 'fill-current' : 'group-hover:scale-110 transition-transform'}`} />
         <span className="text-xs font-medium tabular-nums">{label || 0}</span>

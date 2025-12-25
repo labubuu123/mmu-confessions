@@ -82,7 +82,7 @@ export default function AdultSection() {
                                 MY<span className="text-rose-600"> NSFW</span>
                             </span>
                             <span className="text-[9px] font-bold tracking-[0.2em] text-slate-500 uppercase group-hover:text-rose-500/50 transition-colors">
-                                Late Night Confessions
+                                18+ Confessions
                             </span>
                         </div>
                     </div>

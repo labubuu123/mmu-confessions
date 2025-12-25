@@ -307,6 +307,14 @@ CREATE TABLE IF NOT EXISTS adult_poll_votes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) not null
 );
 
+CREATE TABLE IF NOT EXISTS public.adult_comment_reactions (
+    id BIGSERIAL PRIMARY KEY,
+    comment_id BIGINT REFERENCES public.adult_comments(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(comment_id, user_id)
+);
+
 ALTER TABLE matchmaker_loves
 DROP CONSTRAINT IF EXISTS matchmaker_loves_from_user_id_fkey,
 ADD CONSTRAINT matchmaker_loves_from_user_id_fkey
@@ -357,8 +365,20 @@ ADD column IF NOT EXISTS has_poll BOOLEAN DEFAULT false,
 ADD column IF NOT EXISTS poll_question TEXT,
 ADD column IF NOT EXISTS poll_options jsonb;
 
-ALTER TABLE public.events
-ADD CONSTRAINT events_confession_id_key UNIQUE (confession_id);
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_confession_id_key;
+ALTER TABLE public.events ADD CONSTRAINT events_confession_id_key UNIQUE (confession_id);
+
+ALTER TABLE public.adult_comments
+ADD COLUMN IF NOT EXISTS parent_id BIGINT;
+
+ALTER TABLE public.adult_comments
+DROP CONSTRAINT IF EXISTS adult_comments_parent_id_fkey;
+
+ALTER TABLE public.adult_comments
+ADD CONSTRAINT adult_comments_parent_id_fkey
+FOREIGN KEY (parent_id)
+REFERENCES public.adult_comments(id)
+ON DELETE CASCADE;
 
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
@@ -385,6 +405,7 @@ ALTER TABLE public.adult_confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_poll_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.adult_comment_reactions ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -409,6 +430,8 @@ DROP POLICY IF EXISTS "Create feed posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Delete own posts" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Read approved feed" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Admin delete feed" ON public.matchmaker_feed;
+DROP POLICY IF EXISTS "Admin delete adult comments" ON public.adult_comments;
+DROP POLICY IF EXISTS "Admin delete comment reactions" ON public.adult_comment_reactions;
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
@@ -496,6 +519,10 @@ CREATE POLICY "Admin update adult posts" ON public.adult_confessions FOR UPDATE 
 CREATE POLICY "Admin delete adult posts" ON public.adult_confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Admin delete adult comments" ON public.adult_comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Admin delete adult poll votes" ON public.adult_poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Public read comment reactions" ON public.adult_comment_reactions FOR SELECT USING (true);
+CREATE POLICY "Public insert comment reactions" ON public.adult_comment_reactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public delete own comment reactions" ON public.adult_comment_reactions FOR DELETE USING (true);
+CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -1563,6 +1590,8 @@ GRANT ALL ON FUNCTION public.clear_report_status(BIGINT) TO authenticated;
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
 GRANT ALL ON public.matchmaker_credentials TO anon, authenticated, service_role;
+GRANT ALL ON public.adult_comment_reactions TO anon, authenticated, service_role;
+GRANT ALL ON SEQUENCE public.adult_comment_reactions_id_seq TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.toggle_post_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.toggle_comment_reaction(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_comment_count(BIGINT) TO anon, authenticated;
