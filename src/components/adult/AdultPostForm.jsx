@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { checkContentSafety } from '../../utils/geminiModeration';
-import { Shield, Lock, Send, Sparkles, BarChart2, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, Lock, Send, Sparkles, BarChart2, X, AlertCircle, Loader2, Check } from 'lucide-react';
 import AdultNotification from './AdultNotification';
 
 const IDENTITIES = [
-    { id: 'M', label: 'Boy', icon: '♂️', color: 'from-cyan-900 to-blue-950 border-cyan-700 text-cyan-400' },
-    { id: 'F', label: 'Girl', icon: '♀️', color: 'from-pink-900 to-rose-950 border-pink-700 text-pink-400' }
+    {
+        id: 'M',
+        label: 'Boy',
+        icon: '♂️',
+        activeClass: 'bg-gradient-to-r from-cyan-900/80 to-blue-900/80 border-cyan-500 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.3)]',
+        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-cyan-900/50 hover:text-cyan-400'
+    },
+    {
+        id: 'F',
+        label: 'Girl',
+        icon: '♀️',
+        activeClass: 'bg-gradient-to-r from-pink-900/80 to-rose-900/80 border-pink-500 text-pink-100 shadow-[0_0_15px_rgba(236,72,153,0.3)]',
+        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-pink-900/50 hover:text-pink-400'
+    }
 ];
 
 const MOODS = [
@@ -118,7 +130,6 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                     if (!e.currentTarget.contains(e.relatedTarget)) setIsFocused(false);
                 }}
             >
-                {/* Mobile: p-4, Desktop: p-5 */}
                 <div className="bg-slate-900 rounded-xl p-4 md:p-5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-900/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
 
@@ -135,9 +146,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
+                    <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                         <div className="relative">
-                            {/* Mobile: text-base to prevent iOS zoom, Desktop: text-sm */}
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
@@ -161,7 +171,6 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     </button>
                                 </div>
                                 <div className="space-y-2">
-                                    {/* Inputs: text-sm on mobile, text-xs on desktop */}
                                     <input
                                         type="text"
                                         placeholder="Option 1 (e.g., Do it)"
@@ -189,35 +198,43 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                             </button>
                         )}
 
-                        <div className="border-t border-slate-800 my-2"></div>
+                        <div className="border-t border-slate-800/50"></div>
 
                         <div className="flex flex-col gap-4">
                             <div className="space-y-2">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-end">
                                     <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">
-                                        Who are you? <span className="text-rose-500">*</span>
+                                        Identity <span className="text-rose-500">*</span>
                                     </label>
-                                    {!selectedIdentity && <span className="text-[10px] text-rose-500 animate-pulse">Required</span>}
+                                    {!selectedIdentity && <span className="text-[10px] text-rose-500 animate-pulse font-medium">Required</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                                    {IDENTITIES.map(id => (
-                                        <button
-                                            key={id.id}
-                                            type="button"
-                                            onClick={() => setSelectedIdentity(id)}
-                                            className={`flex items-center justify-center gap-2 px-2 py-3.5 md:px-3 md:py-3 rounded-xl border text-sm transition-all relative overflow-hidden ${selectedIdentity?.id === id.id
-                                                ? `bg-gradient-to-br ${id.color} shadow-lg scale-[1.02]`
-                                                : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-600 hover:text-slate-300'
-                                                }`}
-                                        >
-                                            <span className="text-lg">{id.icon}</span>
-                                            <span className="font-bold">{id.label}</span>
-                                            {selectedIdentity?.id === id.id && (
-                                                <div className="absolute inset-0 bg-white/5 animate-pulse"></div>
-                                            )}
-                                        </button>
-                                    ))}
+                                {/* REDESIGNED BUTTONS */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {IDENTITIES.map(id => {
+                                        const isSelected = selectedIdentity?.id === id.id;
+                                        return (
+                                            <button
+                                                key={id.id}
+                                                type="button"
+                                                onClick={() => setSelectedIdentity(id)}
+                                                className={`
+                                                    relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all duration-300 group
+                                                    ${isSelected ? id.activeClass : id.inactiveClass}
+                                                `}
+                                            >
+                                                <span className={`text-xl transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>{id.icon}</span>
+                                                <span className={`font-bold text-sm tracking-wide ${isSelected ? 'text-white' : ''}`}>{id.label}</span>
+
+                                                {/* Checkmark indicator */}
+                                                {isSelected && (
+                                                    <div className="absolute top-2 right-2">
+                                                        <Check className="w-3 h-3 text-white/50" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -229,8 +246,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                             key={m.id}
                                             type="button"
                                             onClick={() => setSelectedMood(m)}
-                                            className={`px-3 py-2 md:py-1.5 rounded-md border text-[10px] uppercase tracking-wider transition-all ${selectedMood.id === m.id
-                                                ? `${m.color} font-bold ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.2)] bg-opacity-20`
+                                            className={`px-3 py-1.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all font-medium ${selectedMood.id === m.id
+                                                ? `${m.color} ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.1)] bg-opacity-20`
                                                 : 'bg-slate-950 text-slate-600 border-slate-800 hover:bg-slate-900 hover:text-slate-400'
                                                 }`}
                                         >
@@ -240,32 +257,35 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 </div>
                             </div>
 
-                            {/* Mobile: Stacked full-width buttons. Desktop: Inline right-aligned */}
-                            <div className="pt-2">
-                                <div className="flex flex-col-reverse md:flex-row gap-3 md:items-center md:justify-end">
-                                    {onCancel && (
-                                        <button
-                                            type="button"
-                                            onClick={onCancel}
-                                            className="text-slate-500 text-sm font-medium hover:text-slate-300 px-3 py-3 md:py-0 w-full md:w-auto text-center"
-                                        >
-                                            Cancel
-                                        </button>
-                                    )}
+                            {/* UPDATED ACTION BUTTONS: Right aligned, specific width */}
+                            <div className="pt-2 flex justify-end items-center gap-3">
+                                {onCancel && (
                                     <button
-                                        type="submit"
-                                        disabled={status === 'analyzing' || status === 'posting' || !content.trim()}
-                                        className={`bg-rose-700 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 md:py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 active:scale-95 w-full md:w-auto md:min-w-[120px] ${!selectedIdentity && 'opacity-50 grayscale'}`}
+                                        type="button"
+                                        onClick={onCancel}
+                                        className="text-slate-500 text-sm font-medium hover:text-slate-300 px-4 py-2 hover:bg-slate-800/50 rounded-lg transition-colors"
                                     >
-                                        {status === 'analyzing' || status === 'posting' ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <>
-                                                <Send className="w-3.5 h-3.5" />
-                                            </>
-                                        )}
+                                        Cancel
                                     </button>
-                                </div>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'analyzing' || status === 'posting' || !content.trim()}
+                                    className={`
+                                        bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white 
+                                        px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 
+                                        shadow-lg shadow-rose-900/30 active:scale-95 border border-rose-500/50
+                                        ${!selectedIdentity ? 'opacity-70 grayscale' : ''}
+                                    `}
+                                >
+                                    {status === 'analyzing' || status === 'posting' ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Send className="w-4 h-4" />
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </form>
