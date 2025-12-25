@@ -112,13 +112,14 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             />
 
             <div
-                className={`bg-slate-900 border transition-all duration-300 rounded-2xl p-1 mb-8 relative group ${isFocused ? 'border-rose-900/50 shadow-[0_0_30px_rgba(225,29,72,0.1)]' : 'border-slate-800'}`}
+                className={`bg-slate-900 border transition-all duration-300 rounded-2xl p-0.5 md:p-1 mb-8 relative group ${isFocused ? 'border-rose-900/50 shadow-[0_0_30px_rgba(225,29,72,0.1)]' : 'border-slate-800'}`}
                 onFocus={() => setIsFocused(true)}
                 onBlur={(e) => {
                     if (!e.currentTarget.contains(e.relatedTarget)) setIsFocused(false);
                 }}
             >
-                <div className="bg-slate-900 rounded-xl p-5 relative overflow-hidden">
+                {/* Mobile: p-4, Desktop: p-5 */}
+                <div className="bg-slate-900 rounded-xl p-4 md:p-5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-900/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
 
                     <div className="flex items-center justify-between mb-4 relative z-10">
@@ -136,11 +137,12 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
 
                     <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
                         <div className="relative">
+                            {/* Mobile: text-base to prevent iOS zoom, Desktop: text-sm */}
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 placeholder="What keeps you awake at night? (Anonymous)"
-                                className="w-full h-32 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-900/50 focus:bg-slate-950 focus:ring-1 focus:ring-rose-900/30 resize-none transition-all text-sm font-serif leading-relaxed"
+                                className="w-full h-32 md:h-32 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-900/50 focus:bg-slate-950 focus:ring-1 focus:ring-rose-900/30 resize-none transition-all text-base md:text-sm font-serif leading-relaxed"
                                 maxLength={1000}
                             />
                             <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
@@ -159,19 +161,20 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     </button>
                                 </div>
                                 <div className="space-y-2">
+                                    {/* Inputs: text-sm on mobile, text-xs on desktop */}
                                     <input
                                         type="text"
                                         placeholder="Option 1 (e.g., Do it)"
                                         value={pollOptions.a}
                                         onChange={(e) => setPollOptions({ ...pollOptions, a: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 md:py-2 text-sm md:text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                     />
                                     <input
                                         type="text"
                                         placeholder="Option 2 (e.g., Don't do it)"
                                         value={pollOptions.b}
                                         onChange={(e) => setPollOptions({ ...pollOptions, b: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 md:py-2 text-sm md:text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                     />
                                 </div>
                             </div>
@@ -197,13 +200,13 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     {!selectedIdentity && <span className="text-[10px] text-rose-500 animate-pulse">Required</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-2 md:gap-3">
                                     {IDENTITIES.map(id => (
                                         <button
                                             key={id.id}
                                             type="button"
                                             onClick={() => setSelectedIdentity(id)}
-                                            className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border text-sm transition-all relative overflow-hidden ${selectedIdentity?.id === id.id
+                                            className={`flex items-center justify-center gap-2 px-2 py-3.5 md:px-3 md:py-3 rounded-xl border text-sm transition-all relative overflow-hidden ${selectedIdentity?.id === id.id
                                                 ? `bg-gradient-to-br ${id.color} shadow-lg scale-[1.02]`
                                                 : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-600 hover:text-slate-300'
                                                 }`}
@@ -226,7 +229,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                             key={m.id}
                                             type="button"
                                             onClick={() => setSelectedMood(m)}
-                                            className={`px-3 py-1.5 rounded-md border text-[10px] uppercase tracking-wider transition-all ${selectedMood.id === m.id
+                                            className={`px-3 py-2 md:py-1.5 rounded-md border text-[10px] uppercase tracking-wider transition-all ${selectedMood.id === m.id
                                                 ? `${m.color} font-bold ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.2)] bg-opacity-20`
                                                 : 'bg-slate-950 text-slate-600 border-slate-800 hover:bg-slate-900 hover:text-slate-400'
                                                 }`}
@@ -237,13 +240,14 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-end pt-2">
-                                <div className="flex gap-3">
+                            {/* Mobile: Stacked full-width buttons. Desktop: Inline right-aligned */}
+                            <div className="pt-2">
+                                <div className="flex flex-col-reverse md:flex-row gap-3 md:items-center md:justify-end">
                                     {onCancel && (
                                         <button
                                             type="button"
                                             onClick={onCancel}
-                                            className="text-slate-500 text-sm font-medium hover:text-slate-300 px-3"
+                                            className="text-slate-500 text-sm font-medium hover:text-slate-300 px-3 py-3 md:py-0 w-full md:w-auto text-center"
                                         >
                                             Cancel
                                         </button>
@@ -251,7 +255,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     <button
                                         type="submit"
                                         disabled={status === 'analyzing' || status === 'posting' || !content.trim()}
-                                        className={`bg-rose-700 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 active:scale-95 min-w-[120px] ${!selectedIdentity && 'opacity-50 grayscale'}`}
+                                        className={`bg-rose-700 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 md:py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 active:scale-95 w-full md:w-auto md:min-w-[120px] ${!selectedIdentity && 'opacity-50 grayscale'}`}
                                     >
                                         {status === 'analyzing' || status === 'posting' ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />

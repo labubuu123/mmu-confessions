@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// REDESIGNED ICON: Pure Text "18+"
 const EighteenPlusIcon = ({ className }) => (
-    <div className={`${className} flex items-center justify-center border-2 border-current rounded-full`}>
-        <span className="text-[8px] font-black leading-none pt-[1px]">18+</span>
+    <div className={`${className} flex items-center justify-center`}>
+        <span className="font-black text-sm leading-none tracking-tighter scale-125">18+</span>
     </div>
 );
 
@@ -149,7 +150,7 @@ export default function FloatingActionMenu() {
 
     const handleNightsClick = () => {
         setIsOpen(false);
-        // navigate('/secrets');
+        // navigate('/adult');
         alert("🌙 Shh... The night is still young.\n\nMY西斯 (NSFW) is currently being prepared behind closed doors. Stay tuned for the grand opening!");
     };
 
@@ -214,16 +215,23 @@ export default function FloatingActionMenu() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
+                                {/* Redesigned 18+ Button: Pure Text Icon */}
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleNightsClick}
-                                    className="col-span-2 flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-50/50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent hover:border-gray-200 dark:hover:border-slate-600 transition-all group backdrop-blur-sm"
+                                    className="col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 hover:border-rose-900/50 relative overflow-hidden group shadow-lg"
                                 >
-                                    <div className="w-6 h-6 bg-gray-200 dark:bg-slate-700 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <EighteenPlusIcon className="w-4 h-4 text-red-600" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+
+                                    {/* Icon Container */}
+                                    <div className="w-10 h-10 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 group-hover:text-white transition-colors">
+                                        <EighteenPlusIcon className="text-rose-500 group-hover:text-white transition-colors" />
                                     </div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-slate-300">MY西斯 · NSFW</span>
+
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-sm font-black text-slate-200 group-hover:text-rose-400 transition-colors uppercase tracking-tight">MY西斯 · NSFW</span>
+                                    </div>
                                 </motion.button>
 
                                 <MenuButton

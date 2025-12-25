@@ -289,7 +289,7 @@ function App() {
             <Route path="/post-direct/:id" element={<PostModalWrapper />} />
             <Route path="/matchmaker" element={<Matchmaker />} />
             <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/secrets" element={<AdultSection />} />
+            <Route path="/adult" element={<AdultSection />} />
           </Routes>
         </main>
 
