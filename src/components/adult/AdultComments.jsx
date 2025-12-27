@@ -142,7 +142,7 @@ const CommentItem = React.memo(({ comment, allComments, myAlias, selectedGender,
                                     value={replyText}
                                     onChange={e => setReplyText(e.target.value)}
                                     placeholder={`Replying as ${selectedGender}...`}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base md:text-xs text-slate-200 focus:outline-none focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 pr-10"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 pr-10"
                                 />
                                 <button
                                     type="submit"
@@ -266,7 +266,7 @@ export default function AdultComments({ postId }) {
                     ))}
                 </div>
             ) : (
-                <div className="space-y-6 mb-24 md:mb-6">
+                <div className="space-y-6 mb-28 md:mb-6">
                     {comments.length === 0 && (
                         <div className="text-center py-8 flex flex-col items-center justify-center opacity-60">
                             <Ghost className="w-8 h-8 text-slate-700 mb-2" />
@@ -287,8 +287,8 @@ export default function AdultComments({ postId }) {
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 px-3 py-3 md:p-0 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 md:border-none md:bg-transparent md:backdrop-blur-none md:static z-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 transition-all">
-                <div className="hidden md:flex justify-start mb-3">
+            <div className="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/80 backdrop-blur-md border-t border-slate-800 z-50 md:sticky md:bottom-0 md:bg-transparent md:backdrop-blur-none md:border-none md:p-0 md:pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0">
+                <div className="flex justify-start mb-3">
                     <div className="flex bg-slate-900 p-1 rounded-full border border-slate-800 shadow-lg">
                         <button
                             type="button"
@@ -312,29 +312,18 @@ export default function AdultComments({ postId }) {
                 </div>
 
                 <form onSubmit={(e) => { e.preventDefault(); handlePostComment(newComment); }} className="flex gap-2 items-end max-w-2xl mx-auto">
-                    <div className="shrink-0 mb-1 md:hidden">
-                        <button
-                            type="button"
-                            onClick={() => setSelectedGender(prev => prev === 'Boy' ? 'Girl' : 'Boy')}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center border bg-slate-900 transition-all active:scale-95 ${selectedGender === 'Boy' ? 'border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' : 'border-pink-500/30 shadow-[0_0_10px_rgba(244,114,182,0.1)]'}`}
-                        >
-                            {selectedGender === 'Boy' ? <MarsIcon className="w-5 h-5 text-cyan-400" /> : <VenusIcon className="w-5 h-5 text-pink-400" />}
-                        </button>
-                    </div>
-
-                    <div className="shrink-0 mb-1 hidden md:block">
+                    <div className="shrink-0 mb-1">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center border bg-slate-900 ${selectedGender === 'Boy' ? 'border-cyan-500/30' : 'border-pink-500/30'}`}>
                             {selectedGender === 'Boy' ? <MarsIcon className="w-4 h-4 text-cyan-400" /> : <VenusIcon className="w-4 h-4 text-pink-400" />}
                         </div>
                     </div>
-
                     <div className="flex-1 relative group">
                         <input
                             type="text"
                             value={newComment}
                             onChange={e => setNewComment(e.target.value)}
                             placeholder={`Whisper as ${selectedGender}...`}
-                            className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 pr-12 text-base md:text-sm text-slate-200 focus:outline-none transition-all placeholder-slate-600 focus:ring-1 shadow-inner ${inputBorder}`}
+                            className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 pr-12 text-sm text-slate-200 focus:outline-none transition-all placeholder-slate-600 focus:ring-1 shadow-inner ${inputBorder}`}
                         />
                         <button
                             type="submit"
