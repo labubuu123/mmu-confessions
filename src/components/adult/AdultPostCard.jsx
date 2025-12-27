@@ -294,7 +294,7 @@ export default function AdultPostCard({ post }) {
                     className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all px-3 py-1.5 rounded-lg border ${showComments ? 'bg-slate-800 text-slate-200 border-slate-700' : 'text-slate-500 border-transparent hover:bg-slate-800/50'}`}
                 >
                     <MessageCircle className="w-4 h-4" />
-                    {showComments ? 'Hide' : `${commentCount}`}
+                    {showComments ? 'Hide' : Comment `${commentCount}`}
                 </button>
             </div>
 
