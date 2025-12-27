@@ -380,6 +380,9 @@ FOREIGN KEY (parent_id)
 REFERENCES public.adult_comments(id)
 ON DELETE CASCADE;
 
+ALTER TABLE public.user_reputation
+ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
@@ -1224,6 +1227,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS public.get_users_with_reputation_and_counts();
 CREATE OR REPLACE FUNCTION public.get_users_with_reputation_and_counts()
 RETURNS TABLE (
     author_id TEXT,
@@ -1232,7 +1236,8 @@ RETURNS TABLE (
     post_reactions_received_count INTEGER,
     comment_reactions_received_count INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    is_blocked BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1251,11 +1256,38 @@ BEGIN
         ur.post_reactions_received_count,
         ur.comment_reactions_received_count,
         ur.created_at,
-        ur.updated_at
+        ur.updated_at,
+        ur.is_blocked
     FROM
         public.user_reputation ur
     ORDER BY
         ur.created_at DESC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.enforce_user_block()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    target_user_id TEXT;
+BEGIN
+    IF TG_TABLE_NAME = 'confessions' OR TG_TABLE_NAME = 'comments' THEN
+        target_user_id := NEW.author_id;
+    ELSIF TG_TABLE_NAME = 'post_user_reactions' OR TG_TABLE_NAME = 'comment_user_reactions' THEN
+        target_user_id := NEW.user_id;
+    ELSIF TG_TABLE_NAME = 'poll_votes' THEN
+        target_user_id := NEW.voter_id;
+    ELSIF TG_TABLE_NAME = 'marketplace_items' THEN
+        target_user_id := NEW.seller_id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.user_reputation WHERE author_id = target_user_id AND is_blocked = TRUE) THEN
+        RAISE EXCEPTION 'Action denied. Your account has been restricted by the administrator.';
+    END IF;
+
+    RETURN NEW;
 END;
 $$;
 
@@ -1555,6 +1587,36 @@ DROP TRIGGER IF EXISTS on_comment_reaction ON public.comments;
 CREATE TRIGGER on_comment_reaction
     AFTER UPDATE OF reactions ON public.comments
     FOR EACH ROW EXECUTE FUNCTION public.handle_comment_reaction();
+
+DROP TRIGGER IF EXISTS check_block_confessions ON public.confessions;
+CREATE TRIGGER check_block_confessions
+    BEFORE INSERT OR UPDATE ON public.confessions
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS check_block_comments ON public.comments;
+CREATE TRIGGER check_block_comments
+    BEFORE INSERT OR UPDATE ON public.comments
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS check_block_post_reactions ON public.post_user_reactions;
+CREATE TRIGGER check_block_post_reactions
+    BEFORE INSERT OR UPDATE ON public.post_user_reactions
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS check_block_comment_reactions ON public.comment_user_reactions;
+CREATE TRIGGER check_block_comment_reactions
+    BEFORE INSERT OR UPDATE ON public.comment_user_reactions
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS check_block_poll_votes ON public.poll_votes;
+CREATE TRIGGER check_block_poll_votes
+    BEFORE INSERT OR UPDATE ON public.poll_votes
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS check_block_marketplace ON public.marketplace_items;
+CREATE TRIGGER check_block_marketplace
+    BEFORE INSERT OR UPDATE ON public.marketplace_items
+    FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
 
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
 CREATE INDEX IF NOT EXISTS idx_confessions_created_at ON public.confessions(created_at DESC);
