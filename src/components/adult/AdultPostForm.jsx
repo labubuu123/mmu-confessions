@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { checkContentSafety } from '../../utils/geminiModeration';
-import { Shield, Lock, Send, Sparkles, BarChart2, X, AlertCircle, Loader2, Check } from 'lucide-react';
+import { Shield, Lock, Send, BarChart2, X, Loader2, Check } from 'lucide-react';
 import AdultNotification from './AdultNotification';
 
 const IDENTITIES = [
@@ -52,14 +52,14 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
         }
 
         setStatus("analyzing");
-        setNotificationMsg("AI is reviewing your confession for safety...");
+        setNotificationMsg("AI is reviewing your confession...");
 
         try {
             const safetyResult = await checkContentSafety(content);
 
             if (!safetyResult.safe) {
                 setStatus("blocked");
-                setNotificationMsg(safetyResult.reason || "Your content violates our safety policies and cannot be posted.");
+                setNotificationMsg(safetyResult.reason || "Your content violates our safety policies.");
                 return;
             }
 
@@ -111,7 +111,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
         } catch (error) {
             console.error(error);
             setStatus("error");
-            setNotificationMsg("Connection error. Please check your internet and try again.");
+            setNotificationMsg("Connection error. Please try again.");
         }
     };
 
@@ -146,7 +146,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+                    <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
                         <div className="relative">
                             <textarea
                                 value={content}
@@ -173,17 +173,17 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 <div className="space-y-2">
                                     <input
                                         type="text"
-                                        placeholder="Option 1 (e.g., Do it)"
+                                        placeholder="Option 1"
                                         value={pollOptions.a}
                                         onChange={(e) => setPollOptions({ ...pollOptions, a: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 md:py-2 text-sm md:text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Option 2 (e.g., Don't do it)"
+                                        placeholder="Option 2"
                                         value={pollOptions.b}
                                         onChange={(e) => setPollOptions({ ...pollOptions, b: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 md:py-2 text-sm md:text-xs text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 outline-none"
                                     />
                                 </div>
                             </div>
@@ -200,7 +200,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
 
                         <div className="border-t border-slate-800/50"></div>
 
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                             <div className="space-y-2">
                                 <div className="flex justify-between items-end">
                                     <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">
@@ -209,7 +209,6 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     {!selectedIdentity && <span className="text-[10px] text-rose-500 animate-pulse font-medium">Required</span>}
                                 </div>
 
-                                {/* REDESIGNED BUTTONS */}
                                 <div className="grid grid-cols-2 gap-3">
                                     {IDENTITIES.map(id => {
                                         const isSelected = selectedIdentity?.id === id.id;
@@ -219,17 +218,22 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                                 type="button"
                                                 onClick={() => setSelectedIdentity(id)}
                                                 className={`
-                                                    relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all duration-300 group
+                                                    relative flex items-center justify-center gap-2 md:gap-3 
+                                                    px-3 py-2 md:px-4 md:py-3
+                                                    rounded-xl border transition-all duration-300 group
                                                     ${isSelected ? id.activeClass : id.inactiveClass}
                                                 `}
                                             >
-                                                <span className={`text-xl transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>{id.icon}</span>
-                                                <span className={`font-bold text-sm tracking-wide ${isSelected ? 'text-white' : ''}`}>{id.label}</span>
+                                                <span className={`text-lg md:text-xl transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                                    {id.icon}
+                                                </span>
+                                                <span className={`font-bold text-xs md:text-sm tracking-wide ${isSelected ? 'text-white' : ''}`}>
+                                                    {id.label}
+                                                </span>
 
-                                                {/* Checkmark indicator */}
                                                 {isSelected && (
-                                                    <div className="absolute top-2 right-2">
-                                                        <Check className="w-3 h-3 text-white/50" />
+                                                    <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2">
+                                                        <Check className="w-2.5 h-2.5 md:w-3 md:h-3 text-white/50" />
                                                     </div>
                                                 )}
                                             </button>
@@ -257,13 +261,12 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 </div>
                             </div>
 
-                            {/* UPDATED ACTION BUTTONS: Right aligned, specific width */}
                             <div className="pt-2 flex justify-end items-center gap-3">
                                 {onCancel && (
                                     <button
                                         type="button"
                                         onClick={onCancel}
-                                        className="text-slate-500 text-sm font-medium hover:text-slate-300 px-4 py-2 hover:bg-slate-800/50 rounded-lg transition-colors"
+                                        className="text-slate-500 text-xs md:text-sm font-medium hover:text-slate-300 px-3 py-2"
                                     >
                                         Cancel
                                     </button>
