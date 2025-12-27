@@ -4,20 +4,36 @@ import { checkContentSafety } from '../../utils/geminiModeration';
 import { Shield, Lock, Send, BarChart2, X, Loader2, Check } from 'lucide-react';
 import AdultNotification from './AdultNotification';
 
+const MarsIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M16 3h5v5" />
+        <path d="M21 3L13.5 10.5" />
+        <circle cx="10" cy="14" r="6" />
+    </svg>
+);
+
+const VenusIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 15v7" />
+        <path d="M9 19h6" />
+        <circle cx="12" cy="9" r="6" />
+    </svg>
+);
+
 const IDENTITIES = [
     {
         id: 'M',
         label: 'Boy',
-        icon: '♂️',
-        activeClass: 'bg-gradient-to-r from-cyan-900/80 to-blue-900/80 border-cyan-500 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.3)]',
-        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-cyan-900/50 hover:text-cyan-400'
+        Icon: MarsIcon,
+        activeClass: 'bg-cyan-950/40 border-cyan-500 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.2)]',
+        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
     },
     {
         id: 'F',
         label: 'Girl',
-        icon: '♀️',
-        activeClass: 'bg-gradient-to-r from-pink-900/80 to-rose-900/80 border-pink-500 text-pink-100 shadow-[0_0_15px_rgba(236,72,153,0.3)]',
-        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-pink-900/50 hover:text-pink-400'
+        Icon: VenusIcon,
+        activeClass: 'bg-pink-950/40 border-pink-500 text-pink-100 shadow-[0_0_15px_rgba(236,72,153,0.2)]',
+        inactiveClass: 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
     }
 ];
 
@@ -209,7 +225,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                     {!selectedIdentity && <span className="text-[10px] text-rose-500 animate-pulse font-medium">Required</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-2">
                                     {IDENTITIES.map(id => {
                                         const isSelected = selectedIdentity?.id === id.id;
                                         return (
@@ -218,22 +234,20 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                                 type="button"
                                                 onClick={() => setSelectedIdentity(id)}
                                                 className={`
-                                                    relative flex items-center justify-center gap-2 md:gap-3 
-                                                    px-3 py-2 md:px-4 md:py-3
-                                                    rounded-xl border transition-all duration-300 group
+                                                    relative flex items-center justify-center gap-2 
+                                                    h-11 md:h-12 w-full
+                                                    rounded-xl border transition-all duration-200 
                                                     ${isSelected ? id.activeClass : id.inactiveClass}
                                                 `}
                                             >
-                                                <span className={`text-lg md:text-xl transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
-                                                    {id.icon}
-                                                </span>
-                                                <span className={`font-bold text-xs md:text-sm tracking-wide ${isSelected ? 'text-white' : ''}`}>
+                                                <id.Icon className={`w-5 h-5 ${isSelected ? 'stroke-[2.5px]' : 'stroke-2 opacity-70'}`} />
+                                                <span className={`font-bold text-sm tracking-wide ${isSelected ? 'text-white' : ''}`}>
                                                     {id.label}
                                                 </span>
 
                                                 {isSelected && (
-                                                    <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2">
-                                                        <Check className="w-2.5 h-2.5 md:w-3 md:h-3 text-white/50" />
+                                                    <div className="absolute inset-y-0 right-3 flex items-center">
+                                                        <Check className="w-3.5 h-3.5 text-current opacity-50" />
                                                     </div>
                                                 )}
                                             </button>
