@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Send, Ghost, MessageCircle, Heart, CornerDownRight } from 'lucide-react';
-import AdultAvatar from './AdultAvatar';
+import { Send, Ghost, MessageCircle, Heart, CornerDownRight, Loader2, MoreHorizontal } from 'lucide-react';
 
 const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -18,13 +17,31 @@ const timeAgo = (date) => {
     return "now";
 };
 
-function CommentItem({ comment, replies, allComments, myAlias, selectedGender, onReplySubmit, postId }) {
+const MarsIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M16 3h5v5" />
+        <path d="M21 3L13.5 10.5" />
+        <circle cx="10" cy="14" r="6" />
+    </svg>
+);
+
+const VenusIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 15v7" />
+        <path d="M9 19h6" />
+        <circle cx="12" cy="9" r="6" />
+    </svg>
+);
+
+const CommentItem = React.memo(({ comment, allComments, myAlias, selectedGender, onReplySubmit }) => {
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState("");
     const [likes, setLikes] = useState(0);
     const [isLiked, setIsLiked] = useState(false);
 
-    const childReplies = allComments.filter(c => c.parent_id === comment.id);
+    const childReplies = useMemo(() =>
+        allComments.filter(c => c.parent_id === comment.id),
+        [allComments, comment.id]);
 
     useEffect(() => {
         fetchCommentReactions();
@@ -33,35 +50,34 @@ function CommentItem({ comment, replies, allComments, myAlias, selectedGender, o
     const fetchCommentReactions = async () => {
         const anonId = localStorage.getItem('anonId');
 
-        const { count } = await supabase
-            .from('adult_comment_reactions')
-            .select('id', { count: 'exact' })
-            .eq('comment_id', comment.id);
+        const [countResult, userLikeResult] = await Promise.all([
+            supabase.from('adult_comment_reactions').select('id', { count: 'exact' }).eq('comment_id', comment.id),
+            anonId ? supabase.from('adult_comment_reactions').select('id').eq('comment_id', comment.id).eq('user_id', anonId) : { data: [] }
+        ]);
 
-        setLikes(count || 0);
-
-        if (anonId) {
-            const { data } = await supabase
-                .from('adult_comment_reactions')
-                .select('id')
-                .eq('comment_id', comment.id)
-                .eq('user_id', anonId);
-            if (data && data.length > 0) setIsLiked(true);
-        }
+        setLikes(countResult.count || 0);
+        if (userLikeResult.data?.length > 0) setIsLiked(true);
     };
 
     const toggleLike = async () => {
         const anonId = localStorage.getItem('anonId') || 'anon_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('anonId', anonId);
 
-        if (isLiked) {
-            setIsLiked(false);
-            setLikes(prev => Math.max(0, prev - 1));
-            await supabase.from('adult_comment_reactions').delete().match({ comment_id: comment.id, user_id: anonId });
-        } else {
-            setIsLiked(true);
-            setLikes(prev => prev + 1);
-            await supabase.from('adult_comment_reactions').insert({ comment_id: comment.id, user_id: anonId });
+        const previousLiked = isLiked;
+        const previousLikes = likes;
+
+        setIsLiked(!previousLiked);
+        setLikes(prev => previousLiked ? prev - 1 : prev + 1);
+
+        try {
+            if (previousLiked) {
+                await supabase.from('adult_comment_reactions').delete().match({ comment_id: comment.id, user_id: anonId });
+            } else {
+                await supabase.from('adult_comment_reactions').insert({ comment_id: comment.id, user_id: anonId });
+            }
+        } catch (error) {
+            setIsLiked(previousLiked);
+            setLikes(previousLikes);
         }
     };
 
@@ -72,38 +88,45 @@ function CommentItem({ comment, replies, allComments, myAlias, selectedGender, o
         setIsReplying(false);
     };
 
+    const isBoy = comment.author_alias === 'Boy';
+    const accentColor = isBoy ? 'text-cyan-400' : 'text-pink-400';
+    const borderColor = isBoy ? 'border-cyan-500/30' : 'border-pink-500/30';
+
     return (
-        <div className="mb-4">
-            <div className="flex gap-3 group">
+        <div className="relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex gap-3">
                 <div className="shrink-0 pt-1">
-                    <AdultAvatar gender={comment.author_alias} size="sm" />
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${borderColor} bg-slate-900 shadow-sm`}>
+                        {isBoy ? <MarsIcon className="w-4 h-4 text-cyan-400" /> : <VenusIcon className="w-4 h-4 text-pink-400" />}
+                    </div>
                 </div>
-                <div className="flex-1">
-                    <div className="flex items-baseline gap-2 mb-1">
-                        <span className={`text-[11px] font-bold transition-colors ${comment.author_alias === 'Boy' ? 'text-cyan-400' : 'text-pink-400'}`}>
+
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[11px] font-bold ${accentColor}`}>
                             {comment.author_alias}
                         </span>
-                        <span className="text-[9px] text-slate-600 font-mono">
-                            {timeAgo(comment.created_at)}
+                        <span className="text-[10px] text-slate-600 font-mono">
+                            • {timeAgo(comment.created_at)}
                         </span>
                     </div>
 
-                    <div className="text-slate-300 text-sm leading-snug bg-slate-950 p-3 rounded-2xl rounded-tl-sm border border-slate-800/50 shadow-sm relative">
+                    <div className="text-slate-200 text-sm leading-relaxed bg-slate-900/50 p-2.5 rounded-2xl rounded-tl-none border border-slate-800">
                         {comment.text}
                     </div>
 
-                    <div className="flex items-center gap-4 mt-1 ml-1">
+                    <div className="flex items-center gap-4 mt-1.5 ml-1">
                         <button
                             onClick={toggleLike}
-                            className={`flex items-center gap-1 text-[10px] font-bold transition-all ${isLiked ? 'text-rose-500' : 'text-slate-500 hover:text-rose-400'}`}
+                            className={`flex items-center gap-1.5 text-[10px] font-bold transition-all px-2 py-1 rounded-full hover:bg-slate-900 ${isLiked ? 'text-rose-500' : 'text-slate-500 hover:text-rose-400'}`}
                         >
                             <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
-                            {likes > 0 && likes}
+                            {likes > 0 ? likes : 'Like'}
                         </button>
 
                         <button
                             onClick={() => setIsReplying(!isReplying)}
-                            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                            className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors px-2 py-1 rounded-full hover:bg-slate-900"
                         >
                             <MessageCircle className="w-3 h-3" />
                             Reply
@@ -111,55 +134,58 @@ function CommentItem({ comment, replies, allComments, myAlias, selectedGender, o
                     </div>
 
                     {isReplying && (
-                        <form onSubmit={handleReply} className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-1">
-                            <div className="shrink-0">
-                                <CornerDownRight className="w-4 h-4 text-slate-600 ml-2" />
+                        <form onSubmit={handleReply} className="mt-2 flex gap-2 animate-in fade-in zoom-in-95">
+                            <div className="flex-1 relative">
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={replyText}
+                                    onChange={e => setReplyText(e.target.value)}
+                                    placeholder={`Replying as ${selectedGender}...`}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-900 focus:ring-1 focus:ring-rose-900/50 pr-10"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!replyText.trim()}
+                                    className="absolute right-1 top-1 bottom-1 px-2 text-rose-500 hover:text-rose-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Send className="w-3.5 h-3.5" />
+                                </button>
                             </div>
-                            <input
-                                type="text"
-                                autoFocus
-                                value={replyText}
-                                onChange={e => setReplyText(e.target.value)}
-                                placeholder={`Reply as ${selectedGender}...`}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-900"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!replyText.trim()}
-                                className="text-xs bg-slate-800 text-white px-3 py-1 rounded-lg hover:bg-slate-700 disabled:opacity-50"
-                            >
-                                Send
-                            </button>
                         </form>
                     )}
                 </div>
             </div>
 
             {childReplies.length > 0 && (
-                <div className="ml-8 mt-2 pl-3 border-l border-slate-800 space-y-3">
-                    {childReplies.map(reply => (
-                        <CommentItem
-                            key={reply.id}
-                            comment={reply}
-                            replies={[]}
-                            allComments={allComments}
-                            myAlias={myAlias}
-                            selectedGender={selectedGender}
-                            onReplySubmit={onReplySubmit}
-                            postId={postId}
-                        />
-                    ))}
+                <div className="flex mt-2">
+                    <div className="w-8 flex justify-center shrink-0">
+                        <div className="w-0.5 bg-slate-800 rounded-full h-full mb-4"></div>
+                    </div>
+                    <div className="flex-1 space-y-3 pt-1">
+                        {childReplies.map(reply => (
+                            <CommentItem
+                                key={reply.id}
+                                comment={reply}
+                                allComments={allComments}
+                                myAlias={myAlias}
+                                selectedGender={selectedGender}
+                                onReplySubmit={onReplySubmit}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
     );
-}
+});
 
 export default function AdultComments({ postId }) {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [selectedGender, setSelectedGender] = useState('Boy');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         fetchComments();
@@ -179,19 +205,21 @@ export default function AdultComments({ postId }) {
     const handlePostComment = async (text, parentId = null) => {
         if (!text.trim()) return;
 
+        if (!parentId) setIsSubmitting(true);
+
         const anonId = localStorage.getItem('anonId') || 'anon_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('anonId', anonId);
 
-        const myAlias = selectedGender;
-
+        const tempId = Date.now();
         const tempComment = {
-            id: Date.now(),
+            id: tempId,
             text: text,
-            author_alias: myAlias,
+            author_alias: selectedGender,
             created_at: new Date().toISOString(),
             parent_id: parentId,
             post_id: postId
         };
+
         setComments(prev => [...prev, tempComment]);
         if (!parentId) setNewComment("");
 
@@ -199,30 +227,50 @@ export default function AdultComments({ postId }) {
             post_id: postId,
             text: text,
             author_id: anonId,
-            author_alias: myAlias,
+            author_alias: selectedGender,
             parent_id: parentId
         });
 
-        if (!error) {
-            fetchComments();
+        if (error) {
+            console.error(error);
+        } else {
         }
+
+        if (!parentId) setIsSubmitting(false);
     };
 
-    const rootComments = comments.filter(c => !c.parent_id);
+    const rootComments = useMemo(() => comments.filter(c => !c.parent_id), [comments]);
+    const genderColor = selectedGender === 'Boy' ? 'text-cyan-400' : 'text-pink-400';
+    const inputBorder = selectedGender === 'Boy' ? 'focus:border-cyan-800 focus:ring-cyan-900/50' : 'focus:border-pink-800 focus:ring-pink-900/50';
+    const buttonBg = selectedGender === 'Boy' ? 'bg-cyan-700 hover:bg-cyan-600' : 'bg-pink-700 hover:bg-pink-600';
 
     return (
-        <div className="mt-4 pt-4 border-t border-slate-800 bg-black/20 -mx-6 px-6 pb-2">
+        <div className="mt-4 pt-1 border-t border-slate-800/50 bg-slate-950/30 -mx-6 px-6 pb-2">
+            <div className="flex items-center justify-between mb-4 pt-4">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <MessageCircle className="w-3 h-3" />
+                    Whispers ({comments.length})
+                </div>
+            </div>
+
             {loading ? (
-                <div className="py-4 space-y-2">
-                    <div className="h-4 w-1/3 bg-slate-800 rounded animate-pulse"></div>
-                    <div className="h-4 w-1/2 bg-slate-800 rounded animate-pulse"></div>
+                <div className="py-8 space-y-4">
+                    {[1, 2].map(i => (
+                        <div key={i} className="flex gap-3 animate-pulse">
+                            <div className="w-8 h-8 bg-slate-900 rounded-full"></div>
+                            <div className="flex-1 space-y-2">
+                                <div className="h-3 w-20 bg-slate-900 rounded"></div>
+                                <div className="h-10 w-full bg-slate-900 rounded-xl"></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : (
-                <div className="space-y-4 mb-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-6 mb-20">
                     {comments.length === 0 && (
-                        <div className="text-center py-6 flex flex-col items-center opacity-50">
-                            <Ghost className="w-5 h-5 text-slate-600 mb-2" />
-                            <p className="text-[10px] text-slate-600 uppercase tracking-widest">No whispers yet</p>
+                        <div className="text-center py-8 flex flex-col items-center justify-center opacity-60">
+                            <Ghost className="w-8 h-8 text-slate-700 mb-2" />
+                            <p className="text-xs text-slate-500 font-medium">Be the first to whisper...</p>
                         </div>
                     )}
 
@@ -231,58 +279,58 @@ export default function AdultComments({ postId }) {
                             key={c.id}
                             comment={c}
                             allComments={comments}
-                            replies={[]}
                             myAlias={selectedGender}
                             selectedGender={selectedGender}
                             onReplySubmit={(text, parentId) => handlePostComment(text, parentId)}
-                            postId={postId}
                         />
                     ))}
                 </div>
             )}
 
-            <div className="pt-2 sticky bottom-0 bg-transparent backdrop-blur-sm pb-1">
-                <div className="flex justify-start mb-2">
-                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <div className="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/80 backdrop-blur-md border-t border-slate-800 z-50 md:sticky md:bottom-0 md:bg-transparent md:backdrop-blur-none md:border-none md:p-0 md:pt-2">
+                <div className="flex justify-center mb-3 md:justify-start">
+                    <div className="flex bg-slate-900 p-1 rounded-full border border-slate-800 shadow-lg">
                         <button
                             type="button"
                             onClick={() => setSelectedGender('Boy')}
-                            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${selectedGender === 'Boy'
-                                ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-800 shadow-sm'
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${selectedGender === 'Boy'
+                                ? 'bg-cyan-950 text-cyan-400 shadow-sm ring-1 ring-cyan-800'
                                 : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                            Boy ♂️
+                            <MarsIcon className="w-3 h-3" /> Boy
                         </button>
                         <button
                             type="button"
                             onClick={() => setSelectedGender('Girl')}
-                            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${selectedGender === 'Girl'
-                                ? 'bg-pink-900/50 text-pink-400 border border-pink-800 shadow-sm'
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${selectedGender === 'Girl'
+                                ? 'bg-pink-950 text-pink-400 shadow-sm ring-1 ring-pink-800'
                                 : 'text-slate-500 hover:text-slate-300'}`}
                         >
-                            Girl ♀️
+                            <VenusIcon className="w-3 h-3" /> Girl
                         </button>
                     </div>
                 </div>
 
-                <form onSubmit={(e) => { e.preventDefault(); handlePostComment(newComment); }} className="flex gap-2 items-end">
-                    <div className="shrink-0 mb-1">
-                        <AdultAvatar gender={selectedGender} size="sm" />
+                <form onSubmit={(e) => { e.preventDefault(); handlePostComment(newComment); }} className="flex gap-2 items-end max-w-2xl mx-auto">
+                    <div className="shrink-0 mb-1 hidden md:block">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border bg-slate-900 ${selectedGender === 'Boy' ? 'border-cyan-500/30' : 'border-pink-500/30'}`}>
+                            {selectedGender === 'Boy' ? <MarsIcon className="w-4 h-4 text-cyan-400" /> : <VenusIcon className="w-4 h-4 text-pink-400" />}
+                        </div>
                     </div>
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative group">
                         <input
                             type="text"
                             value={newComment}
                             onChange={e => setNewComment(e.target.value)}
-                            placeholder={`Reply as ${selectedGender}...`}
-                            className={`w-full bg-slate-950/50 border rounded-full px-4 py-2.5 pr-10 text-sm text-slate-200 focus:outline-none transition-all placeholder-slate-600 ${selectedGender === 'Boy' ? 'focus:border-cyan-800 focus:ring-1 focus:ring-cyan-900/50 border-slate-800' : 'focus:border-pink-800 focus:ring-1 focus:ring-pink-900/50 border-slate-800'}`}
+                            placeholder={`Whisper as ${selectedGender}...`}
+                            className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 pr-12 text-sm text-slate-200 focus:outline-none transition-all placeholder-slate-600 focus:ring-1 shadow-inner ${inputBorder}`}
                         />
                         <button
                             type="submit"
-                            disabled={!newComment.trim()}
-                            className={`absolute right-1 top-1 p-1.5 text-white rounded-full transition-all disabled:bg-transparent disabled:text-slate-600 ${selectedGender === 'Boy' ? 'bg-cyan-700 hover:bg-cyan-600' : 'bg-pink-700 hover:bg-pink-600'}`}
+                            disabled={!newComment.trim() || isSubmitting}
+                            className={`absolute right-1.5 top-1.5 bottom-1.5 aspect-square flex items-center justify-center text-white rounded-xl transition-all disabled:opacity-50 disabled:bg-slate-800 ${buttonBg}`}
                         >
-                            <Send className="w-3.5 h-3.5" />
+                            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
                 </form>
