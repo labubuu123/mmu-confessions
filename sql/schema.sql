@@ -443,6 +443,7 @@ DROP POLICY IF EXISTS "Read approved feed" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Admin delete feed" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Admin delete adult comments" ON public.adult_comments;
 DROP POLICY IF EXISTS "Admin delete comment reactions" ON public.adult_comment_reactions;
+DROP POLICY IF EXISTS "Admin manage blocked devices" ON public.blocked_devices;
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
