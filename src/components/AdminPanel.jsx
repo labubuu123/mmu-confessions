@@ -35,7 +35,6 @@ export default function AdminPanel() {
     const [polls, setPolls] = useState({})
     const [parentPosts, setParentPosts] = useState({})
     const [lostFoundItems, setLostFoundItems] = useState([])
-    const [systemLogs, setSystemLogs] = useState([])
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -109,7 +108,6 @@ export default function AdminPanel() {
         if (activeTab === 'marketplace') fetchMarketItems();
         if (activeTab === 'analytics') fetchAnalyticsData();
         if (activeTab === 'lostfound') fetchLostFound();
-        if (activeTab === 'logs') fetchSystemLogs();
     }, [posts, activeTab])
 
     useEffect(() => {
@@ -538,11 +536,6 @@ export default function AdminPanel() {
         fetchLostFound();
     }
 
-    async function fetchSystemLogs() {
-        const { data } = await supabase.from('actions_log').select('*').order('created_at', { ascending: false }).limit(50);
-        setSystemLogs(data || []);
-    }
-
     if (!user) {
         return (
             <div className="flex items-start justify-center bg-gray-50 dark:bg-gray-900 px-4 pt-10 md:pt-12">
@@ -584,7 +577,6 @@ export default function AdminPanel() {
         { id: 'sponsorships', label: 'Sponsorships', icon: Briefcase },
         { id: 'support', label: 'Support', icon: MessageSquare },
         { id: 'announcements', label: 'Announcements', icon: Megaphone },
-        { id: 'logs', label: 'System Logs', icon: FileText }
     ];
 
     return (
@@ -1343,52 +1335,6 @@ export default function AdminPanel() {
                                     ))}
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {activeTab === 'logs' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-600 dark:text-gray-400 uppercase text-sm">System Action Logs</h3>
-                                <button onClick={fetchSystemLogs} className="text-xs text-indigo-600 hover:underline">Refresh</button>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700">
-                                            <tr>
-                                                <th className="px-6 py-3">Timestamp</th>
-                                                <th className="px-6 py-3">Action</th>
-                                                <th className="px-6 py-3">Details</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                            {systemLogs.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="3" className="px-6 py-8 text-center text-gray-400 italic">No logs found.</td>
-                                                </tr>
-                                            ) : (
-                                                systemLogs.map(log => (
-                                                    <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                                                        <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                                                            {dayjs(log.created_at).format('YYYY-MM-DD HH:mm:ss')}
-                                                        </td>
-                                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                                                            {log.action_type}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-gray-500 max-w-xs truncate" title={log.user_agent}>
-                                                            <div className="flex flex-col gap-1">
-                                                                {log.ip_address && <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded w-fit">{log.ip_address}</span>}
-                                                                <span className="truncate opacity-75">{log.user_agent || '-'}</span>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
                         </div>
                     )}
                 </div>
