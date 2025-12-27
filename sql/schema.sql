@@ -1575,16 +1575,18 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.ban_user_and_device(TEXT, BOOLEAN);
 CREATE OR REPLACE FUNCTION public.ban_user_and_device(
     target_user_id TEXT,
     block_status BOOLEAN
 )
-RETURNS VOID
+RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
     last_device_id TEXT;
+    result_message TEXT;
 BEGIN
     UPDATE public.user_reputation
     SET is_blocked = block_status
@@ -1602,8 +1604,16 @@ BEGIN
             INSERT INTO public.blocked_devices (device_id, reason)
             VALUES (last_device_id, 'Linked to blocked user ' || target_user_id)
             ON CONFLICT (device_id) DO NOTHING;
+            
+            result_message := 'User blocked AND Device (' || last_device_id || ') banned!';
+        ELSE
+            result_message := 'User blocked. (No Device ID found on their recent posts, so device ban skipped)';
         END IF;
+    ELSE
+        result_message := 'User unblocked successfully.';
     END IF;
+
+    RETURN result_message;
 END;
 $$;
 

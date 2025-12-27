@@ -42,7 +42,7 @@ export default function UserManagement() {
 
         setActionLoading(userId);
         try {
-            const { error } = await supabase.rpc('ban_user_and_device', {
+            const { data: message, error } = await supabase.rpc('ban_user_and_device', {
                 target_user_id: userId,
                 block_status: !currentStatus
             });
@@ -53,11 +53,7 @@ export default function UserManagement() {
                 u.author_id === userId ? { ...u, is_blocked: !currentStatus } : u
             ));
 
-            if (!currentStatus) {
-                alert("User and their device have been blocked.");
-            } else {
-                alert("User has been unblocked.");
-            }
+            alert(message);
 
         } catch (err) {
             alert('Failed to update block status: ' + err.message);
