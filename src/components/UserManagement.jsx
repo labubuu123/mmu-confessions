@@ -141,8 +141,8 @@ export default function UserManagement() {
                         onClick={() => toggleBlockUser(selectedUser.author_id, selectedUser.is_blocked)}
                         disabled={actionLoading === selectedUser.author_id}
                         className={`w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${selectedUser.is_blocked
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
-                                : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
                             }`}
                     >
                         {actionLoading === selectedUser.author_id ? (
@@ -196,8 +196,8 @@ export default function UserManagement() {
                     <button
                         onClick={() => setViewMode('all')}
                         className={`flex-1 md:flex-none justify-center px-3 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 ${viewMode === 'all'
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                             }`}
                     >
                         All Users
@@ -208,8 +208,8 @@ export default function UserManagement() {
                     <button
                         onClick={() => setViewMode('blocked_users')}
                         className={`flex-1 md:flex-none justify-center px-3 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 ${viewMode === 'blocked_users'
-                                ? 'bg-red-500 text-white shadow-sm'
-                                : 'text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400'
+                            ? 'bg-red-500 text-white shadow-sm'
+                            : 'text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400'
                             }`}
                     >
                         <Ban className="w-3.5 h-3.5" />
@@ -222,8 +222,8 @@ export default function UserManagement() {
                     <button
                         onClick={() => setViewMode('blocked_devices')}
                         className={`flex-1 md:flex-none justify-center px-3 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 ${viewMode === 'blocked_devices'
-                                ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-900 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                            ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-900 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                             }`}
                     >
                         <Smartphone className="w-3.5 h-3.5" />
@@ -303,8 +303,8 @@ export default function UserManagement() {
                             <div
                                 key={user.author_id}
                                 className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border p-4 sm:p-5 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden ${user.is_blocked
-                                        ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500 bg-red-50/50 dark:bg-red-900/10'
-                                        : 'border-gray-200 dark:border-gray-700'
+                                    ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500 bg-red-50/50 dark:bg-red-900/10'
+                                    : 'border-gray-200 dark:border-gray-700'
                                     }`}
                             >
                                 {user.is_blocked && (
@@ -351,8 +351,8 @@ export default function UserManagement() {
                                         onClick={() => toggleBlockUser(user.author_id, user.is_blocked)}
                                         disabled={actionLoading === user.author_id}
                                         className={`px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition ${user.is_blocked
-                                                ? 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                                                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
+                                            ? 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
                                             }`}
                                     >
                                         {actionLoading === user.author_id ? (
