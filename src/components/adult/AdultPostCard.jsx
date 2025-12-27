@@ -9,6 +9,7 @@ export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
     const [reactionCounts, setReactionCounts] = useState({ like: 0, fire: 0, broken_heart: 0 });
     const [userReactions, setUserReactions] = useState(new Set());
+    const [commentCount, setCommentCount] = useState(0);
 
     const [pollOptions, setPollOptions] = useState(post.poll_options || []);
     const [hasVoted, setHasVoted] = useState(false);
@@ -23,10 +24,36 @@ export default function AdultPostCard({ post }) {
     useEffect(() => {
         fetchReactions();
         fetchUserReactions();
+        fetchCommentCount();
+
         if (post.has_poll) {
             checkPollVote();
             calculateTotalVotes(post.poll_options);
         }
+
+        const channel = supabase
+            .channel(`adult-post-comments-${post.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'adult_comments',
+                    filter: `post_id=eq.${post.id}`
+                },
+                (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        setCommentCount((prev) => prev + 1);
+                    } else if (payload.eventType === 'DELETE') {
+                        setCommentCount((prev) => Math.max(0, prev - 1));
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [post.id]);
 
     const calculateTotalVotes = (options) => {
@@ -39,6 +66,17 @@ export default function AdultPostCard({ post }) {
         const votedPolls = JSON.parse(localStorage.getItem('voted_polls') || '[]');
         if (votedPolls.includes(post.id)) {
             setHasVoted(true);
+        }
+    };
+
+    const fetchCommentCount = async () => {
+        const { count, error } = await supabase
+            .from('adult_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+        if (!error) {
+            setCommentCount(count || 0);
         }
     };
 
@@ -256,7 +294,7 @@ export default function AdultPostCard({ post }) {
                     className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all px-3 py-1.5 rounded-lg border ${showComments ? 'bg-slate-800 text-slate-200 border-slate-700' : 'text-slate-500 border-transparent hover:bg-slate-800/50'}`}
                 >
                     <MessageCircle className="w-4 h-4" />
-                    {showComments ? 'Hide' : 'Discussion'}
+                    {showComments ? 'Hide' : `Discussion (${commentCount})`}
                 </button>
             </div>
 
