@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Flame, Info, RefreshCcw, Filter, Shuffle } from 'lucide-react';
+import { Flame, Info, RefreshCcw, Filter, Shuffle, ArrowDown } from 'lucide-react';
 import AdultPolicyGate from './AdultPolicyGate';
 import AdultPostForm from './AdultPostForm';
 import AdultPostCard from './AdultPostCard';
 import { useParams } from 'react-router-dom';
 
 const FILTERS = ['All', 'Confession', 'Thirsty', 'Curious', 'Rant', 'Story'];
+const PAGE_SIZE = 50;
 
 export default function AdultSection() {
     const { id } = useParams();
     const [policyAccepted, setPolicyAccepted] = useState(false);
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [filter, setFilter] = useState('All');
     const [refreshing, setRefreshing] = useState(false);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
 
     useEffect(() => {
         const hasAgreed = localStorage.getItem('adult_policy_agreed');
@@ -25,9 +29,9 @@ export default function AdultSection() {
 
     useEffect(() => {
         if (policyAccepted) {
-            fetchPosts();
+            fetchPosts(true);
         }
-    }, [policyAccepted, id]);
+    }, [policyAccepted, id, filter]);
 
     const handleAgree = () => {
         localStorage.setItem('adult_policy_agreed', 'true');
@@ -38,8 +42,14 @@ export default function AdultSection() {
         window.location.href = '/';
     };
 
-    const fetchPosts = async () => {
-        setRefreshing(true);
+    const fetchPosts = async (reset = false) => {
+        if (reset) {
+            setRefreshing(true);
+            setPage(0);
+            setHasMore(true);
+        } else {
+            setLoadingMore(true);
+        }
 
         let query = supabase
             .from('adult_confessions')
@@ -49,7 +59,11 @@ export default function AdultSection() {
         if (id) {
             query = query.eq('id', id);
         } else {
-            query = query.order('created_at', { ascending: false }).limit(50);
+            query = query.order('created_at', { ascending: false });
+            const currentPage = reset ? 0 : page;
+            const from = currentPage * PAGE_SIZE;
+            const to = from + PAGE_SIZE - 1;
+            query = query.range(from, to);
         }
 
         const { data, error } = await query;
@@ -57,10 +71,27 @@ export default function AdultSection() {
         if (error) {
             console.error("Error fetching posts:", error);
         } else {
-            setPosts(data || []);
+            if (id) {
+                setPosts(data || []);
+                setHasMore(false);
+            } else {
+                if (reset) {
+                    setPosts(data || []);
+                } else {
+                    setPosts(prev => [...prev, ...data]);
+                }
+
+                if (data.length < PAGE_SIZE) {
+                    setHasMore(false);
+                }
+
+                if (!reset) setPage(prev => prev + 1);
+            }
         }
+
         setLoading(false);
         setRefreshing(false);
+        setLoadingMore(false);
     };
 
     const handleRoulette = () => {
@@ -68,6 +99,7 @@ export default function AdultSection() {
         setRefreshing(true);
         const randomPost = posts[Math.floor(Math.random() * posts.length)];
         setPosts([randomPost]);
+        setHasMore(false);
         setTimeout(() => setRefreshing(false), 500);
     };
 
@@ -109,7 +141,7 @@ export default function AdultSection() {
                             <Shuffle className="w-5 h-5" />
                         </button>
                         <button
-                            onClick={fetchPosts}
+                            onClick={() => fetchPosts(true)}
                             disabled={refreshing}
                             className="p-2 text-slate-500 hover:text-rose-500 hover:bg-slate-900 rounded-full transition-all active:scale-95"
                         >
@@ -121,14 +153,14 @@ export default function AdultSection() {
 
             <main className="max-w-2xl mx-auto px-4">
 
-                {!id && <AdultPostForm onSuccess={fetchPosts} />}
+                {!id && <AdultPostForm onSuccess={() => fetchPosts(true)} />}
 
                 <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     <Filter className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
                     {FILTERS.map(f => (
                         <button
                             key={f}
-                            onClick={() => { setFilter(f); if (posts.length === 1) fetchPosts(); }}
+                            onClick={() => { setFilter(f); setPage(0); }}
                             className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider whitespace-nowrap border transition-all ${filter === f
                                 ? 'bg-rose-600 text-white border-rose-500 shadow-[0_0_15px_rgba(225,29,72,0.3)]'
                                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
@@ -163,8 +195,31 @@ export default function AdultSection() {
                                 )}
                             </div>
                         ) : (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 {filteredPosts.map(post => <AdultPostCard key={post.id} post={post} />)}
+                            </div>
+                        )}
+
+                        {!id && hasMore && posts.length > 0 && (
+                            <div className="pt-4 pb-8 flex justify-center">
+                                <button
+                                    onClick={() => fetchPosts(false)}
+                                    disabled={loadingMore}
+                                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-all font-medium text-sm disabled:opacity-50"
+                                >
+                                    {loadingMore ? (
+                                        <RefreshCcw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <ArrowDown className="w-4 h-4" />
+                                    )}
+                                    {loadingMore ? 'Loading...' : 'Load More Secrets'}
+                                </button>
+                            </div>
+                        )}
+
+                        {!id && !hasMore && posts.length > 0 && (
+                            <div className="text-center py-8 text-slate-600 text-xs italic">
+                                You have reached the end of the void.
                             </div>
                         )}
                     </>

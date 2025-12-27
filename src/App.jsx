@@ -97,6 +97,40 @@ const GlobalNotificationHandler = () => {
           );
         }
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'adult_confessions' }, (payload) => {
+        if (payload.new && payload.new.is_approved === true) {
+          const isNewlyVisible = payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.old && payload.old.is_approved === false);
+
+          if (isNewlyVisible) {
+            handleNotification(
+              'New 18+ Confession! 🌶️',
+              payload.new.content ? `${payload.new.content.substring(0, 50)}...` : 'Spicy new content added!',
+              `/adult/${payload.new.id}`,
+              `adult-confession-${payload.new.id}`
+            );
+          }
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'adult_comments' }, (payload) => {
+        const newComment = payload.new;
+        const myPostsRaw = localStorage.getItem('my_posts');
+        const myAnonId = localStorage.getItem('anonId');
+
+        if (!myPostsRaw || !myAnonId) return;
+
+        const myPosts = JSON.parse(myPostsRaw);
+        const isMyPost = myPosts.some(id => String(id) === String(newComment.post_id));
+        const isNotMe = String(newComment.author_id) !== String(myAnonId);
+
+        if (isMyPost && isNotMe) {
+          handleNotification(
+            'New Whisper! 🤫',
+            newComment.text ? `Someone whispered: "${newComment.text.substring(0, 40)}..."` : 'New whisper on your post.',
+            `/adult/${newComment.post_id}`,
+            `adult-reply-${newComment.post_id}`
+          );
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polls' }, (payload) => {
         handleNotification(
           'New Poll! 📊',
