@@ -526,6 +526,7 @@ CREATE POLICY "Public read comment reactions" ON public.adult_comment_reactions 
 CREATE POLICY "Public insert comment reactions" ON public.adult_comment_reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public delete own comment reactions" ON public.adult_comment_reactions FOR DELETE USING (true);
 CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin can update user_reputation" ON public.user_reputation FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"

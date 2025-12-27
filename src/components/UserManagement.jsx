@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import AnonAvatar from './AnonAvatar'
 import UserPostList from './UserPostList'
-import { ChevronLeft, User, Heart, Loader2, Ban, CheckCircle, Search, X } from 'lucide-react'
+import { ChevronLeft, User, Heart, Loader2, Ban, CheckCircle, Search, X, ShieldAlert, Filter } from 'lucide-react'
 
 export default function UserManagement() {
     const [users, setUsers] = useState([])
@@ -11,6 +11,7 @@ export default function UserManagement() {
     const [selectedUser, setSelectedUser] = useState(null)
     const [actionLoading, setActionLoading] = useState(null)
     const [searchQuery, setSearchQuery] = useState('')
+    const [viewMode, setViewMode] = useState('all')
 
     useEffect(() => {
         fetchUsers()
@@ -59,9 +60,13 @@ export default function UserManagement() {
         }
     }
 
-    const filteredUsers = users.filter(user =>
-        user.author_id.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.author_id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesView = viewMode === 'all' ? true : user.is_blocked;
+        return matchesSearch && matchesView;
+    });
+
+    const blockedCount = users.filter(u => u.is_blocked).length;
 
     if (selectedUser) {
         return (
@@ -85,8 +90,8 @@ export default function UserManagement() {
                         onClick={() => toggleBlockUser(selectedUser.author_id, selectedUser.is_blocked)}
                         disabled={actionLoading === selectedUser.author_id}
                         className={`w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${selectedUser.is_blocked
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
                             }`}
                     >
                         {actionLoading === selectedUser.author_id ? (
@@ -123,38 +128,79 @@ export default function UserManagement() {
 
     return (
         <div className="space-y-6 pb-20">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    User Database <span className="text-sm font-normal text-gray-500">({users.length})</span>
-                </h2>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <User className="w-5 h-5" />
+                        User Database
+                    </h2>
 
-                <div className="relative w-full md:w-72">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-gray-400" />
+                    <div className="relative w-full md:w-72">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search User ID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="block w-full pl-10 pr-10 py-2 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition sm:text-sm text-gray-900 dark:text-white"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Search User ID..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="block w-full pl-10 pr-10 py-2 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition sm:text-sm text-gray-900 dark:text-white"
-                    />
-                    {searchQuery && (
-                        <button
-                            onClick={() => setSearchQuery('')}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    )}
+                </div>
+
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl self-start">
+                    <button
+                        onClick={() => setViewMode('all')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${viewMode === 'all'
+                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                            }`}
+                    >
+                        All Users
+                        <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-600 rounded text-xs">
+                            {users.length}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('blocked')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${viewMode === 'blocked'
+                                ? 'bg-red-500 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400'
+                            }`}
+                    >
+                        <ShieldAlert className="w-4 h-4" />
+                        Blocked List
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${viewMode === 'blocked' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                            {blockedCount}
+                        </span>
+                    </button>
                 </div>
             </div>
 
             {filteredUsers.length === 0 ? (
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-                    <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 dark:text-gray-400 font-medium">No users found matching "{searchQuery}"</p>
+                    {viewMode === 'blocked' ? (
+                        <>
+                            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                            <p className="text-gray-900 dark:text-white font-bold">Clean Record!</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">No users are currently blocked.</p>
+                        </>
+                    ) : (
+                        <>
+                            <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">No users found.</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -162,8 +208,8 @@ export default function UserManagement() {
                         <div
                             key={user.author_id}
                             className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border p-5 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden ${user.is_blocked
-                                ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500 bg-red-50/50 dark:bg-red-900/10'
-                                : 'border-gray-200 dark:border-gray-700'
+                                    ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500 bg-red-50/50 dark:bg-red-900/10'
+                                    : 'border-gray-200 dark:border-gray-700'
                                 }`}
                         >
                             {user.is_blocked && (
@@ -210,8 +256,8 @@ export default function UserManagement() {
                                     onClick={() => toggleBlockUser(user.author_id, user.is_blocked)}
                                     disabled={actionLoading === user.author_id}
                                     className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition ${user.is_blocked
-                                        ? 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                                        : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
+                                            ? 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
                                         }`}
                                 >
                                     {actionLoading === user.author_id ? (
