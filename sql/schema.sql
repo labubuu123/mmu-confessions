@@ -178,6 +178,12 @@ CREATE TABLE IF NOT EXISTS public.matchmaker_feed (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.blocked_devices (
+    device_id TEXT PRIMARY KEY,
+    blocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    reason TEXT
+);
+
 ALTER TABLE public.matchmaker_profiles
 ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS lat FLOAT,
@@ -197,6 +203,7 @@ ADD COLUMN IF NOT EXISTS campus TEXT,
 ADD COLUMN IF NOT EXISTS reply_to_id BIGINT,
 ADD COLUMN IF NOT EXISTS is_debate BOOLEAN DEFAULT FALSE,
 DROP CONSTRAINT IF EXISTS fk_reply_to_post,
+ADD COLUMN IF NOT EXISTS device_id TEXT,
 ADD CONSTRAINT fk_reply_to_post FOREIGN KEY (reply_to_id) REFERENCES public.confessions (id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public.matchmaker_loves (
@@ -409,6 +416,7 @@ ALTER TABLE public.adult_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_poll_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.adult_comment_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.blocked_devices ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.support_messages
 DROP CONSTRAINT IF EXISTS support_messages_user_id_fkey;
@@ -527,6 +535,7 @@ CREATE POLICY "Public insert comment reactions" ON public.adult_comment_reaction
 CREATE POLICY "Public delete own comment reactions" ON public.adult_comment_reactions FOR DELETE USING (true);
 CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Admin can update user_reputation" ON public.user_reputation FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -1273,19 +1282,26 @@ SECURITY DEFINER
 AS $$
 DECLARE
     target_user_id TEXT;
+    target_device_id TEXT;
 BEGIN
-    IF TG_TABLE_NAME = 'confessions' OR TG_TABLE_NAME = 'comments' THEN
+    IF TG_TABLE_NAME = 'confessions' THEN
         target_user_id := NEW.author_id;
-    ELSIF TG_TABLE_NAME = 'post_user_reactions' OR TG_TABLE_NAME = 'comment_user_reactions' THEN
-        target_user_id := NEW.user_id;
-    ELSIF TG_TABLE_NAME = 'poll_votes' THEN
-        target_user_id := NEW.voter_id;
-    ELSIF TG_TABLE_NAME = 'marketplace_items' THEN
-        target_user_id := NEW.seller_id;
+        target_device_id := NEW.device_id;
+    ELSIF TG_TABLE_NAME = 'comments' THEN
+        target_user_id := NEW.author_id;
+    ELSE
+        IF TG_TABLE_NAME = 'poll_votes' THEN target_user_id := NEW.voter_id;
+        ELSE target_user_id := NEW.user_id; END IF;
     END IF;
 
     IF EXISTS (SELECT 1 FROM public.user_reputation WHERE author_id = target_user_id AND is_blocked = TRUE) THEN
-        RAISE EXCEPTION 'Action denied. Your account has been restricted by the administrator.';
+        RAISE EXCEPTION 'Action denied. Your account has been restricted.';
+    END IF;
+
+    IF target_device_id IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM public.blocked_devices WHERE device_id = target_device_id) THEN
+            RAISE EXCEPTION 'Action denied. This device has been banned due to previous violations.';
+        END IF;
     END IF;
 
     RETURN NEW;
@@ -1559,6 +1575,38 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.ban_user_and_device(
+    target_user_id TEXT,
+    block_status BOOLEAN
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    last_device_id TEXT;
+BEGIN
+    UPDATE public.user_reputation
+    SET is_blocked = block_status
+    WHERE author_id = target_user_id;
+
+    IF block_status = TRUE THEN
+        SELECT device_id INTO last_device_id
+        FROM public.confessions
+        WHERE author_id = target_user_id
+        AND device_id IS NOT NULL
+        ORDER BY created_at DESC
+        LIMIT 1;
+
+        IF last_device_id IS NOT NULL THEN
+            INSERT INTO public.blocked_devices (device_id, reason)
+            VALUES (last_device_id, 'Linked to blocked user ' || target_user_id)
+            ON CONFLICT (device_id) DO NOTHING;
+        END IF;
+    END IF;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions
 BEFORE INSERT OR UPDATE ON public.confessions
@@ -1679,4 +1727,5 @@ GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION delete_marketplace_item(BIGINT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION report_marketplace_item(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ban_user_and_device(TEXT, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;

@@ -5,6 +5,7 @@ import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
 import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
 import SeriesManager from './SeriesManager';
@@ -40,6 +41,17 @@ function getAnonId() {
         localStorage.setItem('anonId', anonId);
     }
     return anonId;
+}
+
+async function getDeviceFingerprint() {
+    try {
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        return result.visitorId;
+    } catch (error) {
+        console.error("Fingerprint error:", error);
+        return null;
+    }
 }
 
 const writeString = (view, offset, string) => {
@@ -498,6 +510,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         const anonId = getAnonId();
 
         try {
+            const deviceId = await getDeviceFingerprint();
+
             info('Checking cooldown...');
             const { error: cooldownError } = await supabase.rpc('check_post_cooldown', {
                 author_id_in: anonId
@@ -638,7 +652,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                     series_part: seriesData?.series_part || null,
                     series_total: seriesData?.series_total || null,
                     reply_to_id: replyingTo?.id || null,
-                    is_debate: isDebate
+                    is_debate: isDebate,
+                    device_id: deviceId
                 }])
                 .select();
 

@@ -35,23 +35,29 @@ export default function UserManagement() {
 
     async function toggleBlockUser(userId, currentStatus) {
         if (!window.confirm(currentStatus
-            ? "Are you sure you want to UNBLOCK this user? They will be able to post and comment again."
-            : "Are you sure you want to BLOCK this user? They will be restricted from posting, commenting, or reacting.")) {
+            ? "Are you sure you want to UNBLOCK this user?"
+            : "Are you sure you want to BLOCK this user? This will also BAN THEIR DEVICE to prevent alt accounts.")) {
             return;
         }
 
         setActionLoading(userId);
         try {
-            const { error } = await supabase
-                .from('user_reputation')
-                .update({ is_blocked: !currentStatus })
-                .eq('author_id', userId);
+            const { error } = await supabase.rpc('ban_user_and_device', {
+                target_user_id: userId,
+                block_status: !currentStatus
+            });
 
             if (error) throw error;
 
             setUsers(prev => prev.map(u =>
                 u.author_id === userId ? { ...u, is_blocked: !currentStatus } : u
             ));
+
+            if (!currentStatus) {
+                alert("User and their device have been blocked.");
+            } else {
+                alert("User has been unblocked.");
+            }
 
         } catch (err) {
             alert('Failed to update block status: ' + err.message);

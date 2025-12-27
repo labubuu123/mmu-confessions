@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.0.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.80.0",
     "browser-image-compression": "^1.0.17",
