@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Send, Ghost, MessageCircle, Heart, CornerDownRight, Loader2, MoreHorizontal } from 'lucide-react';
+import { Send, Ghost, MessageCircle, Heart, Loader2 } from 'lucide-react';
 
 const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -233,7 +233,6 @@ export default function AdultComments({ postId }) {
 
         if (error) {
             console.error(error);
-        } else {
         }
 
         if (!parentId) setIsSubmitting(false);
@@ -266,7 +265,7 @@ export default function AdultComments({ postId }) {
                     ))}
                 </div>
             ) : (
-                <div className="space-y-6 mb-28 md:mb-6">
+                <div className="space-y-6 mb-6">
                     {comments.length === 0 && (
                         <div className="text-center py-8 flex flex-col items-center justify-center opacity-60">
                             <Ghost className="w-8 h-8 text-slate-700 mb-2" />
@@ -287,7 +286,8 @@ export default function AdultComments({ postId }) {
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/80 backdrop-blur-md border-t border-slate-800 z-50 md:sticky md:bottom-0 md:bg-transparent md:backdrop-blur-none md:border-none md:p-0 md:pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0">
+            {/* Static Form for All Views */}
+            <div className="pt-2">
                 <div className="flex justify-start mb-3">
                     <div className="flex bg-slate-900 p-1 rounded-full border border-slate-800 shadow-lg">
                         <button
@@ -311,7 +311,7 @@ export default function AdultComments({ postId }) {
                     </div>
                 </div>
 
-                <form onSubmit={(e) => { e.preventDefault(); handlePostComment(newComment); }} className="flex gap-2 items-end max-w-2xl mx-auto">
+                <form onSubmit={(e) => { e.preventDefault(); handlePostComment(newComment); }} className="flex gap-2 items-end">
                     <div className="shrink-0 mb-1">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center border bg-slate-900 ${selectedGender === 'Boy' ? 'border-cyan-500/30' : 'border-pink-500/30'}`}>
                             {selectedGender === 'Boy' ? <MarsIcon className="w-4 h-4 text-cyan-400" /> : <VenusIcon className="w-4 h-4 text-pink-400" />}
