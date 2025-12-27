@@ -4,10 +4,12 @@ import { Flame, Info, RefreshCcw, Filter, Shuffle } from 'lucide-react';
 import AdultPolicyGate from './AdultPolicyGate';
 import AdultPostForm from './AdultPostForm';
 import AdultPostCard from './AdultPostCard';
+import { useParams } from 'react-router-dom';
 
 const FILTERS = ['All', 'Confession', 'Thirsty', 'Curious', 'Rant', 'Story'];
 
 export default function AdultSection() {
+    const { id } = useParams();
     const [policyAccepted, setPolicyAccepted] = useState(false);
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,14 +20,18 @@ export default function AdultSection() {
         const hasAgreed = localStorage.getItem('adult_policy_agreed');
         if (hasAgreed === 'true') {
             setPolicyAccepted(true);
-            fetchPosts();
         }
     }, []);
+
+    useEffect(() => {
+        if (policyAccepted) {
+            fetchPosts();
+        }
+    }, [policyAccepted, id]);
 
     const handleAgree = () => {
         localStorage.setItem('adult_policy_agreed', 'true');
         setPolicyAccepted(true);
-        fetchPosts();
     };
 
     const handleDecline = () => {
@@ -34,12 +40,19 @@ export default function AdultSection() {
 
     const fetchPosts = async () => {
         setRefreshing(true);
-        const { data, error } = await supabase
+
+        let query = supabase
             .from('adult_confessions')
             .select('*')
-            .eq('is_approved', true)
-            .order('created_at', { ascending: false })
-            .limit(50);
+            .eq('is_approved', true);
+
+        if (id) {
+            query = query.eq('id', id);
+        } else {
+            query = query.order('created_at', { ascending: false }).limit(50);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error fetching posts:", error);
@@ -70,7 +83,7 @@ export default function AdultSection() {
         <div className="min-h-screen bg-slate-950 text-slate-300 font-sans pb-24 selection:bg-rose-900 selection:text-white">
             <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 mb-6 transition-all shadow-lg shadow-black/20">
                 <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                    <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.location.href = '/adult'}>
                         <div className="relative">
                             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-900 to-black flex items-center justify-center border border-slate-800 group-hover:border-rose-900 transition-all shadow-[0_0_15px_rgba(0,0,0,0.5)]">
                                 <Flame className="w-5 h-5 text-rose-600 fill-rose-900/20" />
@@ -108,7 +121,7 @@ export default function AdultSection() {
 
             <main className="max-w-2xl mx-auto px-4">
 
-                <AdultPostForm onSuccess={fetchPosts} />
+                {!id && <AdultPostForm onSuccess={fetchPosts} />}
 
                 <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     <Filter className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
@@ -137,7 +150,17 @@ export default function AdultSection() {
                         {filteredPosts.length === 0 ? (
                             <div className="text-center py-24 border border-slate-800 border-dashed rounded-xl bg-slate-900/50">
                                 <Info className="w-6 h-6 text-slate-700 mx-auto mb-4" />
-                                <h3 className="text-slate-400 font-serif text-lg mb-1">The Room is Quiet</h3>
+                                <h3 className="text-slate-400 font-serif text-lg mb-1">
+                                    {id ? "Confession not found or removed" : "The Room is Quiet"}
+                                </h3>
+                                {id && (
+                                    <button
+                                        onClick={() => window.location.href = '/adult'}
+                                        className="mt-4 text-xs text-rose-500 hover:underline"
+                                    >
+                                        Return to Feed
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

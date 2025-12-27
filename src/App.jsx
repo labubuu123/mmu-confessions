@@ -290,6 +290,7 @@ function App() {
             <Route path="/matchmaker" element={<Matchmaker />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/adult" element={<AdultSection />} />
+            <Route path="/adult/:id" element={<AdultSection />} />
           </Routes>
         </main>
 
