@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { checkContentSafety } from '../../utils/geminiModeration';
 import { Shield, Lock, Send, BarChart2, X, Loader2, Check, Clock, Hourglass } from 'lucide-react';
@@ -76,14 +76,24 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
         }
 
         setStatus("analyzing");
-        setNotificationMsg("AI is reviewing your confession...");
+        setNotificationMsg("AI is strictly reviewing content...");
 
         try {
             const safetyResult = await checkContentSafety(content);
+            console.log("AI Result:", safetyResult);
 
-            if (!safetyResult.safe) {
+            const isTechnicalError = safetyResult.reason === "AI_SERVICE_UNAVAILABLE";
+
+            if (!safetyResult.safe && !isTechnicalError) {
                 setStatus("blocked");
-                setNotificationMsg(safetyResult.reason || "Your content violates our safety policies.");
+                setNotificationMsg(safetyResult.reason || "Content denied by AI Safety.");
+                return;
+            }
+
+            const regexSolicit = /(pm.*(price|rate|money|harga|RM)|(price|rate|money|harga|RM).*pm|pm.*(我|价格)|(私信|私聊).*(价)|援交|约炮)/i;
+            if (regexSolicit.test(content) && isTechnicalError) {
+                setStatus("blocked");
+                setNotificationMsg("Solicitation detected (Offline Mode).");
                 return;
             }
 
@@ -93,6 +103,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             localStorage.setItem('anonId', anonId);
 
             const tags = ['18+', `ID:${selectedIdentity.id}`, `Mood:${selectedMood.id}`];
+
+            const aiFlagged = isTechnicalError;
 
             let pollData = null;
             let hasPoll = false;
@@ -105,7 +117,6 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                 ];
             }
 
-            // Calculate Expiration
             let expiresAt = null;
             if (expiration !== 'forever') {
                 const now = new Date();
@@ -119,8 +130,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                 content: content,
                 author_id: anonId,
                 author_alias: selectedIdentity.label,
-                ai_flagged: false,
-                ai_score: 0,
+                ai_flagged: aiFlagged,
+                ai_score: aiFlagged ? -1 : 0,
                 tags: tags,
                 is_approved: true,
                 has_poll: hasPoll,
@@ -131,7 +142,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             if (error) throw error;
 
             setStatus("success");
-            setNotificationMsg("Your secret has been posted successfully.");
+            setNotificationMsg("Posted successfully.");
 
             setContent("");
             setPollOptions({ a: "", b: "" });
@@ -145,7 +156,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             }, 2000);
 
         } catch (error) {
-            console.error(error);
+            console.error("Submission Error:", error);
             setStatus("error");
             setNotificationMsg("Connection error. Please try again.");
         }
@@ -178,7 +189,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                         </div>
                         <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1 border border-slate-800 bg-slate-950/50 px-2 py-1 rounded-full">
                             <Shield className="w-3 h-3" />
-                            AI MODERATED
+                            AI PROTECTED
                         </div>
                     </div>
 

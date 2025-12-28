@@ -13,8 +13,7 @@ export async function checkContentSafety(text) {
 
   try {
     const genAI = new GoogleGenerativeAI(API_KEY);
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const safetySettings = [
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -24,40 +23,39 @@ export async function checkContentSafety(text) {
     ];
 
     const prompt = `
-        You are a Universal Content Safety Classifier for a Malaysian confession site.
+        You are a Zero-Tolerance Safety System for a Malaysian adult website.
         
-        INSTRUCTION:
-        1. Auto-detect the language of the text (English, Malay, Chinese, Tamil, Hindi, or any other).
-        2. Translate the context internally to understand the meaning.
-        3. Apply the STRICT Malaysian context rules below.
+        INPUT TEXT: "${text}"
 
-        Analyze the text: "${text}"
+        INSTRUCTIONS:
+        Analyze the text in this STRICT order. If any Step 1, 2, or 3 is violated, STOP and return "safe": false.
+        
+        STEP 1: CHECK FOR SOLICITATION (The content implies buying/selling services)
+        - Does it mention "price", "rate", "money", "pay", "deposit"?
+        - Does it ask to "PM" (Private Message) specifically for details/deal?
+        - Keywords to BLOCK: "PM price", "PM rate", "PM我", "私聊", "价钱", "约炮", "援交", "hookup rate".
+        - EXAMPLE: "Want sex? PM price" -> ❌ UNSAFE (Solicitation).
+        - EXAMPLE: "Looking for sugar baby" -> ❌ UNSAFE (Solicitation).
+        
+        STEP 2: CHECK FOR HATE SPEECH & DOXXING
+        - Any racial slurs (Malaysian context: 'keling', 'babi' [targeted at race], 'sohai' [targeted at race]).
+        - Real phone numbers or addresses.
+        
+        STEP 3: CHECK FOR NON-CONSENSUAL HARM
+        - Rape, violence, self-harm, suicide.
 
-        STRICT BLOCKING RULES (Return safe: false):
-        1. Hate Speech / Racism:
-           - Racial/Religious slurs in ANY language (e.g., 'keling', 'pariah', 'nigger', 'sohai', '黑鬼', '阿三').
-           - Insulting any race, religion, or royalty (3R).
-        2. Sexual Violence:
-           - Non-consensual content, rape, child abuse (e.g., 'rape', 'rogol', '强奸').
-        3. Solicitation (Buying/Selling):
-           - Selling drugs (e.g., 'ice', 'bato', 'ganja', '冰毒').
-           - Selling sex/nudes (e.g., 'selling nudes', 'hookup', '约炮').
-        4. Severe Self-Harm:
-           - Encouraging suicide.
-        5. Doxxing:
-           - Real names, phone numbers, addresses.
+        STEP 4: ALLOW CONSENSUAL ADULT CONTENT (Only if Steps 1-3 are CLEAN)
+        - General relationship issues, finding a partner (without money), or sexual confessions.
+        - EXAMPLE: "I want sex" -> ✅ SAFE (No money mentioned).
+        - EXAMPLE: "My boss is a sohai" -> ✅ SAFE (Venting, not racist).
+        
+        FINAL DECISION RULES:
+        - If "PM" AND "Sex/Price" are in the same context -> BLOCK.
+        - If "Price/Money" is involved with "Sex/Date" -> BLOCK.
 
-        ALLOW RULES (Return safe: true):
-        1. Casual Conversation: Greetings, life updates in any language (e.g., 'Vanakkam', 'Ni Hao', 'Apa khabar').
-        2. Adult Themes: Consensual relationship stories, sexual fantasies (ALLOWED if consensual).
-        3. Venting/Swearing: Complaining about life using "bad words" is ALLOWED as long as it is NOT hate speech.
-           - Examples of ALLOWED venting words: 'babi' (Malay), 'punda'/'otha' (Tamil), 'tmd'/'cibai' (Chinese), 'fuck' (English).
-           - Context matters: "My boss is punda" is ALLOWED (Venting). "All Indians are punda" is BLOCKED (Hate Speech).
-
-        RESPONSE FORMAT:
-        Return valid JSON ONLY:
-        { "safe": boolean, "reason": "Explanation (e.g. 'Tamil hate speech detected')" }
-        `;
+        OUTPUT JSON ONLY:
+        { "safe": boolean, "reason": "Explain which Step failed (e.g. 'Step 1: Solicitation detected')" }
+    `;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -66,7 +64,8 @@ export async function checkContentSafety(text) {
 
     const response = await result.response;
     const textResponse = response.text();
-    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+    const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
     
     if (!jsonMatch) throw new Error("Invalid JSON from AI");
 
@@ -76,7 +75,7 @@ export async function checkContentSafety(text) {
     console.error("Gemini AI Error:", error);
     return {
       safe: false,
-      reason: "AI moderation unavailable. Please try again later.",
+      reason: "AI_SERVICE_UNAVAILABLE",
     };
   }
 }
