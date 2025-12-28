@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Flame, Info, RefreshCcw, Filter, Shuffle, ArrowDown } from 'lucide-react';
+import { Flame, Info, RefreshCcw, Filter, ArrowDown } from 'lucide-react';
 import AdultPolicyGate from './AdultPolicyGate';
 import AdultPostForm from './AdultPostForm';
 import AdultPostCard from './AdultPostCard';
@@ -130,23 +130,6 @@ export default function AdultSection() {
                                 18+ Confessions
                             </span>
                         </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleRoulette}
-                            className="p-2 text-slate-500 hover:text-white hover:bg-slate-900 rounded-full transition-all active:scale-95"
-                            title="Random Secret"
-                        >
-                            <Shuffle className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => fetchPosts(true)}
-                            disabled={refreshing}
-                            className="p-2 text-slate-500 hover:text-rose-500 hover:bg-slate-900 rounded-full transition-all active:scale-95"
-                        >
-                            <RefreshCcw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                        </button>
                     </div>
                 </div>
             </header>
