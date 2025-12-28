@@ -4,7 +4,6 @@ import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
 import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import PollCreator from './PollCreator';
 import EventCreator from './EventCreator';
@@ -14,6 +13,7 @@ import CampusSelector from './CampusSelector';
 import LostFoundCreator from './LostFoundCreator';
 import ImageGalleryModal from './ImageGalleryModal';
 import { useNotifications } from './NotificationSystem';
+import { runSmartAI, runLiteAI } from '../utils/aiService';
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
@@ -255,10 +255,6 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
         try {
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (!apiKey) throw new Error("Missing API Key");
-
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const templateIds = MEME_TEMPLATES.map(t => t.id).join(', ');
             const prompt = `
@@ -268,9 +264,11 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 Output ONLY JSON: { "template_id": "string", "top": "string", "bottom": "string" }
             `;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const data = JSON.parse(response.text().trim().replace(/```json|```/g, ''));
+            const data = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: true
+            });
 
             const clean = (str) => {
                 if (!str) return '_';
@@ -322,10 +320,6 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
         try {
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (!apiKey) throw new Error("Missing API Key");
-
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const prompt = `
                 Analyze this confession text intended for a university student page: "${text.substring(0, 1000)}"
@@ -334,9 +328,11 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 Output ONLY JSON: { "score": number, "tips": ["string", "string", "string"] }
             `;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const data = JSON.parse(response.text().trim().replace(/```json|```/g, ''));
+            const data = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: true
+            });
 
             setViralData({
                 ...data,
@@ -357,21 +353,20 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             if (!apiKey) return { toxic: false, sentiment: 'neutral' };
 
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
             const prompt = `
                 Analyze the following text for toxicity (hate speech, severe harassment, dangerous threats) and sentiment. 
-                Output ONLY a JSON object with this structure: 
+                Output ONLY a JSON object with this structure:
                 { "toxic": boolean, "sentiment": "positive" | "neutral" | "negative", "reason": "short explanation if toxic" }
                 
                 Text: "${content.substring(0, 1000)}"
             `;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const textResponse = response.text().trim().replace(/```json|```/g, '');
-            return JSON.parse(textResponse);
+            return await runLiteAI({
+                apiKey,
+                prompt,
+                jsonMode: true
+            });
+
         } catch (error) {
             console.error("AI Analysis failed:", error);
             return { toxic: false, sentiment: 'neutral' };
@@ -391,13 +386,6 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
         try {
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-            if (!apiKey) {
-                throw new Error("Missing API Key");
-            }
-
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             let prompt = "";
             switch (mode) {
@@ -420,9 +408,11 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                     prompt = `Polish this text: "${text}"`;
             }
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            let newText = response.text().trim();
+            let newText = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: false
+            });
 
             newText = newText.replace(/^"|"$/g, '')
                 .replace(/^Here is the rewritten text:\s*/i, '');
