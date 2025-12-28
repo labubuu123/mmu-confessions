@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     MousePointer2, BookOpen, LayoutDashboard, Lock, FileText, Map, MapPin,
     Monitor, Phone, Siren, Users, Headphones, ExternalLink, Wrench, ArrowLeft,
-    QrCode, Banknote, Calculator, Plus, Trash2, RotateCcw, Save
+    QrCode, Banknote, Calculator, Plus, Trash2, RotateCcw, Save, Shield, Eye, EyeOff, Copy, Check, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -12,6 +12,123 @@ const GRADE_POINTS = {
     'B+': 3.33, 'B': 3.00, 'B-': 2.67,
     'C+': 2.33, 'C': 2.00, 'C-': 1.67,
     'D+': 1.33, 'D': 1.00, 'F': 0.00
+};
+
+const IdentityManager = () => {
+    const [anonId, setAnonId] = useState('');
+    const [isVisible, setIsVisible] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [restoreInput, setRestoreInput] = useState('');
+    const [showRestore, setShowRestore] = useState(false);
+
+    useEffect(() => {
+        const id = localStorage.getItem('anonId');
+        if (id) setAnonId(id);
+    }, []);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(anonId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleRestore = () => {
+        if (!restoreInput.trim()) return;
+
+        if (window.confirm("WARNING: Restoring an ID will replace your current identity on this device. You will lose access to your current Matchmaker profile and Marketplace listings unless you have backed them up. Continue?")) {
+            localStorage.setItem('anonId', restoreInput.trim());
+            alert("Identity restored successfully. The page will now reload.");
+            window.location.reload();
+        }
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 mb-10">
+            <div className="p-6 sm:p-8 bg-gradient-to-r from-emerald-600 to-teal-700 text-white">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold">Identity & Backup</h3>
+                        <p className="text-emerald-100 text-sm opacity-90">Manage your anonymous ID for Matchmaker & Marketplace</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-6 sm:p-8 space-y-6">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                        <strong>Important:</strong> Your "Anonymous ID" is the only key to your Matchmaker profile and Marketplace listings.
+                        If you clear your browser cache, you will lose access. <strong>Copy and save this ID somewhere safe!</strong>
+                    </p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Your Secret ID
+                    </label>
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <input
+                                type={isVisible ? "text" : "password"}
+                                value={anonId}
+                                readOnly
+                                className="w-full pl-4 pr-10 py-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                            <button
+                                onClick={() => setIsVisible(!isVisible)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <button
+                            onClick={handleCopy}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-xl font-bold text-sm transition-colors flex items-center gap-2"
+                        >
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            {copied ? 'Copied' : 'Copy'}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => setShowRestore(!showRestore)}
+                        className="text-sm text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        I want to restore an old identity
+                    </button>
+
+                    {showRestore && (
+                        <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                                Paste Previous ID
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Paste your saved ID here..."
+                                    value={restoreInput}
+                                    onChange={(e) => setRestoreInput(e.target.value)}
+                                    className="flex-1 px-4 py-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white text-sm"
+                                />
+                                <button
+                                    onClick={handleRestore}
+                                    className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
+                                >
+                                    Restore
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const CGPACalculator = () => {
@@ -331,6 +448,16 @@ export default function ToolsPage() {
 
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
                 <div className="max-w-6xl mx-auto">
+                    <div className="mb-16 animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-8 px-2">
+                            <div className="h-8 w-1 bg-emerald-500 rounded-full"></div>
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Profile & Identity</h2>
+                        </div>
+                        <div className="max-w-3xl mx-auto">
+                            <IdentityManager />
+                        </div>
+                    </div>
+
                     <div className="mb-16 animate-fade-in-up delay-75">
                         <div className="flex items-center gap-3 mb-8 px-2">
                             <div className="h-8 w-1 bg-purple-500 rounded-full"></div>

@@ -7,6 +7,12 @@ SELECT cron.schedule(
     'SELECT public.auto_delete_expired_posts()'
 );
 
+SELECT cron.schedule(
+    'cleanup-adult-whispers',
+    '* * * * *',
+    'SELECT public.auto_delete_expired_adult_posts()'
+);
+
 CREATE TABLE IF NOT EXISTS public.confessions (
     id BIGSERIAL PRIMARY KEY,
     text TEXT NOT NULL,
@@ -389,6 +395,9 @@ ON DELETE CASCADE;
 
 ALTER TABLE public.user_reputation
 ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.adult_confessions
+ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 ALTER TABLE public.confessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
@@ -1618,6 +1627,29 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.auto_delete_expired_adult_posts()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    deleted_count INT;
+BEGIN
+    WITH deleted_rows AS (
+        DELETE FROM public.adult_confessions
+        WHERE expires_at IS NOT NULL
+        AND expires_at < NOW()
+        RETURNING id
+    )
+    SELECT count(*) INTO deleted_count FROM deleted_rows;
+
+    IF deleted_count > 0 THEN
+        INSERT INTO public.actions_log (action_type, created_at)
+        VALUES ('SYSTEM: Auto-deleted ' || deleted_count || ' expired adult whispers', NOW());
+    END IF;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions
 BEFORE INSERT OR UPDATE ON public.confessions
@@ -1698,6 +1730,7 @@ CREATE INDEX IF NOT EXISTS idx_post_user_reactions_user_id ON public.post_user_r
 CREATE INDEX IF NOT EXISTS idx_comment_user_reactions_user_id ON public.comment_user_reactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_confessions_reply_to_id ON public.confessions(reply_to_id);
 CREATE INDEX IF NOT EXISTS idx_comments_debate_side ON public.comments(debate_side);
+CREATE INDEX IF NOT EXISTS idx_adult_confessions_expires_at ON public.adult_confessions(expires_at);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

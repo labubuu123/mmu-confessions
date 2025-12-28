@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import AdultComments from './AdultComments';
 import AdultShareButton from './AdultShareButton';
 import AdultAvatar from './AdultAvatar';
-import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2 } from 'lucide-react';
+import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Timer } from 'lucide-react';
 
 export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
@@ -14,6 +14,7 @@ export default function AdultPostCard({ post }) {
     const [pollOptions, setPollOptions] = useState(post.poll_options || []);
     const [hasVoted, setHasVoted] = useState(false);
     const [totalVotes, setTotalVotes] = useState(0);
+    const [timeLeft, setTimeLeft] = useState('');
 
     const identityId = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
     const genderLabel = identityId === 'M' ? 'Boy' : identityId === 'F' ? 'Girl' : 'Secret';
@@ -51,10 +52,38 @@ export default function AdultPostCard({ post }) {
             )
             .subscribe();
 
+        if (post.expires_at) {
+            const updateTimer = () => {
+                const now = new Date();
+                const end = new Date(post.expires_at);
+                const diff = end - now;
+
+                if (diff <= 0) {
+                    setTimeLeft('Expired');
+                } else {
+                    const hours = Math.floor((diff / (1000 * 60 * 60)));
+                    const minutes = Math.floor((diff / 1000 / 60) % 60);
+
+                    if (hours > 0) {
+                        setTimeLeft(`${hours}h ${minutes}m left`);
+                    } else {
+                        setTimeLeft(`${minutes}m left`);
+                    }
+                }
+            };
+
+            updateTimer();
+            const timerId = setInterval(updateTimer, 60000);
+            return () => {
+                clearInterval(timerId);
+                supabase.removeChannel(channel);
+            };
+        }
+
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [post.id]);
+    }, [post.id, post.expires_at]);
 
     const calculateTotalVotes = (options) => {
         if (!options) return;
@@ -191,6 +220,8 @@ export default function AdultPostCard({ post }) {
         }
     };
 
+    if (timeLeft === 'Expired') return null;
+
     return (
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl mb-6 hover:shadow-lg hover:border-slate-700 transition-all group relative overflow-visible shadow-sm">
             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -207,6 +238,13 @@ export default function AdultPostCard({ post }) {
                             {moodTag && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 uppercase tracking-wider font-medium">
                                     {moodTag}
+                                </span>
+                            )}
+
+                            {post.expires_at && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-orange-400 bg-orange-950/20 px-1.5 py-0.5 rounded border border-orange-900/30">
+                                    <Hourglass className="w-3 h-3 animate-pulse" />
+                                    {timeLeft}
                                 </span>
                             )}
                         </div>

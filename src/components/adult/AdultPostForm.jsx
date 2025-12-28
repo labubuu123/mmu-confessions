@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { checkContentSafety } from '../../utils/geminiModeration';
-import { Shield, Lock, Send, BarChart2, X, Loader2, Check } from 'lucide-react';
+import { Shield, Lock, Send, BarChart2, X, Loader2, Check, Clock, Hourglass } from 'lucide-react';
 import AdultNotification from './AdultNotification';
 
 const MarsIcon = ({ className }) => (
@@ -45,10 +45,18 @@ const MOODS = [
     { id: 'Story', label: 'Story', color: 'text-emerald-400 bg-emerald-950/30 border-emerald-900' }
 ];
 
+const EXPIRATIONS = [
+    { id: 'forever', label: 'Forever', icon: Shield },
+    { id: '1h', label: '1 Hour', icon: Hourglass },
+    { id: '6h', label: '6 Hours', icon: Clock },
+    { id: '24h', label: '24 Hours', icon: Clock }
+];
+
 export default function AdultPostForm({ onSuccess, onCancel }) {
     const [content, setContent] = useState("");
     const [selectedIdentity, setSelectedIdentity] = useState(null);
     const [selectedMood, setSelectedMood] = useState(MOODS[0]);
+    const [expiration, setExpiration] = useState('forever');
 
     const [showPoll, setShowPoll] = useState(false);
     const [pollOptions, setPollOptions] = useState({ a: "", b: "" });
@@ -97,6 +105,16 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                 ];
             }
 
+            // Calculate Expiration
+            let expiresAt = null;
+            if (expiration !== 'forever') {
+                const now = new Date();
+                if (expiration === '1h') now.setHours(now.getHours() + 1);
+                else if (expiration === '6h') now.setHours(now.getHours() + 6);
+                else if (expiration === '24h') now.setHours(now.getHours() + 24);
+                expiresAt = now.toISOString();
+            }
+
             const { error } = await supabase.from('adult_confessions').insert({
                 content: content,
                 author_id: anonId,
@@ -106,7 +124,8 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                 tags: tags,
                 is_approved: true,
                 has_poll: hasPoll,
-                poll_options: pollData
+                poll_options: pollData,
+                expires_at: expiresAt
             });
 
             if (error) throw error;
@@ -118,6 +137,7 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
             setPollOptions({ a: "", b: "" });
             setShowPoll(false);
             setSelectedIdentity(null);
+            setExpiration('forever');
 
             setTimeout(() => {
                 setStatus("idle");
@@ -256,22 +276,45 @@ export default function AdultPostForm({ onSuccess, onCancel }) {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">Mood</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {MOODS.map(m => (
-                                        <button
-                                            key={m.id}
-                                            type="button"
-                                            onClick={() => setSelectedMood(m)}
-                                            className={`px-3 py-1.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all font-medium ${selectedMood.id === m.id
-                                                ? `${m.color} ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.1)] bg-opacity-20`
-                                                : 'bg-slate-950 text-slate-600 border-slate-800 hover:bg-slate-900 hover:text-slate-400'
-                                                }`}
-                                        >
-                                            {m.label}
-                                        </button>
-                                    ))}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">Mood</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {MOODS.map(m => (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => setSelectedMood(m)}
+                                                className={`px-3 py-1.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all font-medium ${selectedMood.id === m.id
+                                                    ? `${m.color} ring-1 ring-inset ring-current shadow-[0_0_10px_rgba(0,0,0,0.1)] bg-opacity-20`
+                                                    : 'bg-slate-950 text-slate-600 border-slate-800 hover:bg-slate-900 hover:text-slate-400'
+                                                    }`}
+                                            >
+                                                {m.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider ml-1">Lifespan</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-1 bg-slate-950 p-1.5 rounded-lg border border-slate-800">
+                                        {EXPIRATIONS.map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setExpiration(opt.id)}
+                                                className={`flex items-center justify-center gap-1.5 py-2 md:py-1 rounded-md text-[10px] font-bold transition-all ${expiration === opt.id
+                                                    ? 'bg-rose-900/30 text-rose-400 border border-rose-900/50'
+                                                    : 'text-slate-500 hover:text-slate-300'
+                                                    }`}
+                                                title={opt.label}
+                                            >
+                                                <opt.icon className="w-3 h-3 shrink-0" />
+                                                <span className="truncate">{opt.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 

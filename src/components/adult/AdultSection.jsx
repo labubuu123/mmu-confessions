@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Flame, Info, RefreshCcw, Filter, ArrowDown } from 'lucide-react';
-import AdultPolicyGate from './AdultPolicyGate';
+import AdultPolicyGate, { ADULT_GATE_KEY, ADULT_GATE_VALUE } from './AdultPolicyGate';
 import AdultPostForm from './AdultPostForm';
 import AdultPostCard from './AdultPostCard';
 import { useParams } from 'react-router-dom';
@@ -21,8 +21,8 @@ export default function AdultSection() {
     const [hasMore, setHasMore] = useState(true);
 
     useEffect(() => {
-        const hasAgreed = localStorage.getItem('adult_policy_agreed');
-        if (hasAgreed === 'true') {
+        const hasAgreed = localStorage.getItem(ADULT_GATE_KEY);
+        if (hasAgreed === ADULT_GATE_VALUE) {
             setPolicyAccepted(true);
         }
     }, []);
@@ -34,7 +34,7 @@ export default function AdultSection() {
     }, [policyAccepted, id, filter]);
 
     const handleAgree = () => {
-        localStorage.setItem('adult_policy_agreed', 'true');
+        localStorage.setItem(ADULT_GATE_KEY, ADULT_GATE_VALUE);
         setPolicyAccepted(true);
     };
 
@@ -55,6 +55,9 @@ export default function AdultSection() {
             .from('adult_confessions')
             .select('*')
             .eq('is_approved', true);
+
+        const now = new Date().toISOString();
+        query = query.or(`expires_at.is.null,expires_at.gt.${now}`);
 
         if (id) {
             query = query.eq('id', id);

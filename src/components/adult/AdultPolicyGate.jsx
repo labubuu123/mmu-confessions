@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { AlertTriangle, CheckCircle2, XCircle, Lock, ShieldAlert, Gavel, Scale, FileWarning } from 'lucide-react';
 
+export const ADULT_GATE_KEY = 'mmu_restricted_access_v1';
+export const ADULT_GATE_VALUE = 'verified_access_grant_7x9';
+
 export default function AdultPolicyGate({ onAgree, onDecline }) {
     const [canAgree, setCanAgree] = useState(false);
     const [showDoubleCheck, setShowDoubleCheck] = useState(false);
@@ -8,7 +11,7 @@ export default function AdultPolicyGate({ onAgree, onDecline }) {
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
-        if (scrollHeight - scrollTop - clientHeight < 20) {
+        if (scrollHeight - scrollTop - clientHeight < 50) {
             setCanAgree(true);
         }
     };
@@ -20,6 +23,7 @@ export default function AdultPolicyGate({ onAgree, onDecline }) {
     };
 
     const handleFinalConfirmation = () => {
+        localStorage.setItem(ADULT_GATE_KEY, ADULT_GATE_VALUE);
         onAgree();
     };
 
