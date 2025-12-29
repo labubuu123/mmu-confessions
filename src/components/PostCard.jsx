@@ -281,7 +281,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 onClick={() => onOpen && onOpen(post)}
                 style={containerStyle}
                 className={`
-                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group
+                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group w-full overflow-hidden
                     ${showLangMenu ? 'z-30' : 'z-0'}
                     ${post.is_sponsored ? 'transform hover:-translate-y-1' : ''}
                     ${isSpecialPost
@@ -331,13 +331,13 @@ export default function PostCard({ post, onOpen, onQuote }) {
                     </div>
                 )}
 
-                <div className="p-4 flex items-start gap-3 relative z-10">
+                <div className="p-4 flex items-start gap-3 relative z-10 w-full">
                     <AnonAvatar authorId={post.author_id} size="md" isSponsored={post.is_sponsored} />
                     <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-1">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0 w-full">
                                 <div
-                                    className="font-bold text-base truncate flex items-center gap-1.5"
+                                    className="font-bold text-base truncate flex items-center gap-1.5 max-w-full"
                                     style={{ color: post.is_sponsored ? brandColor : undefined }}
                                     itemProp="author"
                                 >
@@ -374,15 +374,15 @@ export default function PostCard({ post, onOpen, onQuote }) {
                     )}
                 </div>
 
-                <div className="px-4 pb-3 relative z-10">
+                <div className="px-4 pb-3 relative z-10 w-full">
                     {post.reply_to_id && (
-                        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-indigo-500 text-sm opacity-90 transition-opacity hover:opacity-100">
+                        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-indigo-500 text-sm opacity-90 transition-opacity hover:opacity-100 max-w-full">
                             <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                                 <Quote className="w-3 h-3" />
                                 <span>Replying to a Confession</span>
                             </div>
                             <div
-                                className="text-gray-700 dark:text-gray-300 italic cursor-pointer hover:underline hover:text-indigo-600 dark:hover:text-indigo-300"
+                                className="text-gray-700 dark:text-gray-300 italic cursor-pointer hover:underline hover:text-indigo-600 dark:hover:text-indigo-300 truncate"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (onOpen) onOpen({ id: post.reply_to_id });
@@ -393,18 +393,18 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         </div>
                     )}
 
-                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`} itemProp="articleBody">
+                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words w-full leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`} itemProp="articleBody">
                         {renderedText}
                     </p>
 
                     {showTranslation && translation && (
-                        <div className="mt-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-top-2">
+                        <div className="mt-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-top-2 w-full">
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                                     <Sparkles className="w-3 h-3" /> Translated to {targetLanguage}
                                 </div>
                             </div>
-                            <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed italic">
+                            <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words w-full leading-relaxed italic">
                                 {translation}
                             </p>
                         </div>
