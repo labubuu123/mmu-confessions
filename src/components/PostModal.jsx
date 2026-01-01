@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import ReactDOM from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import CommentSection from './CommentSection'
@@ -9,7 +9,7 @@ import EventDisplay from './EventDisplay'
 import ImageGalleryModal from './ImageGalleryModal'
 import ShareButton from './ShareButton'
 import { supabase } from '../lib/supabaseClient'
-import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check, Quote, Scale } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Volume2, Flag, ExternalLink, Link as LinkIcon, Check, Quote, Scale, ClipboardList } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
@@ -29,6 +29,14 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     const [event, setEvent] = useState(null)
     const [lostFound, setLostFound] = useState(null)
     const [zoomedImage, setZoomedImage] = useState(null)
+
+    const moodData = useMemo(() => {
+        try {
+            return internalPost?.mood ? JSON.parse(internalPost.mood) : null;
+        } catch (e) {
+            return null;
+        }
+    }, [internalPost?.mood]);
 
     useEffect(() => {
         function onKey(e) {
@@ -430,6 +438,30 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                             {poll && !event && (
                                 <div className="px-3 sm:px-4 pb-3" onClick={(e) => e.stopPropagation()}>
                                     <PollDisplay poll={poll} confessionId={internalPost.id} />
+                                </div>
+                            )}
+
+                            {moodData?.survey_link && (
+                                <div className="mt-4">
+                                    <a
+                                        href={moodData.survey_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block group"
+                                    >
+                                        <div className="flex items-center gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-all cursor-pointer">
+                                            <div className="w-10 h-10 bg-teal-100 dark:bg-teal-800 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                                                <ClipboardList className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wide mb-0.5">Survey / Feedback</p>
+                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:underline decoration-teal-500">
+                                                    Click here to participate in this form
+                                                </p>
+                                            </div>
+                                            <ExternalLink className="w-4 h-4 text-teal-400 group-hover:text-teal-600 dark:group-hover:text-teal-300" />
+                                        </div>
+                                    </a>
                                 </div>
                             )}
 
