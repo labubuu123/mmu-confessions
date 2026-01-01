@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale, ClipboardList, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import PollCreator from './PollCreator';
@@ -135,6 +135,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [zoomedIndex, setZoomedIndex] = useState(null);
     const [placeholderText, setPlaceholderText] = useState('Display Name (Optional, defaults to Anonymous)');
     const [isDebate, setIsDebate] = useState(false);
+    const [showSurveyInput, setShowSurveyInput] = useState(false);
+    const [surveyLink, setSurveyLink] = useState('');
     const textAreaRef = useRef(null);
 
     useEffect(() => {
@@ -170,6 +172,10 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 if (draft.campus) setSelectedCampus(draft.campus);
                 if (draft.policyAccepted) setPolicyAccepted(true);
                 if (draft.isDebate) setIsDebate(draft.isDebate);
+                if (draft.surveyLink) {
+                    setSurveyLink(draft.surveyLink);
+                    setShowSurveyInput(true);
+                }
 
                 if (draft.pollData) {
                     setPollData(draft.pollData);
@@ -202,7 +208,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     useEffect(() => {
         if (!draftLoaded) return;
 
-        const hasContent = text.trim().length > 0 || customName.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate;
+        const hasContent = text.trim().length > 0 || customName.trim().length > 0 || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate || surveyLink.trim().length > 0;
 
         if (hasContent) {
             const draftState = {
@@ -216,6 +222,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 lostFoundData,
                 policyAccepted,
                 isDebate,
+                surveyLink,
                 lastSaved: Date.now()
             };
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftState));
@@ -226,7 +233,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         if (viralData && Math.abs(text.length - (viralData.textLength || 0)) > 20) {
             setViralData(null);
         }
-    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded, isDebate]);
+    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded, isDebate, surveyLink]);
 
     useEffect(() => {
         if (audio) {
@@ -444,6 +451,15 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         info('Undid last change');
     };
 
+    const isValidUrl = (string) => {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    };
+
     async function handleSubmit(e) {
         e.preventDefault();
 
@@ -468,7 +484,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             return;
         }
 
-        if (!text.trim() && images.length === 0 && !video && !audio && !eventData && !lostFoundData) {
+        if (surveyLink && !isValidUrl(surveyLink)) {
+            error('Please enter a valid survey URL (include http:// or https://)');
+            return;
+        }
+
+        if (!text.trim() && images.length === 0 && !video && !audio && !eventData && !lostFoundData && !surveyLink) {
             warning('Write something or attach media');
             return;
         }
@@ -611,12 +632,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             }
 
             let moodData = null;
-            if (selectedMood || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment) {
+            if (selectedMood || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment || surveyLink) {
                 moodData = {
                     ...(selectedMood || {}),
                     voice_effect: voiceEffect !== 'normal' ? voiceEffect : null,
                     ai_sentiment: aiAnalysis.sentiment,
-                    toxicity_flag: aiAnalysis.toxic
+                    toxicity_flag: aiAnalysis.toxic,
+                    survey_link: surveyLink ? surveyLink.trim() : null
                 };
             }
 
@@ -767,6 +789,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             setHistory([]);
             setViralData(null);
             setIsDebate(false);
+            setSurveyLink('');
+            setShowSurveyInput(false);
 
             if (!aiAnalysis.toxic) {
                 success('Posted successfully!');
@@ -1057,7 +1081,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                             </>
                         )}
                     </div>
-                    {(text || customName || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate) && (
+                    {(text || customName || selectedMood || selectedCampus || pollData || eventData || seriesData || lostFoundData || isDebate || surveyLink) && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 animate-in fade-in duration-300">
                             <Save className="w-3 h-3" />
                             <span>Draft Saved</span>
@@ -1410,6 +1434,37 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                         </div>
                     )}
 
+                    {showSurveyInput && (
+                        <div className="my-3 sm:my-4 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl border border-teal-100 dark:border-teal-800 animate-in slide-in-from-top-2">
+                            <div className="flex items-center gap-2 mb-2">
+                                <ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                <span className="text-xs font-bold text-teal-700 dark:text-teal-300">Attach Survey / Feedback Link</span>
+                            </div>
+                            <div className="relative">
+                                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="url"
+                                    value={surveyLink}
+                                    onChange={(e) => setSurveyLink(e.target.value)}
+                                    placeholder="https://forms.google.com/..."
+                                    className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                                />
+                                {surveyLink && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSurveyLink(''); setShowSurveyInput(false); }}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 ml-1">
+                                Link must start with http:// or https://. Users can click this link directly from your post.
+                            </p>
+                        </div>
+                    )}
+
                     {showPollCreator && (
                         <div className="my-3 sm:my-4">
                             <PollCreator
@@ -1651,11 +1706,26 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 selectedMood={selectedMood}
                                 onSelectMood={setSelectedMood}
                             />
+
+                            <button
+                                type="button"
+                                onClick={() => setShowSurveyInput(!showSurveyInput)}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSurveyInput
+                                    ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading}
+                            >
+                                <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Survey
+                                </span>
+                            </button>
                         </div>
 
                         <button
                             type="submit"
-                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData && !surveyLink) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 ${isDebate ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         >
                             {loading ? (

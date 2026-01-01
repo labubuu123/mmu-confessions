@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale, ClipboardList } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -414,6 +414,30 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 {lostFound && (
                     <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}>
                         <LostFoundDisplay {...lostFound} />
+                    </div>
+                )}
+
+                {moodData?.survey_link && (
+                    <div className="px-3 sm:px-4 pb-3 relative z-0" onClick={(e) => e.stopPropagation()}>
+                        <a
+                            href={moodData.survey_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block group"
+                        >
+                            <div className="flex items-center gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-all cursor-pointer">
+                                <div className="w-10 h-10 bg-teal-100 dark:bg-teal-800 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                                    <ClipboardList className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wide mb-0.5">Survey / Feedback</p>
+                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:underline decoration-teal-500">
+                                        Click here to participate in this form
+                                    </p>
+                                </div>
+                                <ExternalLink className="w-4 h-4 text-teal-400 group-hover:text-teal-600 dark:group-hover:text-teal-300" />
+                            </div>
+                        </a>
                     </div>
                 )}
 
