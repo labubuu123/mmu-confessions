@@ -281,7 +281,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 onClick={() => onOpen && onOpen(post)}
                 style={containerStyle}
                 className={`
-                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group w-full overflow-hidden
+                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group w-full
                     ${showLangMenu ? 'z-30' : 'z-0'}
                     ${post.is_sponsored ? 'transform hover:-translate-y-1' : ''}
                     ${isSpecialPost
@@ -292,11 +292,11 @@ export default function PostCard({ post, onOpen, onQuote }) {
                 itemType="http://schema.org/SocialMediaPosting"
             >
                 {post.is_sponsored && (
-                    <div className="absolute inset-0 pointer-events-none z-0" style={shimmerStyle} />
+                    <div className="absolute inset-0 pointer-events-none z-0 rounded-2xl" style={shimmerStyle} />
                 )}
 
                 {showHeartAnimation && (
-                    <div className="absolute inset-0 z-50 pointer-events-none flex justify-center items-center overflow-hidden">
+                    <div className="absolute inset-0 z-50 pointer-events-none flex justify-center items-center overflow-hidden rounded-2xl">
                         {[...Array(8)].map((_, i) => (
                             <Heart
                                 key={i}
