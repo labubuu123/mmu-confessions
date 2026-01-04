@@ -460,12 +460,12 @@ DROP POLICY IF EXISTS "Enable delete for admin" ON public.polls;
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
-CREATE POLICY "Enable update for admin" ON public.confessions FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Enable delete for admin" ON public.confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable update for admin" ON public.confessions FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Enable delete for admin" ON public.confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable insert for all users" ON public.comments FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for all users" ON public.comments FOR SELECT USING (true);
 CREATE POLICY "Enable update for all users (for reactions)" ON public.comments FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin" ON public.comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable read for all users" ON public.reactions FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable update for all users" ON public.reactions FOR UPDATE USING (true) WITH CHECK (true);
@@ -478,25 +478,25 @@ CREATE POLICY "Enable read for service role" ON public.actions_log FOR SELECT US
 CREATE POLICY "Enable read for all users" ON public.polls FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.polls FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable update for all users" ON public.polls FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.polls FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin" ON public.polls FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable read for all users" ON public.poll_votes FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.poll_votes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin" ON public.poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable read for all users" ON public.user_reputation FOR SELECT USING (true);
 CREATE POLICY "Enable read for all users" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.events FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
-CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'confessions' AND (SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'confessions' AND (SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Send Love" ON public.matchmaker_loves FOR INSERT WITH CHECK (from_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Update Love" ON public.matchmaker_loves FOR UPDATE USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Read Own Matches" ON public.matchmaker_matches FOR SELECT USING (user1_id = (SELECT auth.uid()::text) OR user2_id = (SELECT auth.uid()::text));
-CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin Read All Matches" ON public.matchmaker_matches FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Insert Reports" ON public.matchmaker_reports FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Reports" ON public.matchmaker_reports FOR SELECT USING (true);
 CREATE POLICY "Admin Select Profiles" ON public.matchmaker_profiles FOR SELECT USING (true);
@@ -518,38 +518,38 @@ CREATE POLICY "Public Read Credentials" ON public.matchmaker_credentials FOR SEL
 CREATE POLICY "Public Insert Credentials" ON public.matchmaker_credentials FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Own Credentials" ON public.matchmaker_credentials FOR UPDATE USING (true);
 CREATE POLICY "Public Read Announcements" ON public.announcements FOR SELECT USING (true);
-CREATE POLICY "Admin Manage Announcements" ON public.announcements FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin Manage Announcements" ON public.announcements FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Everyone can view marketplace items" ON public.marketplace_items FOR SELECT USING (true);
 CREATE POLICY "Anon users can insert items" ON public.marketplace_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Sellers can update own items" ON public.marketplace_items FOR UPDATE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Sellers can delete own items" ON public.marketplace_items FOR DELETE USING (seller_id = current_setting('request.header.x-anon-id', true)::text);
-CREATE POLICY "Admin manage marketplace items" ON public.marketplace_items FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin manage marketplace items" ON public.marketplace_items FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Anon users can insert reports" ON public.marketplace_reports FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admin can view all reports" ON public.marketplace_reports FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin can delete reports" ON public.marketplace_reports FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin can view all reports" ON public.marketplace_reports FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin can delete reports" ON public.marketplace_reports FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Enable read access for all users" ON public.lost_and_found AS permissive FOR SELECT TO public USING (true);
 CREATE POLICY "Enable insert for all users" ON public.lost_and_found AS permissive FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "Read approved feed" ON public.matchmaker_feed FOR SELECT USING (status = 'approved');
 CREATE POLICY "Create feed posts" ON public.matchmaker_feed FOR INSERT WITH CHECK (auth.uid()::text = author_id);
 CREATE POLICY "Delete own posts" ON public.matchmaker_feed FOR DELETE USING (auth.uid()::text = author_id);
-CREATE POLICY "Admin delete feed" ON public.matchmaker_feed FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin delete feed" ON public.matchmaker_feed FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Anyone can read approved adult posts" ON public.adult_confessions FOR SELECT USING (is_approved = true);
 CREATE POLICY "Anyone can insert adult posts" ON public.adult_confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Anyone can read adult comments" ON public.adult_comments FOR SELECT USING (true);
 CREATE POLICY "Anyone can insert adult comments" ON public.adult_comments FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public read reactions" ON public.adult_reactions FOR SELECT USING (true);
 CREATE POLICY "Public insert reactions" ON public.adult_reactions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admin read all adult posts" ON public.adult_confessions FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin update adult posts" ON public.adult_confessions FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin delete adult posts" ON public.adult_confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin delete adult comments" ON public.adult_comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin delete adult poll votes" ON public.adult_poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin read all adult posts" ON public.adult_confessions FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin update adult posts" ON public.adult_confessions FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin delete adult posts" ON public.adult_confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin delete adult comments" ON public.adult_comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin delete adult poll votes" ON public.adult_poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Public read comment reactions" ON public.adult_comment_reactions FOR SELECT USING (true);
 CREATE POLICY "Public insert comment reactions" ON public.adult_comment_reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public delete own comment reactions" ON public.adult_comment_reactions FOR DELETE USING (true);
-CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin can update user_reputation" ON public.user_reputation FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
-CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin can update user_reputation" ON public.user_reputation FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -814,7 +814,7 @@ DECLARE
     post_id_var BIGINT;
     deleted_count INT;
 BEGIN
-    IF (SELECT auth.jwt() ->> 'email') <> 'admin@mmu.edu' THEN
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@admin.com' THEN
         RAISE EXCEPTION 'Access denied: You are not the admin.';
     END IF;
 
@@ -1527,7 +1527,7 @@ CREATE OR REPLACE FUNCTION public.force_admin_name()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.author_name ILIKE 'Admin' THEN
-        IF (SELECT email FROM auth.users WHERE id = auth.uid()) != 'admin@mmu.edu' THEN
+        IF (SELECT email FROM auth.users WHERE id = auth.uid()) != 'admin@admin.com' THEN
             NEW.author_name := 'Anonymous';
         END IF;
     END IF;
@@ -1576,7 +1576,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-    IF (SELECT auth.jwt() ->> 'email') <> 'admin@mmu.edu' THEN
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@admin.com' THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
