@@ -453,15 +453,19 @@ DROP POLICY IF EXISTS "Admin delete feed" ON public.matchmaker_feed;
 DROP POLICY IF EXISTS "Admin delete adult comments" ON public.adult_comments;
 DROP POLICY IF EXISTS "Admin delete comment reactions" ON public.adult_comment_reactions;
 DROP POLICY IF EXISTS "Admin manage blocked devices" ON public.blocked_devices;
+DROP POLICY IF EXISTS "Enable delete for admin" ON public.confessions;
+DROP POLICY IF EXISTS "Enable delete for admin" ON public.comments;
+DROP POLICY IF EXISTS "Enable delete for admin" ON public.events;
+DROP POLICY IF EXISTS "Enable delete for admin" ON public.polls;
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
-CREATE POLICY "Enable update for admin" ON public.confessions FOR UPDATE USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
-CREATE POLICY "Enable delete for admin" ON public.confessions FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable update for admin" ON public.confessions FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
+CREATE POLICY "Enable delete for admin" ON public.confessions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable insert for all users" ON public.comments FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for all users" ON public.comments FOR SELECT USING (true);
 CREATE POLICY "Enable update for all users (for reactions)" ON public.comments FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.comments FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.comments FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable read for all users" ON public.reactions FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable update for all users" ON public.reactions FOR UPDATE USING (true) WITH CHECK (true);
@@ -474,17 +478,17 @@ CREATE POLICY "Enable read for service role" ON public.actions_log FOR SELECT US
 CREATE POLICY "Enable read for all users" ON public.polls FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.polls FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable update for all users" ON public.polls FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.polls FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.polls FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable read for all users" ON public.poll_votes FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.poll_votes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.poll_votes FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.poll_votes FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable read for all users" ON public.user_reputation FOR SELECT USING (true);
 CREATE POLICY "Enable read for all users" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.events FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELECT auth.role()) = 'authenticated');
+CREATE POLICY "Enable delete for admin" ON public.events FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'confessions');
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
-CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE USING ((SELECT auth.role()) = 'authenticated' AND bucket_id = 'confessions');
+CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'confessions' AND (SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@mmu.edu');
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
@@ -810,8 +814,8 @@ DECLARE
     post_id_var BIGINT;
     deleted_count INT;
 BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RAISE EXCEPTION 'Access denied: Must be an authenticated admin.';
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@mmu.edu' THEN
+        RAISE EXCEPTION 'Access denied: You are not the admin.';
     END IF;
 
     SELECT post_id INTO post_id_var
