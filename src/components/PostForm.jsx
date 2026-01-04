@@ -13,6 +13,7 @@ import CampusSelector from './CampusSelector';
 import LostFoundCreator from './LostFoundCreator';
 import ImageGalleryModal from './ImageGalleryModal';
 import { useNotifications } from './NotificationSystem';
+import { runSmartAI, runLiteAI } from '../utils/aiService';
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_IMAGES = 3;
@@ -251,6 +252,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             warning('Write a confession to meme-ify!');
             return;
         }
+
         if (images.length > 0 || video || audio) {
             if (!window.confirm("This will replace your current media. Continue?")) return;
         }
@@ -259,18 +261,33 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         info("Cooking up a meme... 🍳");
 
         try {
-            const { data, error: funcError } = await supabase.functions.invoke('ai-moderation', {
-                body: { action: 'meme', text: text }
-            });
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-            if (funcError || !data) throw new Error("AI generation failed");
+            const templateIds = MEME_TEMPLATES.map(t => t.id).join(', ');
+            const prompt = `
+                Analyze this confession: "${text}".
+                Choose the best meme template ID from this list: [${templateIds}].
+                Generate a short, funny TOP text and BOTTOM text for the meme based on the confession.
+                Output ONLY JSON: { "template_id": "string", "top": "string", "bottom": "string" }
+            `;
+
+            const data = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: true
+            });
 
             const clean = (str) => {
                 if (!str) return '_';
                 return encodeURIComponent(
-                    str.replace(/_/g, '__').replace(/-/g, '--').replace(/\n/g, '~n')
-                        .replace(/\?/g, '~q').replace(/%/g, '~p').replace(/#/g, '~h')
-                        .replace(/\//g, '~s').replace(/"/g, "''")
+                    str.replace(/_/g, '__')
+                        .replace(/-/g, '--')
+                        .replace(/\n/g, '~n')
+                        .replace(/\?/g, '~q')
+                        .replace(/%/g, '~p')
+                        .replace(/#/g, '~h')
+                        .replace(/\//g, '~s')
+                        .replace(/"/g, "''")
                 );
             };
 
@@ -280,7 +297,10 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             const blob = await res.blob();
             const file = new File([blob], `meme_${Date.now()}.png`, { type: "image/png" });
 
-            setVideo(null); setVideoPreview(null); setAudio(null); setOriginalAudio(null);
+            setVideo(null);
+            setVideoPreview(null);
+            setAudio(null);
+            setOriginalAudio(null);
             setImages([file]);
 
             const reader = new FileReader();
@@ -302,20 +322,31 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             warning('Write something first to analyze!');
             return;
         }
+
         setIsCheckingViral(true);
 
         try {
-            const { data, error: funcError } = await supabase.functions.invoke('ai-moderation', {
-                body: { action: 'viral', text: text }
-            });
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-            if (funcError || !data) throw new Error("AI analysis failed");
+            const prompt = `
+                Analyze this confession text intended for a university student page: "${text.substring(0, 1000)}"
+                Predict its "Virality Score" from 0 to 100 based on humor, relatability, drama, or shock value.
+                Provide 3 short, punchy tips to make it spicier or get more engagement.
+                Output ONLY JSON: { "score": number, "tips": ["string", "string", "string"] }
+            `;
+
+            const data = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: true
+            });
 
             setViralData({
                 ...data,
                 textLength: text.length
             });
             success('Analysis complete!');
+
         } catch (err) {
             console.error("Viral check error:", err);
             error('Failed to analyze. Try again later.');
@@ -326,12 +357,23 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
     const analyzeContentWithAI = async (content) => {
         try {
-            const { data, error } = await supabase.functions.invoke('ai-moderation', {
-                body: { action: 'safety', text: content }
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) return { toxic: false, sentiment: 'neutral' };
+
+            const prompt = `
+                Analyze the following text for toxicity (hate speech, severe harassment, dangerous threats) and sentiment. 
+                Output ONLY a JSON object with this structure:
+                { "toxic": boolean, "sentiment": "positive" | "neutral" | "negative", "reason": "short explanation if toxic" }
+                
+                Text: "${content.substring(0, 1000)}"
+            `;
+
+            return await runLiteAI({
+                apiKey,
+                prompt,
+                jsonMode: true
             });
 
-            if (error || !data) return { toxic: false, sentiment: 'neutral' };
-            return data;
         } catch (error) {
             console.error("AI Analysis failed:", error);
             return { toxic: false, sentiment: 'neutral' };
@@ -343,25 +385,58 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             warning('Please write something first!');
             return;
         }
+
         setHistory(prev => [...prev, text]);
+
         setIsRewriting(true);
         setShowRewriteOptions(false);
 
         try {
-            const { data, error: funcError } = await supabase.functions.invoke('ai-moderation', {
-                body: { action: 'rewrite', text: text, mode: mode }
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+            let prompt = "";
+            switch (mode) {
+                case 'polish':
+                    prompt = `Fix grammar, spelling, and punctuation for the following text. Keep the tone natural and casual (like a confession). Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'funny':
+                    prompt = `Rewrite the following text to be humorous, witty, and fun. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'dramatic':
+                    prompt = `Rewrite the following text to be dramatic, intense, and soap-opera style. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'poetic':
+                    prompt = `Rewrite the following text in a beautiful, poetic style. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                case 'anonymize':
+                    prompt = `Rewrite the following text to strictly remove any identifying writing styles, slang, or unique idioms to protect the author's anonymity, while preserving the exact meaning. Output ONLY the rewritten text: "${text}"`;
+                    break;
+                default:
+                    prompt = `Polish this text: "${text}"`;
+            }
+
+            let newText = await runSmartAI({
+                apiKey,
+                prompt,
+                jsonMode: false
             });
 
-            if (funcError || !data || !data.text) throw new Error("AI rewrite failed");
-
-            let newText = data.text.replace(/^"|"$/g, '').replace(/^Here is the rewritten text:\s*/i, '');
+            newText = newText.replace(/^"|"$/g, '')
+                .replace(/^Here is the rewritten text:\s*/i, '');
 
             setText(newText);
             success('Magic rewrite complete!');
         } catch (err) {
             console.error("Rewrite error:", err);
             setHistory(prev => prev.slice(0, -1));
-            error('Failed to rewrite. AI service unavailable.');
+
+            let msg = 'Failed to rewrite.';
+            if (err.message.includes('404') || err.message.includes('not found')) {
+                msg = 'AI Model unavailable. Check API configuration.';
+            } else if (err.message.includes('Missing API Key')) {
+                msg = 'API Key missing in environment variables.';
+            }
+            error(msg);
         } finally {
             setIsRewriting(false);
         }
