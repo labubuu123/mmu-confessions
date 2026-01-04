@@ -23,7 +23,7 @@ import imageCompression from 'browser-image-compression';
 dayjs.extend(relativeTime)
 
 const POSTS_PER_PAGE = 10
-const ADMIN_EMAIL = 'admin@mmu.edu';
+const ADMIN_EMAIL = 'admin@admin.com';
 
 export default function AdminPanel() {
     const [user, setUser] = useState(null)
