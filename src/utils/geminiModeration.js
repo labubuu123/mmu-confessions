@@ -21,7 +21,7 @@ export async function checkContentSafety(text) {
     console.error("Moderation Service Failed:", error);
     return {
       safe: false,
-      reason: "Security check unavailable. Please try again.",
+      reason: "Security check unavailable. Please try again. ",
     };
   }
 }
