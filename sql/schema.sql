@@ -978,6 +978,17 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION delete_post_and_storage(post_id_in UUID)
+RETURNS VOID AS $$
+BEGIN
+    IF NOT is_admin() THEN
+        RAISE EXCEPTION 'Access Denied';
+    END IF;
+
+    DELETE FROM confessions WHERE id = post_id_in;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
 

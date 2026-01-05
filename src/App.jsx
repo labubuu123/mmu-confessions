@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
 import Feed from "./components/Feed";
-import AdminPanel from "./components/AdminPanel";
 import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
 import PostModal from "./components/PostModal";
@@ -17,6 +16,8 @@ import Matchmaker from './components/matchmaker/Matchmaker';
 import Marketplace from "./components/Marketplace";
 import { Megaphone, X } from "lucide-react";
 import AdultSection from "./components/adult/AdultSection";
+
+const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
 const GlobalNotificationHandler = () => {
   const navigate = useNavigate();
@@ -315,7 +316,11 @@ function App() {
             <Route path="/post/:id" element={<Feed />} />
             <Route path="/top" element={<TopConfessions />} />
             <Route path="/search" element={<SearchPage />} />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin" element={
+              <Suspense fallback={<div>Loading...</div>}>
+                <AdminPanel />
+              </Suspense>
+            } />
             <Route path="/policy" element={<PolicyPage />} />
             <Route path="/analytics" element={<UserAnalytics />} />
             <Route path="/about" element={<AboutUs />} />
