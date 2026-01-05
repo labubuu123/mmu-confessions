@@ -316,11 +316,14 @@ function App() {
             <Route path="/post/:id" element={<Feed />} />
             <Route path="/top" element={<TopConfessions />} />
             <Route path="/search" element={<SearchPage />} />
-            <Route path="/admin" element={
-              <Suspense fallback={<div>Loading...</div>}>
-                <AdminPanel />
-              </Suspense>
-            } />
+            <Route
+              path="/admin"
+              element={
+                <Suspense fallback={<div className="p-10 text-center">Loading Admin Panel...</div>}>
+                  <AdminPanel />
+                </Suspense>
+              }
+            />
             <Route path="/policy" element={<PolicyPage />} />
             <Route path="/analytics" element={<UserAnalytics />} />
             <Route path="/about" element={<AboutUs />} />
