@@ -23,7 +23,6 @@ import imageCompression from 'browser-image-compression';
 dayjs.extend(relativeTime)
 
 const POSTS_PER_PAGE = 10
-const ADMIN_EMAIL = 'admin@admin.com';
 
 export default function AdminPanel() {
     const [user, setUser] = useState(null)
@@ -71,14 +70,37 @@ export default function AdminPanel() {
     const [analyticsData, setAnalyticsData] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+    const verifyAdminStatus = async () => {
+        try {
+            const { data: isAdmin, error } = await supabase.rpc('is_admin');
+
+            if (error || !isAdmin) {
+                console.warn("Security check failed: User is not an admin.");
+                await supabase.auth.signOut();
+                setUser(null);
+                setError('Access Denied: Insufficient Permissions');
+                return false;
+            }
+            return true;
+        } catch (err) {
+            console.error("Admin verification error:", err);
+            await supabase.auth.signOut();
+            return false;
+        }
+    };
+
     useEffect(() => {
         checkSession()
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            async (event, session) => {
                 if (event === 'SIGNED_OUT') {
                     setUser(null); setPosts([]); setSelectedPosts(new Set());
                 } else if (event === 'SIGNED_IN') {
-                    setUser(session.user); fetchPosts(true);
+                    const isVerified = await verifyAdminStatus();
+                    if (isVerified) {
+                        setUser(session.user);
+                        fetchPosts(true);
+                    }
                 }
             }
         )
@@ -99,6 +121,7 @@ export default function AdminPanel() {
     }, [searchQuery]);
 
     useEffect(() => {
+        if (!user) return;
         if (activeTab === 'moderation' && posts.length > 0) {
             fetchPollsForPosts();
             fetchParentsForPosts();
@@ -108,7 +131,7 @@ export default function AdminPanel() {
         if (activeTab === 'marketplace') fetchMarketItems();
         if (activeTab === 'analytics') fetchAnalyticsData();
         if (activeTab === 'lostfound') fetchLostFound();
-    }, [posts, activeTab])
+    }, [posts, activeTab, user])
 
     useEffect(() => {
         selectedUserRef.current = selectedSupportUser;
@@ -131,11 +154,25 @@ export default function AdminPanel() {
 
     async function checkSession() { await supabase.auth.signOut(); setUser(null); }
     async function signIn(e) {
-        e.preventDefault(); setLoading(true); setError(null);
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            setLoading(false);
+            return setError('Sign-in error: ' + error.message);
+        }
+
+        const isVerified = await verifyAdminStatus();
         setLoading(false);
-        if (error) return setError('Sign-in error: ' + error.message);
-        if (data.user?.email !== ADMIN_EMAIL) { setError('Access Denied'); supabase.auth.signOut(); }
+
+        if (!isVerified) {
+            setError('Access Denied: You do not have administrator privileges.');
+        } else {
+            setUser(data.user);
+        }
     }
     async function signOut() {
         if (!window.confirm('Are you sure want to sign out?')) return;

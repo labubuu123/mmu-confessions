@@ -490,6 +490,8 @@ CREATE POLICY "Enable insert for all users (confessions)" ON storage.objects FOR
 CREATE POLICY "Enable read for all users (confessions)" ON storage.objects FOR SELECT USING (bucket_id = 'confessions');
 CREATE POLICY "Enable delete for admin (confessions)" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'confessions' AND (SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Manage Own Profile" ON public.matchmaker_profiles FOR ALL USING (author_id = (SELECT auth.uid()::text));
+CREATE POLICY "Admin Full Access Profiles" ON public.matchmaker_profiles FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Public View Approved Profiles" ON public.matchmaker_profiles FOR SELECT USING (status = 'approved' AND is_visible = true);
 CREATE POLICY "Admin Read All Matchmaker Profiles" ON public.matchmaker_profiles FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Read Own Loves" ON public.matchmaker_loves FOR SELECT USING (from_user_id = (SELECT auth.uid()::text) OR to_user_id = (SELECT auth.uid()::text));
 CREATE POLICY "Admin Read All Loves" ON public.matchmaker_loves FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
@@ -550,6 +552,11 @@ CREATE POLICY "Public delete own comment reactions" ON public.adult_comment_reac
 CREATE POLICY "Admin delete comment reactions" ON public.adult_comment_reactions FOR DELETE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Admin can update user_reputation" ON public.user_reputation FOR UPDATE USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com') WITH CHECK ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "User View Own Support" ON public.support_messages FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "User Insert Support" ON public.support_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admin Manage Support" ON public.support_messages FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Enable read for admin" ON public.confessions FOR SELECT USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
+CREATE POLICY "Enable full access for admin" ON public.comments FOR ALL USING ((SELECT auth.jwt() ->> 'email') = 'admin@admin.com');
 
 DROP POLICY IF EXISTS "Delete Own Loves" ON public.matchmaker_loves;
 CREATE POLICY "Delete Own Loves"
@@ -862,8 +869,8 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-    IF auth.role() <> 'authenticated' THEN
-        RAISE EXCEPTION 'Access denied: Must be an authenticated admin.';
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@admin.com' THEN
+        RAISE EXCEPTION 'Access denied: You are not the admin.';
     END IF;
 
     UPDATE public.confessions
@@ -1602,6 +1609,10 @@ DECLARE
     last_device_id TEXT;
     result_message TEXT;
 BEGIN
+    IF (SELECT auth.jwt() ->> 'email') <> 'admin@admin.com' THEN
+        RAISE EXCEPTION 'Access denied: You are not the admin.';
+    END IF;
+
     UPDATE public.user_reputation
     SET is_blocked = block_status
     WHERE author_id = target_user_id;
@@ -1651,6 +1662,17 @@ BEGIN
         INSERT INTO public.actions_log (action_type, created_at)
         VALUES ('SYSTEM: Auto-deleted ' || deleted_count || ' expired adult whispers', NOW());
     END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin';
 END;
 $$;
 
@@ -1776,4 +1798,5 @@ GRANT EXECUTE ON FUNCTION delete_marketplace_item(BIGINT, TEXT) TO anon, authent
 GRANT EXECUTE ON FUNCTION report_marketplace_item(BIGINT, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ban_user_and_device(TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
