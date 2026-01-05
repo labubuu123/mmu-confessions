@@ -511,7 +511,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.delete_post_and_storage(post_id_in BIGINT)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public, storage, pg_temp
 AS $$
 DECLARE
