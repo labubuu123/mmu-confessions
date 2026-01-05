@@ -245,12 +245,19 @@ export default function AdminPanel() {
 
     async function handleDelete(postId) {
         if (!window.confirm('Delete post? Cannot be undone.')) return;
+
         setActionLoading(prev => ({ ...prev, [postId]: 'delete-post' }));
+
         const { error } = await supabase.rpc('delete_post_and_storage', { post_id_in: postId });
-        if (!error) {
+
+        if (error) {
+            console.error("Deletion failed:", error);
+            alert(`Failed to delete post: ${error.message}`);
+        } else {
             setPosts(prev => prev.filter(p => p.id !== postId));
             setSelectedPosts(prev => { const n = new Set(prev); n.delete(postId); return n; });
         }
+
         setActionLoading(prev => ({ ...prev, [postId]: null }));
     }
 
