@@ -511,8 +511,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.delete_post_and_storage(post_id_in BIGINT)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = public, storage
+SECURITY DEFINER
+SET search_path = public, storage, pg_temp
 AS $$
 DECLARE
     post_media_url TEXT;
@@ -520,22 +520,39 @@ DECLARE
     media_path TEXT;
     url_part TEXT;
 BEGIN
-    SELECT media_url, media_urls INTO post_media_url, post_media_urls FROM public.confessions WHERE id = post_id_in;
+    IF (auth.jwt() -> 'user_metadata' ->> 'role') <> 'admin' THEN
+        RAISE EXCEPTION 'Access denied: Admin role required.';
+    END IF;
+
+    SELECT media_url, media_urls INTO post_media_url, post_media_urls
+    FROM public.confessions
+    WHERE id = post_id_in;
+
     DELETE FROM public.confessions WHERE id = post_id_in;
 
     IF post_media_url IS NOT NULL THEN
         BEGIN
             media_path := regexp_replace(post_media_url, '^.*storage/v1/object/public/confessions/', '');
-            IF media_path <> '' AND media_path IS NOT NULL THEN PERFORM storage.delete_object('confessions', media_path); END IF;
-        EXCEPTION WHEN others THEN RAISE NOTICE 'Failed to delete single storage object'; END;
+            
+            IF media_path <> '' AND media_path IS NOT NULL THEN
+                PERFORM storage.delete_object('confessions', media_path);
+            END IF;
+        EXCEPTION WHEN others THEN
+            RAISE WARNING 'Failed to delete single storage object: %', SQLERRM;
+        END;
     END IF;
 
     IF post_media_urls IS NOT NULL AND array_length(post_media_urls, 1) > 0 THEN
         FOREACH url_part IN ARRAY post_media_urls LOOP
             BEGIN
                 media_path := regexp_replace(url_part, '^.*storage/v1/object/public/confessions/', '');
-                IF media_path <> '' AND media_path IS NOT NULL THEN PERFORM storage.delete_object('confessions', media_path); END IF;
-            EXCEPTION WHEN others THEN RAISE NOTICE 'Failed to delete array storage object'; END;
+                
+                IF media_path <> '' AND media_path IS NOT NULL THEN
+                    PERFORM storage.delete_object('confessions', media_path);
+                END IF;
+            EXCEPTION WHEN others THEN
+                RAISE WARNING 'Failed to delete array storage object: %', SQLERRM;
+            END;
         END LOOP;
     END IF;
 END;
