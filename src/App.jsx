@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
 import Feed from "./components/Feed";
 import TopConfessions from "./components/TopConfessions";
