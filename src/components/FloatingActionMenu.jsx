@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// REDESIGNED ICON: Pure Text "18+"
 const EighteenPlusIcon = ({ className }) => (
     <div className={`${className} flex items-center justify-center`}>
         <span className="font-black text-sm leading-none tracking-tighter scale-125">18+</span>
@@ -150,8 +149,8 @@ export default function FloatingActionMenu() {
 
     const handleNightsClick = () => {
         setIsOpen(false);
-        // navigate('/adult');
-        alert("🌙 Shh... The night is still young.\n\nMY西斯 (NSFW) is currently being prepared behind closed doors. Stay tuned for the grand opening!");
+        navigate('/adult');
+        //alert("🌙 Shh... The night is still young.\n\nMY西斯 (NSFW) is currently being prepared behind closed doors. Stay tuned for the grand opening!");
     };
 
     const handleContactAdminClick = () => {
@@ -215,7 +214,6 @@ export default function FloatingActionMenu() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                {/* Redesigned 18+ Button: Pure Text Icon */}
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
@@ -223,8 +221,6 @@ export default function FloatingActionMenu() {
                                     className="col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 hover:border-rose-900/50 relative overflow-hidden group shadow-lg"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-
-                                    {/* Icon Container */}
                                     <div className="w-10 h-10 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 group-hover:text-white transition-colors">
                                         <EighteenPlusIcon className="text-rose-500 group-hover:text-white transition-colors" />
                                     </div>
