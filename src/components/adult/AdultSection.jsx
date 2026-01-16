@@ -6,7 +6,7 @@ import AdultPostForm from './AdultPostForm';
 import AdultPostCard from './AdultPostCard';
 import { useParams } from 'react-router-dom';
 
-const FILTERS = ['All', 'Confession', 'Thirsty', 'Curious', 'Rant', 'Story'];
+const FILTERS = ['All', 'Saved', 'Confession', 'Thirsty', 'Curious', 'Rant', 'Story'];
 const PAGE_SIZE = 50;
 
 export default function AdultSection() {
@@ -59,6 +59,19 @@ export default function AdultSection() {
         const now = new Date().toISOString();
         query = query.or(`expires_at.is.null,expires_at.gt.${now}`);
 
+        if (filter === 'Saved') {
+            const savedIds = JSON.parse(localStorage.getItem('saved_adult_posts') || '[]');
+            if (savedIds.length === 0) {
+                setPosts([]);
+                setLoading(false);
+                setRefreshing(false);
+                setLoadingMore(false);
+                setHasMore(false);
+                return;
+            }
+            query = query.in('id', savedIds);
+        }
+
         if (id) {
             query = query.eq('id', id);
         } else {
@@ -106,7 +119,7 @@ export default function AdultSection() {
         setTimeout(() => setRefreshing(false), 500);
     };
 
-    const filteredPosts = filter === 'All'
+    const filteredPosts = filter === 'All' || filter === 'Saved'
         ? posts
         : posts.filter(p => p.tags?.some(t => t.includes(filter)));
 
@@ -139,7 +152,7 @@ export default function AdultSection() {
 
             <main className="max-w-2xl mx-auto px-4">
 
-                {!id && <AdultPostForm onSuccess={() => fetchPosts(true)} />}
+                {!id && filter !== 'Saved' && <AdultPostForm onSuccess={() => fetchPosts(true)} />}
 
                 <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     <Filter className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
@@ -169,11 +182,11 @@ export default function AdultSection() {
                             <div className="text-center py-24 border border-slate-800 border-dashed rounded-xl bg-slate-900/50">
                                 <Info className="w-6 h-6 text-slate-700 mx-auto mb-4" />
                                 <h3 className="text-slate-400 font-serif text-lg mb-1">
-                                    {id ? "Confession not found or removed" : "The Room is Quiet"}
+                                    {id ? "Confession not found or removed" : filter === 'Saved' ? "No saved secrets yet" : "The Room is Quiet"}
                                 </h3>
-                                {id && (
+                                {(id || filter === 'Saved') && (
                                     <button
-                                        onClick={() => window.location.href = '/adult'}
+                                        onClick={() => { setFilter('All'); window.location.href = '/adult'; }}
                                         className="mt-4 text-xs text-rose-500 hover:underline"
                                     >
                                         Return to Feed

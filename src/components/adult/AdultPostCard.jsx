@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import AdultComments from './AdultComments';
 import AdultShareButton from './AdultShareButton';
 import AdultAvatar from './AdultAvatar';
-import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Timer } from 'lucide-react';
+import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Timer, Bookmark } from 'lucide-react';
 
 export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
@@ -15,6 +15,7 @@ export default function AdultPostCard({ post }) {
     const [hasVoted, setHasVoted] = useState(false);
     const [totalVotes, setTotalVotes] = useState(0);
     const [timeLeft, setTimeLeft] = useState('');
+    const [isSaved, setIsSaved] = useState(false);
 
     const identityId = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
     const genderLabel = identityId === 'M' ? 'Boy' : identityId === 'F' ? 'Girl' : 'Secret';
@@ -26,6 +27,7 @@ export default function AdultPostCard({ post }) {
         fetchReactions();
         fetchUserReactions();
         fetchCommentCount();
+        checkIfSaved();
 
         if (post.has_poll) {
             checkPollVote();
@@ -84,6 +86,24 @@ export default function AdultPostCard({ post }) {
             supabase.removeChannel(channel);
         };
     }, [post.id, post.expires_at]);
+
+    const checkIfSaved = () => {
+        const savedPosts = JSON.parse(localStorage.getItem('saved_adult_posts') || '[]');
+        setIsSaved(savedPosts.includes(post.id));
+    };
+
+    const toggleBookmark = () => {
+        const savedPosts = JSON.parse(localStorage.getItem('saved_adult_posts') || '[]');
+        let newSaved;
+        if (savedPosts.includes(post.id)) {
+            newSaved = savedPosts.filter(id => id !== post.id);
+            setIsSaved(false);
+        } else {
+            newSaved = [...savedPosts, post.id];
+            setIsSaved(true);
+        }
+        localStorage.setItem('saved_adult_posts', JSON.stringify(newSaved));
+    };
 
     const calculateTotalVotes = (options) => {
         if (!options) return;
@@ -223,12 +243,12 @@ export default function AdultPostCard({ post }) {
     if (timeLeft === 'Expired') return null;
 
     return (
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl mb-6 hover:shadow-lg hover:border-slate-700 transition-all group relative overflow-visible shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 p-4 md:p-6 rounded-xl md:rounded-2xl mb-4 md:mb-6 hover:shadow-lg hover:border-slate-700 transition-all group relative overflow-visible shadow-sm">
             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center gap-3">
-                    <AdultAvatar gender={genderLabel} size="md" />
+            <div className="flex justify-between items-start mb-3 md:mb-4 relative z-10">
+                <div className="flex items-center gap-2 md:gap-3">
+                    <AdultAvatar gender={genderLabel} size="md" className="shrink-0" />
 
                     <div>
                         <div className="flex items-center gap-2">
@@ -248,31 +268,39 @@ export default function AdultPostCard({ post }) {
                                 </span>
                             )}
                         </div>
-                        <span className="text-slate-600 text-xs font-mono">
+                        <span className="text-slate-600 text-[10px] md:text-xs font-mono">
                             {new Date(post.created_at).toLocaleDateString()} • {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 md:gap-1">
                     <AdultShareButton post={post} />
 
                     <button
+                        onClick={toggleBookmark}
+                        className={`transition-colors p-1.5 md:p-2 rounded-full hover:bg-slate-800 ${isSaved ? 'text-amber-400' : 'text-slate-600 hover:text-amber-400'}`}
+                        title={isSaved ? "Remove Bookmark" : "Bookmark"}
+                    >
+                        <Bookmark className={`w-4 h-4 md:w-5 md:h-5 ${isSaved ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <button
                         onClick={handleReport}
-                        className="text-slate-600 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-slate-800"
+                        className="text-slate-600 hover:text-rose-500 transition-colors p-1.5 md:p-2 rounded-full hover:bg-slate-800"
                         title="Report"
                     >
-                        <Flag className="w-5 h-5" />
+                        <Flag className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                 </div>
             </div>
 
-            <p className="text-slate-300 text-base whitespace-pre-wrap leading-relaxed font-serif mb-6 pl-1 selection:bg-rose-900 selection:text-white">
+            <p className="text-slate-300 text-sm md:text-base whitespace-pre-wrap leading-relaxed font-serif mb-4 md:mb-6 pl-1 selection:bg-rose-900 selection:text-white">
                 {post.content}
             </p>
 
             {post.has_poll && pollOptions && (
-                <div className="mb-6 space-y-2 mt-2">
+                <div className="mb-4 md:mb-6 space-y-2 mt-2">
                     {pollOptions.map((option) => {
                         const percentage = totalVotes === 0 ? 0 : Math.round((option.votes / totalVotes) * 100);
                         const isWinner = percentage > 50;
@@ -281,7 +309,7 @@ export default function AdultPostCard({ post }) {
                             <div
                                 key={option.id}
                                 onClick={() => handleVote(option.id)}
-                                className={`relative h-10 rounded-lg overflow-hidden cursor-pointer transition-all border ${hasVoted ? 'border-slate-800 pointer-events-none' : 'border-slate-700 hover:border-rose-500/50'}`}
+                                className={`relative h-9 md:h-10 rounded-lg overflow-hidden cursor-pointer transition-all border ${hasVoted ? 'border-slate-800 pointer-events-none' : 'border-slate-700 hover:border-rose-500/50'}`}
                             >
                                 {hasVoted && (
                                     <div
@@ -290,12 +318,12 @@ export default function AdultPostCard({ post }) {
                                     ></div>
                                 )}
 
-                                <div className="absolute inset-0 flex items-center justify-between px-4 z-10">
-                                    <span className={`text-sm font-medium ${hasVoted && isWinner ? 'text-rose-200' : 'text-slate-300'}`}>
+                                <div className="absolute inset-0 flex items-center justify-between px-3 md:px-4 z-10">
+                                    <span className={`text-xs md:text-sm font-medium ${hasVoted && isWinner ? 'text-rose-200' : 'text-slate-300'}`}>
                                         {option.text}
                                     </span>
                                     {hasVoted && (
-                                        <span className="text-xs font-bold text-slate-400">
+                                        <span className="text-[10px] md:text-xs font-bold text-slate-400">
                                             {percentage}%
                                         </span>
                                     )}
@@ -311,7 +339,7 @@ export default function AdultPostCard({ post }) {
             )}
 
             {cleanTags && cleanTags.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mb-5">
+                <div className="flex flex-wrap items-center gap-2 mb-3 md:mb-5">
                     {cleanTags.map((tag, i) => (
                         <span key={i} className="text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-slate-800 text-slate-500 bg-slate-950/50">
                             #{tag}
@@ -320,7 +348,7 @@ export default function AdultPostCard({ post }) {
                 </div>
             )}
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
+            <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-slate-800/80">
                 <div className="flex gap-1">
                     <ReactionBtn
                         icon={Heart}
@@ -346,10 +374,11 @@ export default function AdultPostCard({ post }) {
                 </div>
                 <button
                     onClick={() => setShowComments(!showComments)}
-                    className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-all px-3 py-1.5 rounded-lg border ${showComments ? 'bg-slate-800 text-slate-200 border-slate-700' : 'text-slate-500 border-transparent hover:bg-slate-800/50'}`}
+                    className={`flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all px-2 py-1 md:px-3 md:py-1.5 rounded-lg border ${showComments ? 'bg-slate-800 text-slate-200 border-slate-700' : 'text-slate-500 border-transparent hover:bg-slate-800/50'}`}
                 >
-                    <MessageCircle className="w-4 h-4" />
-                    {showComments ? 'Hide' : `Comment (${commentCount})`}
+                    <MessageCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    {showComments ? 'Hide' : <span className="hidden md:inline">Comment ({commentCount})</span>}
+                    {!showComments && <span className="md:hidden">{commentCount}</span>}
                 </button>
             </div>
 
@@ -361,9 +390,9 @@ export default function AdultPostCard({ post }) {
 const ReactionBtn = ({ icon: Icon, label, onClick, color, isActive }) => (
     <button
         onClick={onClick}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all active:scale-95 group ${isActive ? 'bg-slate-800 ' + color + ' shadow-inner border border-slate-700' : 'text-slate-600 hover:bg-slate-800 hover:text-slate-400'}`}
+        className={`flex items-center gap-1 px-2 py-1 md:gap-1.5 md:px-3 md:py-1.5 rounded-lg transition-all active:scale-95 group ${isActive ? 'bg-slate-800 ' + color + ' shadow-inner border border-slate-700' : 'text-slate-600 hover:bg-slate-800 hover:text-slate-400'}`}
     >
-        <Icon className={`w-4 h-4 ${isActive ? 'fill-current' : 'group-hover:scale-110 transition-transform'}`} />
-        <span className="text-xs font-medium tabular-nums">{label || 0}</span>
+        <Icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isActive ? 'fill-current' : 'group-hover:scale-110 transition-transform'}`} />
+        <span className="text-[10px] md:text-xs font-medium tabular-nums">{label || 0}</span>
     </button>
 );
