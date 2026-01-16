@@ -297,7 +297,7 @@ export default function AdultShareButton({ post }) {
                 className="text-slate-500 hover:text-rose-400 transition-colors p-2 rounded-full hover:bg-slate-800 active:scale-95"
                 title="Share Secret"
             >
-                <Share2 className="w-5 h-5" />
+                <Share2 className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             {showModal && createPortal(modalContent, document.body)}
         </>
