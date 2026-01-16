@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabaseClient';
 import AdultComments from './AdultComments';
 import AdultShareButton from './AdultShareButton';
 import AdultAvatar from './AdultAvatar';
-import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Timer, Bookmark } from 'lucide-react';
+import NaughtyMeter from './NaughtyMeter';
+import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Bookmark } from 'lucide-react';
 
 export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
@@ -298,6 +299,10 @@ export default function AdultPostCard({ post }) {
             <p className="text-slate-300 text-sm md:text-base whitespace-pre-wrap leading-relaxed font-serif mb-4 md:mb-6 pl-1 selection:bg-rose-900 selection:text-white">
                 {post.content}
             </p>
+
+            <div className="mb-4">
+                <NaughtyMeter text={post.content} />
+            </div>
 
             {post.has_poll && pollOptions && (
                 <div className="mb-4 md:mb-6 space-y-2 mt-2">

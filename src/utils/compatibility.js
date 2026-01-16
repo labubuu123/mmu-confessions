@@ -4,7 +4,6 @@ export function calculateCompatibility(userA, userB) {
     let score = 0;
     let reasons = [];
 
-    // --- 1. INTEREST MATCHING (Max 35 points) ---
     const interestsA = (userA.interests || []).map(i => i.toLowerCase());
     const interestsB = (userB.interests || []).map(i => i.toLowerCase());
     
@@ -19,9 +18,6 @@ export function calculateCompatibility(userA, userB) {
         reasons.push(`${count} Shared Interests`);
     }
 
-    // --- 2. ZODIAC & MBTI CHEMISTRY (Max 20 points) ---
-    
-    // Zodiac Elements
     const getElement = (sign) => {
         if (!sign) return null;
         if (["Aries ♈", "Leo ♌", "Sagittarius ♐"].includes(sign)) return "Fire";
@@ -35,12 +31,10 @@ export function calculateCompatibility(userA, userB) {
     const elementB = getElement(userB.zodiac);
 
     if (elementA && elementB) {
-        // Same Element = Good understanding
         if (elementA === elementB) {
             score += 10;
             reasons.push(`${elementA} Signs Vibe`);
-        } 
-        // Complementary Elements (Fire+Air, Water+Earth)
+        }
         else if (
             (elementA === "Fire" && elementB === "Air") || (elementA === "Air" && elementB === "Fire") ||
             (elementA === "Water" && elementB === "Earth") || (elementA === "Earth" && elementB === "Water")
@@ -50,17 +44,13 @@ export function calculateCompatibility(userA, userB) {
         }
     }
 
-    // MBTI: N (Intuitive) matches N, S (Sensing) matches S
     if (userA.mbti && userB.mbti) {
-        // The 2nd letter determines how you process information (S vs N)
         if (userA.mbti[1] === userB.mbti[1]) {
             score += 10;
             reasons.push("Mental Connection");
         }
     }
 
-    // --- 3. VIBE CHECK (Max 25 points) ---
-    // Does A want "gym" and B mentions "gym"? (Whole word check only)
     const cleanText = (str) => (str || "").toLowerCase();
     const introA = cleanText(userA.self_intro);
     const lookingA = cleanText(userA.looking_for);
@@ -86,7 +76,6 @@ export function calculateCompatibility(userA, userB) {
         reasons.push("Vibe Check Passed");
     }
 
-    // --- 4. LOCATION & AGE (Max 15 points) ---
     if (userA.city && userB.city) {
         const cityA = userA.city.trim().toLowerCase();
         const cityB = userB.city.trim().toLowerCase();
@@ -99,11 +88,9 @@ export function calculateCompatibility(userA, userB) {
     const ageGap = Math.abs((userA.age || 18) - (userB.age || 18));
     if (ageGap <= 2) score += 5;
 
-    // --- 5. BASELINE ---
     score += 5;
     score = Math.min(100, Math.max(10, score));
 
-    // Generate Summary
     let summary = "";
     if (score >= 90) summary = "Soulmate Potential? 💍";
     else if (score >= 75) summary = "High Compatibility! 🔥";
