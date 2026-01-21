@@ -949,13 +949,26 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.force_admin_name()
 RETURNS TRIGGER AS $$
+DECLARE
+    reserved_names TEXT[] := ARRAY['admin', 'administrator', 'moderator', 'staff', 'support', 'mmu'];
+    is_reserved BOOLEAN;
 BEGIN
-    IF NEW.author_name ILIKE 'Admin' THEN
-        IF (auth.jwt() -> 'user_metadata' ->> 'role') <> 'admin' THEN
+    SELECT EXISTS (
+        SELECT 1
+        FROM unnest(reserved_names) AS r
+        WHERE NEW.author_name ILIKE r
+    ) INTO is_reserved;
+
+    IF is_reserved THEN
+        IF (auth.jwt() -> 'user_metadata' ->> 'role') <> 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') IS NULL THEN
             NEW.author_name := 'Anonymous';
         END IF;
     END IF;
-    IF NEW.author_name IS NULL OR TRIM(NEW.author_name) = '' THEN NEW.author_name := 'Anonymous'; END IF;
+
+    IF NEW.author_name IS NULL OR TRIM(NEW.author_name) = '' THEN
+        NEW.author_name := 'Anonymous';
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

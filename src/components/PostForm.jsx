@@ -517,7 +517,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         setLoading(true);
         setUploadProgress(0);
         const { data: { session } } = await supabase.auth.getSession();
-        const isAdmin = session?.user?.email === 'admin@mmu.edu';
+        const isAdmin = session?.user?.user_metadata?.role === 'admin';
         const anonId = getAnonId();
 
         try {
