@@ -129,7 +129,7 @@ export default function AdultSection() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-300 font-sans pb-24 selection:bg-rose-900 selection:text-white">
-            <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 mb-6 transition-all shadow-lg shadow-black/20">
+            <header className="z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 mb-6 transition-all shadow-lg shadow-black/20">
                 <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.location.href = '/adult'}>
                         <div className="relative">
