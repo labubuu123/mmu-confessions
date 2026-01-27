@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import Comment from './Comment'
 import CommentForm from './CommentForm'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Loader2 } from 'lucide-react'
 import { CommentSkeleton } from './LoadingSkeleton'
 
 const COMMENTS_PER_PAGE = 10
@@ -57,7 +57,7 @@ export default function CommentSection({ postId }) {
             }
         })
 
-        return roots
+        return roots.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     }, [allComments])
 
     useEffect(() => {
@@ -80,28 +80,33 @@ export default function CommentSection({ postId }) {
 
     function handleCommentPosted(newComment) {
         setAllComments(prev => [newComment, ...prev])
-
-        if (!newComment.parent_id) {
-            setRenderedComments(prev => [newComment, ...prev])
-        }
     }
 
     return (
-        <div className="mt-4 sm:mt-6 pb-50">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">
-                Comments ({allComments.length})
-            </h3>
+        <div className="mt-6 pb-20 sm:pb-24">
+            <div className="flex items-center justify-between mb-4 px-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    Comments
+                    <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full">
+                        {allComments.length}
+                    </span>
+                </h3>
+            </div>
 
-            <CommentForm postId={postId} onCommentPosted={handleCommentPosted} />
+            <div className="mb-6">
+                <CommentForm postId={postId} onCommentPosted={handleCommentPosted} />
+            </div>
 
             {loading && <CommentSkeleton />}
 
             {error && (
-                <p className="text-red-500 text-center py-4">{error}</p>
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-center">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                </div>
             )}
 
             {!loading && !error && (
-                <div className="space-y-5 mt-4 sm:mt-6">
+                <div className="space-y-4 sm:space-y-6">
                     {renderedComments.length > 0 ? (
                         renderedComments.map(comment => (
                             <Comment
@@ -111,22 +116,27 @@ export default function CommentSection({ postId }) {
                             />
                         ))
                     ) : (
-                        <div className="text-center text-gray-500 dark:text-gray-400 py-6">
-                            <MessageCircle className="w-12 h-12 mx-auto text-gray-400" />
-                            <p className="mt-2">No comments yet.</p>
-                            <p className="text-sm">Be the first to share your thoughts!</p>
+                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl">
+                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-full mb-3">
+                                <MessageCircle className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-gray-900 dark:text-gray-100 font-medium">No comments yet</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                Be the first to start the conversation!
+                            </p>
                         </div>
                     )}
 
-                    {hasMore && !loading && (
-                        <div className="flex justify-center pt-4">
-                            <button
-                                onClick={loadMoreComments}
-                                className="px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition transform active:scale-95"
-                            >
-                                Load more comments
-                            </button>
-                        </div>
+                    {hasMore && (
+                        <button
+                            onClick={loadMoreComments}
+                            className="w-full py-3.5 mt-4 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        >
+                            <span>Load previous comments</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                        </button>
                     )}
                 </div>
             )}
