@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import AdultComments from './AdultComments';
 import AdultShareButton from './AdultShareButton';
 import AdultAvatar from './AdultAvatar';
-import NaughtyMeter from './NaughtyMeter';
-import { Flame, Heart, HeartCrack, MessageCircle, Flag, BarChart2, Hourglass, Bookmark } from 'lucide-react';
+import {
+    Flame,
+    Heart,
+    HeartCrack,
+    MessageCircle,
+    Flag,
+    BarChart2,
+    Hourglass,
+    Bookmark,
+    ChevronDown,
+    ChevronUp
+} from 'lucide-react';
 
 export default function AdultPostCard({ post }) {
     const [showComments, setShowComments] = useState(false);
     const [reactionCounts, setReactionCounts] = useState({ like: 0, fire: 0, broken_heart: 0 });
     const [userReactions, setUserReactions] = useState(new Set());
     const [commentCount, setCommentCount] = useState(0);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const CONTENT_LIMIT = 300;
 
     const [pollOptions, setPollOptions] = useState(post.poll_options || []);
     const [hasVoted, setHasVoted] = useState(false);
@@ -18,11 +30,18 @@ export default function AdultPostCard({ post }) {
     const [timeLeft, setTimeLeft] = useState('');
     const [isSaved, setIsSaved] = useState(false);
 
-    const identityId = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
-    const genderLabel = identityId === 'M' ? 'Boy' : identityId === 'F' ? 'Girl' : 'Secret';
+    const { identityId, genderLabel, moodTag, cleanTags } = useMemo(() => {
+        const id = post.tags?.find(t => t.startsWith('ID:'))?.replace('ID:', '') || 'Secret';
+        return {
+            identityId: id,
+            genderLabel: id === 'M' ? 'Boy' : id === 'F' ? 'Girl' : 'Secret',
+            moodTag: post.tags?.find(t => t.startsWith('Mood:'))?.replace('Mood:', '') || null,
+            cleanTags: post.tags?.filter(t => !t.startsWith('ID:') && !t.startsWith('Mood:') && t !== '18+')
+        };
+    }, [post.tags]);
 
-    const moodTag = post.tags?.find(t => t.startsWith('Mood:'))?.replace('Mood:', '') || null;
-    const cleanTags = post.tags?.filter(t => !t.startsWith('ID:') && !t.startsWith('Mood:') && t !== '18+');
+    const shouldTruncate = post.content.length > CONTENT_LIMIT;
+    const displayedContent = isExpanded ? post.content : post.content.substring(0, CONTENT_LIMIT);
 
     useEffect(() => {
         fetchReactions();
@@ -296,12 +315,24 @@ export default function AdultPostCard({ post }) {
                 </div>
             </div>
 
-            <p className="text-slate-300 text-sm md:text-base whitespace-pre-wrap leading-relaxed font-serif mb-4 md:mb-6 pl-1 selection:bg-rose-900 selection:text-white">
-                {post.content}
-            </p>
+            <div className="relative mb-4 md:mb-6 pl-1 group/content">
+                <p className="text-slate-300 text-sm md:text-base whitespace-pre-wrap leading-relaxed font-serif selection:bg-rose-900 selection:text-white">
+                    {displayedContent}
+                    {!isExpanded && shouldTruncate && "..."}
+                </p>
 
-            <div className="mb-4">
-                <NaughtyMeter text={post.content} />
+                {shouldTruncate && (
+                    <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="mt-2 text-rose-500 hover:text-rose-400 text-xs md:text-sm font-bold flex items-center gap-1 transition-all hover:translate-x-1"
+                    >
+                        {isExpanded ? (
+                            <>Show Less <ChevronUp className="w-4 h-4" /></>
+                        ) : (
+                            <>Read More <ChevronDown className="w-4 h-4" /></>
+                        )}
+                    </button>
+                )}
             </div>
 
             {post.has_poll && pollOptions && (

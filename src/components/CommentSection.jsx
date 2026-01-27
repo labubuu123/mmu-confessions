@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import Comment from './Comment'
 import CommentForm from './CommentForm'
@@ -67,14 +67,16 @@ export default function CommentSection({ postId }) {
         setPage(0)
     }, [commentTree])
 
-    function loadMoreComments() {
-        const nextPage = page + 1
-        const newRenderedCount = (nextPage + 1) * COMMENTS_PER_PAGE
+    const loadMoreComments = useCallback(() => {
+        setPage(prevPage => {
+            const nextPage = prevPage + 1
+            const newRenderedCount = (nextPage + 1) * COMMENTS_PER_PAGE
 
-        setRenderedComments(commentTree.slice(0, newRenderedCount))
-        setPage(nextPage)
-        setHasMore(newRenderedCount < commentTree.length)
-    }
+            setRenderedComments(commentTree.slice(0, newRenderedCount))
+            setHasMore(newRenderedCount < commentTree.length)
+            return nextPage
+        })
+    }, [commentTree])
 
     function handleCommentPosted(newComment) {
         setAllComments(prev => [newComment, ...prev])
@@ -120,7 +122,7 @@ export default function CommentSection({ postId }) {
                         <div className="flex justify-center pt-4">
                             <button
                                 onClick={loadMoreComments}
-                                className="px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                className="px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition transform active:scale-95"
                             >
                                 Load more comments
                             </button>
