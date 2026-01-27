@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import imageCompression from 'browser-image-compression';
 import { extractTags, extractHashtagsForPreview } from '../utils/hashtags';
-import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale, ClipboardList, Link as LinkIcon } from 'lucide-react';
+import { Image, Film, Mic, Send, X, Volume2, Sparkles, Tag, BarChart3, CalendarPlus, Settings2, Ghost, Zap, StopCircle, Upload, Disc, Wand2, ChevronDown, Loader2, RotateCcw, Save, Search, Lock, Palette, TrendingUp, Quote, User, Scale, ClipboardList, Link as LinkIcon, Cake } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import PollCreator from './PollCreator';
@@ -12,6 +12,7 @@ import MoodSelector from './MoodSelector';
 import CampusSelector from './CampusSelector';
 import LostFoundCreator from './LostFoundCreator';
 import ImageGalleryModal from './ImageGalleryModal';
+import BirthdayCreator from './BirthdayCreator';
 import { useNotifications } from './NotificationSystem';
 import { runSmartAI, runLiteAI } from '../utils/aiService';
 
@@ -138,6 +139,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [showSurveyInput, setShowSurveyInput] = useState(false);
     const [surveyLink, setSurveyLink] = useState('');
     const textAreaRef = useRef(null);
+    const [showBirthdayCreator, setShowBirthdayCreator] = useState(false);
+    const [birthdayData, setBirthdayData] = useState(null);
 
     useEffect(() => {
         const handleResize = () => {
@@ -632,12 +635,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             }
 
             let moodData = null;
-            if (selectedMood || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment || surveyLink) {
+            if (selectedMood || birthdayData || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment || surveyLink) {
                 moodData = {
                     ...(selectedMood || {}),
                     voice_effect: voiceEffect !== 'normal' ? voiceEffect : null,
                     ai_sentiment: aiAnalysis.sentiment,
                     toxicity_flag: aiAnalysis.toxic,
+                    birthday: birthdayData,
                     survey_link: surveyLink ? surveyLink.trim() : null
                 };
             }
@@ -791,6 +795,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             setIsDebate(false);
             setSurveyLink('');
             setShowSurveyInput(false);
+            setBirthdayData(null);
+            setShowBirthdayCreator(false);
 
             if (!aiAnalysis.toxic) {
                 success('Posted successfully!');
@@ -1051,6 +1057,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         setShowPollCreator(false);
         setShowEventCreator(false);
         setShowLostFoundCreator(false);
+        setShowBirthdayCreator(false);
 
         if (showSeriesManager) {
             setSeriesData(null);
@@ -1512,6 +1519,20 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                         </div>
                     )}
 
+                    {showBirthdayCreator && (
+                        <div className="my-3 sm:my-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="p-1 bg-gradient-to-r from-pink-100 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 rounded-xl">
+                                <BirthdayCreator
+                                    onData={setBirthdayData}
+                                    onRemove={() => {
+                                        setShowBirthdayCreator(false);
+                                        setBirthdayData(null);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
 
                     {loading && uploadProgress > 0 && uploadProgress < 100 && (
                         <div className="my-3 sm:my-4">
@@ -1606,12 +1627,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowEventCreator(false);
                                     setShowLostFoundCreator(false);
                                     setShowSeriesManager(false);
+                                    setShowBirthdayCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${isDebate
                                     ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || showLostFoundCreator}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || showLostFoundCreator || showBirthdayCreator}
                             >
                                 <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1627,12 +1649,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowLostFoundCreator(false);
                                     setShowSeriesManager(false);
                                     setIsDebate(false);
+                                    setShowBirthdayCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator || isDebate}
+                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator}
                             >
                                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1648,12 +1671,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowLostFoundCreator(false);
                                     setShowSeriesManager(false);
                                     setIsDebate(false);
+                                    setShowBirthdayCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator || isDebate}
+                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator}
                             >
                                 <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1669,12 +1693,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     setShowPollCreator(false);
                                     setShowSeriesManager(false);
                                     setIsDebate(false);
+                                    setShowBirthdayCreator(false);
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showLostFoundCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || isDebate}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || isDebate || showBirthdayCreator}
                             >
                                 <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1689,7 +1714,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate}
+                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showBirthdayCreator}
                             >
                                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
                                 <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -1721,11 +1746,33 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     Survey
                                 </span>
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowBirthdayCreator(!showBirthdayCreator);
+                                    setShowPollCreator(false);
+                                    setShowEventCreator(false);
+                                    setShowLostFoundCreator(false);
+                                    setShowSeriesManager(false);
+                                    setIsDebate(false);
+                                }}
+                                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showBirthdayCreator
+                                    ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showSeriesManager}
+                            >
+                                <Cake className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
+                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                    Birthday
+                                </span>
+                            </button>
                         </div>
 
                         <button
                             type="submit"
-                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData && !surveyLink) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
+                            disabled={loading || isProcessingAudio || isRecording || (!text.trim() && images.length === 0 && !video && !audio && !eventData && !pollData && !lostFoundData && !surveyLink && !birthdayData) || charCount > MAX_TEXT_LENGTH || !policyAccepted}
                             className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 ${isDebate ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         >
                             {loading ? (

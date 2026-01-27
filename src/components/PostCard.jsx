@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale, ClipboardList } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale, ClipboardList, Cake, Instagram } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -26,25 +26,20 @@ const WhatsAppIcon = ({ className }) => (
 
 const getOptimizedUrl = (url, width = null, quality = 65) => {
     if (!url || typeof url !== 'string') return url;
-
     if (url.includes('/storage/v1/object/public')) {
         let optimized = url.replace('/object/public', '/render/image/public');
         const params = [`quality=${quality}`];
-
         if (width) {
             params.push(`width=${width}`);
             params.push('resize=contain');
         }
-
         return `${optimized}?${params.join('&')}`;
     }
-
     return url;
 };
 
 const generateSrcSet = (url) => {
     if (!url || typeof url !== 'string' || !url.includes('/storage/v1/object/public')) return undefined;
-
     return `
         ${getOptimizedUrl(url, 400)} 400w,
         ${getOptimizedUrl(url, 800)} 800w,
@@ -58,6 +53,59 @@ const LANGUAGES = [
     { code: 'Chinese', label: 'Chinese' },
     { code: 'Tamil', label: 'Tamil' },
 ];
+
+const BirthdayHero = ({ birthdayData }) => {
+    if (!birthdayData) return null;
+    const { friendName, contactType, link } = birthdayData;
+
+    return (
+        <div className="mx-4 mt-1 mb-4 relative overflow-hidden rounded-xl bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 dark:from-pink-950/40 dark:via-red-950/40 dark:to-orange-950/40 border border-pink-100 dark:border-pink-800/50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 dark:opacity-20 pointer-events-none">
+                <Cake className="w-24 h-24 text-pink-500 rotate-12" />
+            </div>
+            <div className="absolute bottom-0 left-0 p-4 opacity-10 dark:opacity-20 pointer-events-none">
+                <Sparkles className="w-16 h-16 text-yellow-500 -rotate-12" />
+            </div>
+
+            <div className="relative z-10 p-5 flex flex-col items-center text-center">
+                <div className="inline-flex items-center justify-center p-2 bg-white dark:bg-gray-700 rounded-full shadow-sm mb-3">
+                    <span className="text-xl">🎂</span>
+                </div>
+
+                <h3 className="text-xs font-bold text-pink-500 dark:text-pink-400 uppercase tracking-widest mb-1">
+                    Birthday Shoutout
+                </h3>
+
+                <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-2 leading-tight">
+                    Happy Birthday, <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-600 dark:from-pink-400 dark:to-violet-400">
+                        {friendName}!
+                    </span>
+                </h2>
+
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-5 max-w-xs">
+                    Someone wants to wish you a fantastic day! Tap below to send your wishes directly.
+                </p>
+
+                <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`
+                        w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white shadow-lg transform transition active:scale-95 hover:-translate-y-0.5 flex items-center justify-center gap-2
+                        ${contactType === 'whatsapp'
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-200 dark:shadow-none hover:shadow-green-300'
+                            : 'bg-gradient-to-r from-pink-500 to-rose-600 shadow-pink-200 dark:shadow-none hover:shadow-pink-300'}
+                    `}
+                >
+                    {contactType === 'whatsapp' ? <WhatsAppIcon className="w-5 h-5" /> : <Instagram className="w-5 h-5" />}
+                    <span>Send Wishes on {contactType === 'whatsapp' ? 'WhatsApp' : 'Instagram'}</span>
+                </a>
+            </div>
+        </div>
+    );
+};
 
 export default function PostCard({ post, onOpen, onQuote }) {
     const [reactions, setReactions] = useState({})
@@ -121,27 +169,12 @@ export default function PostCard({ post, onOpen, onQuote }) {
     }
 
     async function fetchAttachments() {
-        const { data: eventData } = await supabase
-            .from('events')
-            .select('*')
-            .eq('confession_id', post.id)
-            .limit(1)
-            .maybeSingle()
-        if (eventData) {
-            setEvent(eventData)
-            return;
-        }
-
+        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).limit(1).maybeSingle()
+        if (eventData) { setEvent(eventData); return; }
         const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).maybeSingle()
-        if (pollData) {
-            setPoll(pollData)
-            return;
-        }
-
+        if (pollData) { setPoll(pollData); return; }
         const { data: lfData } = await supabase.from('lost_and_found').select('*').eq('confession_id', post.id).maybeSingle()
-        if (lfData) {
-            setLostFound(lfData)
-        }
+        if (lfData) { setLostFound(lfData) }
     }
 
     async function handleReport(e) {
@@ -161,38 +194,22 @@ export default function PostCard({ post, onOpen, onQuote }) {
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `Translate the following text to ${lang}. Keep the tone, slang, and humor if possible: "${post.text}"`;
-
             const result = await model.generateContent(prompt);
             const response = await result.response;
             setTranslation(response.text());
             setShowTranslation(true);
-        } catch (err) {
-            console.error("Translation error:", err);
-            alert("Failed to translate. Please try again later.");
-        } finally {
-            setIsTranslating(false);
-        }
+        } catch (err) { console.error("Translation error:", err); alert("Failed to translate. Please try again later."); } finally { setIsTranslating(false); }
     };
 
     const handleTranslate = (e) => {
         e.stopPropagation();
-        if (showTranslation && !translation) {
-            performTranslation(targetLanguage);
-        } else if (showTranslation) {
-            setShowTranslation(false);
-        } else if (translation) {
-            setShowTranslation(true);
-        } else {
-            performTranslation(targetLanguage);
-        }
+        if (showTranslation && !translation) { performTranslation(targetLanguage); }
+        else if (showTranslation) { setShowTranslation(false); }
+        else if (translation) { setShowTranslation(true); }
+        else { performTranslation(targetLanguage); }
     };
 
-    const handleLanguageSelect = (langCode) => {
-        setTargetLanguage(langCode);
-        setShowLangMenu(false);
-        performTranslation(langCode);
-    };
-
+    const handleLanguageSelect = (langCode) => { setTargetLanguage(langCode); setShowLangMenu(false); performTranslation(langCode); };
     function handleImageClick(e, url) { e.stopPropagation(); setZoomedImage(url); }
 
     const getPostAge = useCallback(() => {
@@ -204,14 +221,10 @@ export default function PostCard({ post, onOpen, onQuote }) {
     const postAge = useMemo(() => getPostAge(), [getPostAge])
 
     const triggerHeartExplosion = (e) => {
-        e.stopPropagation();
-        setShowHeartAnimation(true);
-        setTimeout(() => setShowHeartAnimation(false), 1200);
+        e.stopPropagation(); setShowHeartAnimation(true); setTimeout(() => setShowHeartAnimation(false), 1200);
     };
 
-    const handleSponsorClick = (url) => {
-        if (url) window.open(url, '_blank');
-    }
+    const handleSponsorClick = (url) => { if (url) window.open(url, '_blank'); }
 
     const brandColor = post.brand_color || '#EAB308';
     const hexToRgb = (hex) => {
@@ -221,40 +234,20 @@ export default function PostCard({ post, onOpen, onQuote }) {
     const brandRgb = hexToRgb(brandColor);
 
     const getPostStyle = () => {
-        if (post.is_sponsored) {
-            return {
-                borderColor: brandColor,
-                boxShadow: `0 8px 32px -8px rgba(${brandRgb}, 0.25)`,
-            };
-        }
+        if (post.is_sponsored) return { borderColor: brandColor, boxShadow: `0 8px 32px -8px rgba(${brandRgb}, 0.25)` };
 
         const shadow = (r, g, b) => `0 4px 20px -5px rgba(${r}, ${g}, ${b}, 0.2)`;
-
-        if (post.is_debate) {
-            return { borderColor: '#f97316', boxShadow: shadow(249, 115, 22) };
-        }
-        if (event) {
-            return { borderColor: '#fbbf24', boxShadow: shadow(251, 191, 36) };
-        }
-        if (poll) {
-            return { borderColor: '#6366f1', boxShadow: shadow(99, 102, 241) };
-        }
-        if (lostFound) {
-            if (lostFound.type === 'lost') {
-                return { borderColor: '#ef4444', boxShadow: shadow(239, 68, 68) };
-            } else {
-                return { borderColor: '#22c55e', boxShadow: shadow(34, 197, 94) };
-            }
-        }
-        if (post.series_id) {
-            return { borderColor: '#a855f7', boxShadow: shadow(168, 85, 247) };
-        }
-
+        if (post.is_debate) return { borderColor: '#f97316', boxShadow: shadow(249, 115, 22) };
+        if (event) return { borderColor: '#fbbf24', boxShadow: shadow(251, 191, 36) };
+        if (poll) return { borderColor: '#6366f1', boxShadow: shadow(99, 102, 241) };
+        if (lostFound) return { borderColor: lostFound.type === 'lost' ? '#ef4444' : '#22c55e', boxShadow: lostFound.type === 'lost' ? shadow(239, 68, 68) : shadow(34, 197, 94) };
+        if (post.series_id) return { borderColor: '#a855f7', boxShadow: shadow(168, 85, 247) };
         return {};
     };
 
     const containerStyle = getPostStyle();
-    const isSpecialPost = post.is_sponsored || post.is_debate || !!event || !!poll || !!lostFound || !!post.series_id;
+    // Special post check
+    const isSpecialPost = post.is_sponsored || post.is_debate || !!event || !!poll || !!lostFound || !!post.series_id || moodData?.birthday;
 
     const shimmerStyle = post.is_sponsored ? {
         background: `linear-gradient(110deg, transparent 30%, rgba(${brandRgb}, 0.15) 50%, transparent 70%)`,
@@ -284,9 +277,12 @@ export default function PostCard({ post, onOpen, onQuote }) {
                     relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group w-full
                     ${showLangMenu ? 'z-30' : 'z-0'}
                     ${post.is_sponsored ? 'transform hover:-translate-y-1' : ''}
-                    ${isSpecialPost
-                        ? 'bg-white dark:bg-gray-800 border-2'
-                        : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'}
+                    ${moodData?.birthday
+                        ? 'bg-white dark:bg-gray-800 ring-2 ring-pink-300 dark:ring-pink-700 shadow-md'
+                        : isSpecialPost
+                            ? 'bg-white dark:bg-gray-800 border-2'
+                            : 'bg-white dark:bg-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-700'
+                    }
                 `}
                 itemScope
                 itemType="http://schema.org/SocialMediaPosting"
@@ -328,6 +324,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         {poll && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><BarChart3 className="w-3 h-3" /> POLL</div>}
                         {event && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Calendar className="w-3 h-3" /> EVENT</div>}
                         {lostFound && <div className={`px-2 sm:px-3 py-0.5 sm:py-1 ${lostFound.type === 'lost' ? 'bg-red-500' : 'bg-green-500'} text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1`}><AlertTriangle className="w-3 h-3" /> {lostFound.type.toUpperCase()}</div>}
+                        {moodData?.birthday && <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1"><Cake className="w-3 h-3" /> BIRTHDAY</div>}
                     </div>
                 )}
 
@@ -363,15 +360,6 @@ export default function PostCard({ post, onOpen, onQuote }) {
                             )}
                         </div>
                     </div>
-
-                    {post.is_sponsored && (
-                        <div
-                            className="px-3 py-1 text-white text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg flex items-center gap-1"
-                            style={{ backgroundColor: brandColor }}
-                        >
-                            <Star className="w-3 h-3 fill-white" /> Sponsored
-                        </div>
-                    )}
                 </div>
 
                 <div className="px-4 pb-3 relative z-10 w-full">
@@ -393,7 +381,11 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         </div>
                     )}
 
-                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words w-full leading-relaxed ${post.is_sponsored ? 'font-medium' : ''}`} itemProp="articleBody">
+                    {moodData?.birthday && (
+                        <BirthdayHero birthdayData={moodData.birthday} />
+                    )}
+
+                    <p className={`text-sm sm:text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words w-full leading-relaxed ${post.is_sponsored ? 'font-medium' : ''} ${moodData?.birthday ? 'italic text-center text-gray-600 dark:text-gray-400 mb-2' : ''}`} itemProp="articleBody">
                         {renderedText}
                     </p>
 
