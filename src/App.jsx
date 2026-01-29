@@ -1,5 +1,8 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
+import { Megaphone, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
 import Feed from "./components/Feed";
 import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
@@ -9,199 +12,22 @@ import SearchPage from "./components/SearchPage";
 import UserAnalytics from "./components/UserAnalytics";
 import ToolsPage from "./components/ToolsPage";
 import AboutUs from "./components/AboutUs";
-import { NotificationProvider, useNotifications } from "./components/NotificationSystem";
 import FloatingActionMenu from "./components/FloatingActionMenu";
-import { supabase } from "./lib/supabaseClient";
 import Matchmaker from './components/matchmaker/Matchmaker';
 import Marketplace from "./components/Marketplace";
-import { Megaphone, X } from "lucide-react";
 import AdultSection from "./components/adult/AdultSection";
+import { NotificationProvider } from "./components/NotificationSystem";
+import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
+import { supabase } from "./lib/supabaseClient";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
-const GlobalNotificationHandler = () => {
-  const navigate = useNavigate();
-  const { info, success } = useNotifications();
-
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleNotification = (title, body, url, tag) => {
-      if (document.visibilityState === 'visible') {
-        info(`${title} - ${body}`, 5000);
-        return;
-      }
-
-      const lastNotifTag = localStorage.getItem('last_notif_tag');
-      const lastNotifTime = parseInt(localStorage.getItem('last_notif_time') || '0');
-      const now = Date.now();
-
-      if (lastNotifTag === tag && (now - lastNotifTime) < 3000) {
-        return;
-      }
-
-      localStorage.setItem('last_notif_tag', tag);
-      localStorage.setItem('last_notif_time', now.toString());
-
-      if (Notification.permission === 'granted') {
-        const n = new Notification(title, {
-          body: body,
-          icon: '/favicon.svg',
-          tag: tag,
-          silent: false
-        });
-        n.onclick = () => {
-          window.focus();
-          navigate(url);
-          n.close();
-        };
-      }
-    };
-
-    const channel = supabase
-      .channel('global-app-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'confessions' }, (payload) => {
-        if (payload.new && payload.new.approved === true) {
-          const isNewlyVisible = payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.old && payload.old.approved === false);
-
-          if (isNewlyVisible) {
-            handleNotification(
-              'New Confession! 📢',
-              payload.new.text ? `${payload.new.text.substring(0, 60)}...` : 'Check out the latest confession!',
-              `/post/${payload.new.id}`,
-              `confession-${payload.new.id}`
-            );
-          }
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
-        const newComment = payload.new;
-        const myPostsRaw = localStorage.getItem('my_posts');
-        const myAnonId = localStorage.getItem('anonId');
-
-        if (!myPostsRaw || !myAnonId) return;
-
-        const myPosts = JSON.parse(myPostsRaw);
-        const isMyPost = myPosts.some(id => String(id) === String(newComment.post_id));
-        const isNotMe = String(newComment.author_id) !== String(myAnonId);
-
-        if (isMyPost && isNotMe) {
-          handleNotification(
-            'New Reply! 💬',
-            newComment.text ? `Someone replied: "${newComment.text.substring(0, 50)}..."` : 'New comment on your confession.',
-            `/post/${newComment.post_id}`,
-            `reply-${newComment.post_id}`
-          );
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'adult_confessions' }, (payload) => {
-        if (payload.new && payload.new.is_approved === true) {
-          const isNewlyVisible = payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.old && payload.old.is_approved === false);
-
-          if (isNewlyVisible) {
-            handleNotification(
-              'New 18+ Confession! 🌶️',
-              payload.new.content ? `${payload.new.content.substring(0, 50)}...` : 'Spicy new content added!',
-              `/adult/${payload.new.id}`,
-              `adult-confession-${payload.new.id}`
-            );
-          }
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'adult_comments' }, (payload) => {
-        const newComment = payload.new;
-        const myPostsRaw = localStorage.getItem('my_posts');
-        const myAnonId = localStorage.getItem('anonId');
-
-        if (!myPostsRaw || !myAnonId) return;
-
-        const myPosts = JSON.parse(myPostsRaw);
-        const isMyPost = myPosts.some(id => String(id) === String(newComment.post_id));
-        const isNotMe = String(newComment.author_id) !== String(myAnonId);
-
-        if (isMyPost && isNotMe) {
-          handleNotification(
-            'New Whisper! 🤫',
-            newComment.text ? `Someone whispered: "${newComment.text.substring(0, 40)}..."` : 'New whisper on your post.',
-            `/adult/${newComment.post_id}`,
-            `adult-reply-${newComment.post_id}`
-          );
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'polls' }, (payload) => {
-        handleNotification(
-          'New Poll! 📊',
-          payload.new.question || 'A new poll has started!',
-          `/post/${payload.new.confession_id}`,
-          `poll-${payload.new.id}`
-        );
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => {
-        handleNotification(
-          'New Event! 📅',
-          `${payload.new.event_name} - ${payload.new.description ? payload.new.description.substring(0, 40) : 'Check it out!'}`,
-          `/post/${payload.new.confession_id}`,
-          `event-${payload.new.id}`
-        );
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_loves' }, (payload) => {
-        const myAnonId = localStorage.getItem('anonId');
-        if (myAnonId && payload.new.to_user_id === myAnonId) {
-          handleNotification(
-            'Matchmaker Update 💘',
-            'Someone sent you a Love request! Click to see who.',
-            '/matchmaker',
-            `love-req-${payload.new.id}`
-          );
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchmaker_loves' }, (payload) => {
-        const myAnonId = localStorage.getItem('anonId');
-        if (myAnonId && payload.new.status === 'accepted') {
-          if (payload.new.from_user_id === myAnonId || payload.new.to_user_id === myAnonId) {
-            handleNotification(
-              'It\'s a Match! 💑',
-              'You have a new connection in Matchmaker!',
-              '/matchmaker',
-              `match-love-${payload.new.id}`
-            );
-          }
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matchmaker_matches' }, (payload) => {
-        const myAnonId = localStorage.getItem('anonId');
-        if (myAnonId && (payload.new.user1_id === myAnonId || payload.new.user2_id === myAnonId)) {
-          handleNotification(
-            'New Match! ✨',
-            'You have been matched!',
-            '/matchmaker',
-            `match-rec-${payload.new.id}`
-          );
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [navigate, info, success]);
-
-  return null;
-};
-
-function App() {
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) return savedTheme;
-    return 'dark';
-  });
-
+const AppContent = () => {
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || 'dark');
   const [onlineCount, setOnlineCount] = useState(0);
   const [announcement, setAnnouncement] = useState(null);
+
+  useRealtimeNotifications();
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -217,42 +43,24 @@ function App() {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-
-      if (data) {
-        setAnnouncement(data);
-      } else {
-        setAnnouncement(null);
-      }
+      setAnnouncement(data || null);
     };
 
     fetchAnnouncement();
-
     const channel = supabase.channel('public-announcements')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
-        fetchAnnouncement();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncement)
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
     const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
     const channel = supabase.channel('online-users', {
-      config: {
-        presence: {
-          key: userPresenceKey,
-        },
-      },
+      config: { presence: { key: userPresenceKey } },
     });
 
     channel.on('presence', { event: 'sync' }, () => {
-      const newState = channel.presenceState();
-      const count = Object.keys(newState).length;
-      setOnlineCount(count);
+      setOnlineCount(Object.keys(channel.presenceState()).length);
     });
 
     channel.subscribe(async (status) => {
@@ -260,24 +68,23 @@ function App() {
         await channel.track({ online_at: new Date().toISOString() });
       }
     });
-
-    return () => {
-      channel.untrack();
-      supabase.removeChannel(channel);
-    };
+    return () => { channel.untrack(); supabase.removeChannel(channel); };
   }, []);
 
   return (
-    <NotificationProvider>
-      <GlobalNotificationHandler />
-
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-        <header className="sticky top-0 z-50 flex flex-col w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <header className="sticky top-0 z-50 flex flex-col w-full">
+        <AnimatePresence>
           {announcement && (
-            <div className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
-              announcement.type === 'success' ? 'bg-green-600 text-white' :
-                'bg-indigo-600 text-white'
-              }`}>
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className={`px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm transition-colors ${announcement.type === 'alert' ? 'bg-red-600 text-white' :
+                announcement.type === 'success' ? 'bg-green-600 text-white' :
+                  'bg-indigo-600 text-white'
+                }`}
+            >
               <div className="flex items-center gap-3 mx-auto max-w-5xl w-full overflow-hidden">
                 <Megaphone className="w-5 h-5 shrink-0 animate-pulse z-10 relative" />
                 <div className="flex-1 overflow-hidden relative h-5">
@@ -305,67 +112,72 @@ function App() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
-          <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
-        </header>
+        </AnimatePresence>
+        <Header theme={theme} setTheme={setTheme} onlineCount={onlineCount} />
+      </header>
 
-        <main>
-          <Routes>
-            <Route path="/" element={<Feed />} />
-            <Route path="/post/:id" element={<Feed />} />
-            <Route path="/top" element={<TopConfessions />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route
-              path="/admin"
-              element={
-                <Suspense fallback={<div className="p-10 text-center">Loading Admin Panel...</div>}>
-                  <AdminPanel />
-                </Suspense>
-              }
-            />
-            <Route path="/policy" element={<PolicyPage />} />
-            <Route path="/analytics" element={<UserAnalytics />} />
-            <Route path="/about" element={<AboutUs />} />
-            <Route path="/tools" element={<ToolsPage />} />
-            <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-            <Route path="/matchmaker" element={<Matchmaker />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/adult" element={<AdultSection />} />
-            <Route path="/adult/:id" element={<AdultSection />} />
-          </Routes>
-        </main>
+      <main>
+        <Routes>
+          <Route path="/" element={<Feed />} />
+          <Route path="/post/:id" element={<Feed />} />
+          <Route path="/top" element={<TopConfessions />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={<div className="p-10 text-center">Loading Admin Panel...</div>}>
+                <AdminPanel />
+              </Suspense>
+            }
+          />
+          <Route path="/policy" element={<PolicyPage />} />
+          <Route path="/analytics" element={<UserAnalytics />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/tools" element={<ToolsPage />} />
+          <Route path="/post-direct/:id" element={<PostModalWrapper />} />
+          <Route path="/matchmaker" element={<Matchmaker />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/adult" element={<AdultSection />} />
+          <Route path="/adult/:id" element={<AdultSection />} />
+        </Routes>
+      </main>
 
-        <FloatingActionMenu />
+      <FloatingActionMenu />
 
-        <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Made by MMU Students
-              </p>
-
-              <div className="flex justify-center space-x-4 mb-4 text-sm">
-                <Link to="/about" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
-                  About Us
-                </Link>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <Link to="/policy" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
-                  Privacy Policy
-                </Link>
-              </div>
-
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
-                © {new Date().getFullYear()} Zyora Lab. All rights reserved.
-              </p>
-
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Share Responsibly • Respect Privacy • Be Kind
-              </p>
+      <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Made by MMU Students
+            </p>
+            <div className="flex justify-center space-x-4 mb-4 text-sm">
+              <Link to="/about" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                About Us
+              </Link>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <Link to="/policy" className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                Privacy Policy
+              </Link>
             </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+              © {new Date().getFullYear()} Zyora Lab. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Share Responsibly • Respect Privacy • Be Kind
+            </p>
           </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <NotificationProvider>
+      <AppContent />
     </NotificationProvider>
   );
 }
