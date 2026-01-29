@@ -3,9 +3,10 @@ import { supabase } from '../lib/supabaseClient'
 import {
     TrendingUp, MessageSquare, Heart, Zap, Award,
     Moon, Sun, Coffee, Flame, Crown, Ghost,
-    CalendarDays, BarChart2, Share2, Camera
+    CalendarDays, BarChart2, Share2, Camera, ArrowRight
 } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
+import { Link } from 'react-router-dom'
 import { calculateBadges } from '../utils/badgeSystem'
 import dayjs from 'dayjs'
 
@@ -237,7 +238,7 @@ export default function UserAnalytics() {
             </Helmet>
 
             <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-5 sm:space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="text-center sm:text-left">
                         <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
                             My Campus Wrapped <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-full">LIVE</span>
@@ -245,12 +246,23 @@ export default function UserAnalytics() {
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Your anonymous footprint</p>
                     </div>
 
-                    <div className="mx-auto sm:mx-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 max-w-fit">
-                        <Award className="w-6 h-6 text-yellow-300" />
-                        <div>
-                            <p className="text-[10px] font-bold uppercase opacity-80 tracking-wider">Karma Score</p>
-                            <p className="text-2xl font-black leading-none">{stats.karmaScore}</p>
+                    <div className="flex flex-col sm:items-end gap-2 mx-auto sm:mx-0">
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 w-full sm:w-auto min-w-[180px]">
+                            <Award className="w-6 h-6 text-yellow-300" />
+                            <div>
+                                <p className="text-[10px] font-bold uppercase opacity-80 tracking-wider">Karma Score</p>
+                                <p className="text-2xl font-black leading-none">{stats.karmaScore}</p>
+                            </div>
                         </div>
+
+                        <Link
+                            to="/karma-shop"
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50 px-4 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition w-full sm:w-auto shadow-sm"
+                        >
+                            <Crown className="w-4 h-4" />
+                            <span>Visit Karma Shop</span>
+                            <ArrowRight className="w-3 h-3 ml-auto opacity-70" />
+                        </Link>
                     </div>
                 </div>
 

@@ -317,6 +317,38 @@ CREATE TABLE IF NOT EXISTS public.blocked_devices (
     reason TEXT
 );
 
+CREATE TABLE IF NOT EXISTS public.shop_items (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cost INTEGER NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('cosmetic', 'powerup', 'badge')),
+    type TEXT NOT NULL CHECK (type IN ('frame', 'name_color', 'pin_ticket', 'highlight_ticket')),
+    config JSONB DEFAULT '{}'::jsonb,
+    icon TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.user_inventory (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL REFERENCES public.shop_items(id) ON DELETE CASCADE,
+    is_equipped BOOLEAN DEFAULT FALSE,
+    quantity INTEGER DEFAULT 1,
+    acquired_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(user_id, item_id)
+);
+
+INSERT INTO public.shop_items (id, name, description, cost, category, type, config, icon) VALUES
+('frame_gold', 'Golden Glory', 'A shiny gold border for your Matchmaker avatar.', 500, 'cosmetic', 'frame', '{"border": "4px solid #F59E0B", "glow": "0 0 10px #F59E0B"}'::jsonb, 'Crown'),
+('frame_neon', 'Cyberpunk Neon', ' glowing neon pink border.', 750, 'cosmetic', 'frame', '{"border": "3px solid #EC4899", "glow": "0 0 15px #EC4899"}'::jsonb, 'Zap'),
+('name_blue', 'Royal Blue Name', 'Make your name stand out in comments.', 300, 'cosmetic', 'name_color', '{"color": "#3B82F6"}'::jsonb, 'Palette'),
+('ticket_pin', 'Pin Power (1h)', 'Pin your confession to the top of the feed for 1 hour.', 1000, 'powerup', 'pin_ticket', '{"duration_minutes": 60}'::jsonb, 'Pin'),
+('ticket_highlight', 'Post Highlight', 'Change your post background to a premium color.', 200, 'powerup', 'highlight_ticket', '{"colors": ["#FFFBEB", "#FEF3C7"]}'::jsonb, 'Highlighter')
+ON CONFLICT (id) DO NOTHING;
+
 ALTER TABLE public.matchmaker_profiles ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
 ALTER TABLE public.matchmaker_profiles ADD COLUMN IF NOT EXISTS lat FLOAT;
 ALTER TABLE public.matchmaker_profiles ADD COLUMN IF NOT EXISTS long FLOAT;
@@ -355,6 +387,10 @@ ALTER TABLE public.adult_comments ADD CONSTRAINT adult_comments_parent_id_fkey F
 ALTER TABLE public.adult_confessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS spent_points INTEGER DEFAULT 0;
+
+ALTER TABLE public.shop_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1008,6 +1044,125 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_karma_balance(target_user_id TEXT)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    rep RECORD;
+    total_earned INTEGER := 0;
+BEGIN
+    SELECT * INTO rep FROM public.user_reputation WHERE author_id = target_user_id;
+    
+    IF NOT FOUND THEN
+        RETURN 0;
+    END IF;
+
+    total_earned := (COALESCE(rep.post_count, 0) * 10) +
+                    (COALESCE(rep.comment_count, 0) * 5) +
+                    (COALESCE(rep.post_reactions_received_count, 0) * 2) +
+                    (COALESCE(rep.comment_reactions_received_count, 0) * 2);
+
+    RETURN GREATEST(0, total_earned - COALESCE(rep.spent_points, 0));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buy_shop_item(item_id_in TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id TEXT;
+    v_cost INTEGER;
+    v_balance INTEGER;
+    v_item_type TEXT;
+BEGIN
+    v_user_id := auth.uid()::text;
+    
+    SELECT cost, type INTO v_cost, v_item_type FROM public.shop_items WHERE id = item_id_in;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Item not found'; END IF;
+
+    v_balance := public.get_karma_balance(v_user_id);
+    IF v_balance < v_cost THEN
+        RAISE EXCEPTION 'Insufficient Karma Points';
+    END IF;
+
+    UPDATE public.user_reputation
+    SET spent_points = COALESCE(spent_points, 0) + v_cost
+    WHERE author_id = v_user_id;
+
+    INSERT INTO public.user_inventory (user_id, item_id, quantity)
+    VALUES (v_user_id, item_id_in, 1)
+    ON CONFLICT (user_id, item_id)
+    DO UPDATE SET quantity = public.user_inventory.quantity + 1;
+
+    RETURN jsonb_build_object('success', true, 'new_balance', v_balance - v_cost);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.equip_item(item_id_in TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id TEXT;
+    v_category TEXT;
+BEGIN
+    v_user_id := auth.uid()::text;
+    
+    SELECT category INTO v_category FROM public.shop_items WHERE id = item_id_in;
+
+    UPDATE public.user_inventory ui
+    SET is_equipped = FALSE
+    FROM public.shop_items si
+    WHERE ui.item_id = si.id
+    AND ui.user_id = v_user_id
+    AND si.category = v_category;
+
+    UPDATE public.user_inventory
+    SET is_equipped = TRUE
+    WHERE user_id = v_user_id AND item_id = item_id_in;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.use_pin_ticket(post_id_in BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id TEXT;
+    v_ticket_count INTEGER;
+BEGIN
+    v_user_id := auth.uid()::text;
+
+    SELECT quantity INTO v_ticket_count
+    FROM public.user_inventory
+    WHERE user_id = v_user_id AND item_id = 'ticket_pin';
+
+    IF v_ticket_count IS NULL OR v_ticket_count < 1 THEN
+        RAISE EXCEPTION 'No Pin Tickets in inventory!';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM public.confessions WHERE id = post_id_in AND author_id = v_user_id) THEN
+        RAISE EXCEPTION 'You can only pin your own posts.';
+    END IF;
+
+    UPDATE public.confessions
+    SET pinned = TRUE
+    WHERE id = post_id_in;
+
+    UPDATE public.user_inventory
+    SET quantity = quantity - 1
+    WHERE user_id = v_user_id AND item_id = 'ticket_pin';
+    
+    DELETE FROM public.user_inventory WHERE quantity <= 0;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
 
@@ -1184,6 +1339,9 @@ CREATE POLICY "Public Read Credentials" ON public.matchmaker_credentials FOR SEL
 CREATE POLICY "Public Insert Credentials" ON public.matchmaker_credentials FOR INSERT WITH CHECK (true);
 CREATE POLICY "Update Own Credentials" ON public.matchmaker_credentials FOR UPDATE USING (true);
 CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+CREATE POLICY "Read items" ON public.shop_items FOR SELECT USING (true);
+CREATE POLICY "Read own inventory" ON public.user_inventory FOR SELECT USING (user_id = auth.uid()::text);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

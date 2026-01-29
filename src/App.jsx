@@ -16,6 +16,7 @@ import FloatingActionMenu from "./components/FloatingActionMenu";
 import Matchmaker from './components/matchmaker/Matchmaker';
 import Marketplace from "./components/Marketplace";
 import AdultSection from "./components/adult/AdultSection";
+import KarmaShop from "./components/KarmaShop";
 import { NotificationProvider } from "./components/NotificationSystem";
 import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
@@ -141,6 +142,7 @@ const AppContent = () => {
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/adult" element={<AdultSection />} />
           <Route path="/adult/:id" element={<AdultSection />} />
+          <Route path="/karma-shop" element={<KarmaShop />} />
         </Routes>
       </main>
 

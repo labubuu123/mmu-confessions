@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale, ClipboardList, Cake, Instagram } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, TrendingUp, Clock, AlertTriangle, BarChart3, Calendar, Link as LinkIcon, Check, Zap, Ghost, ExternalLink, Sparkles, Star, MessageSquare, Globe, Loader2, ChevronDown, Quote, Scale, ClipboardList, Cake, Instagram, Pin } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
@@ -15,6 +15,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
 import SeriesIndicator from './SeriesIndicator';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useKarmaShop } from '../hooks/useKarmaShop'
 
 dayjs.extend(relativeTime)
 
@@ -121,6 +122,15 @@ export default function PostCard({ post, onOpen, onQuote }) {
     const [targetLanguage, setTargetLanguage] = useState('English')
     const [showLangMenu, setShowLangMenu] = useState(false)
     const langMenuRef = useRef(null)
+
+    const anonId = localStorage.getItem('anonId');
+    const { inventory, usePinTicket } = useKarmaShop(anonId);
+
+    const hasPinTicket = useMemo(() => {
+        return inventory?.some(i => i.item_id === 'ticket_pin' && i.quantity > 0);
+    }, [inventory]);
+
+    const isOwner = String(post.author_id) === String(anonId);
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
@@ -246,7 +256,6 @@ export default function PostCard({ post, onOpen, onQuote }) {
     };
 
     const containerStyle = getPostStyle();
-    // Special post check
     const isSpecialPost = post.is_sponsored || post.is_debate || !!event || !!poll || !!lostFound || !!post.series_id || moodData?.birthday;
 
     const shimmerStyle = post.is_sponsored ? {
@@ -551,6 +560,22 @@ export default function PostCard({ post, onOpen, onQuote }) {
                                     <Quote className="w-5 h-5" />
                                     <span className="font-medium hidden sm:inline">Quote</span>
                                 </button>
+
+                                {isOwner && !post.pinned && hasPinTicket && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('Spend 1 Pin Ticket to pin this post?')) {
+                                                usePinTicket.mutate(post.id);
+                                            }
+                                        }}
+                                        className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-amber-600 dark:text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                                        title="Pin this post for 1 hour"
+                                    >
+                                        <Pin className="w-5 h-5" />
+                                        <span className="font-medium hidden sm:inline">Pin</span>
+                                    </button>
+                                )}
 
                                 <div className="relative flex items-center" ref={langMenuRef}>
                                     <button

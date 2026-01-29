@@ -97,7 +97,7 @@ const DEFAULT_AVATAR = {
     bg: '#e0e7ff'
 };
 
-export default function MatchmakerAvatar({ config, gender, className }) {
+export default function MatchmakerAvatar({ config, gender, className, frameConfig }) {
     const finalConfig = useMemo(() => {
         let parsed = config;
         if (typeof config === 'string') {
@@ -115,8 +115,8 @@ export default function MatchmakerAvatar({ config, gender, className }) {
     const facePath = common.faceShapes[faceShape] || common.faceShapes.oval;
     const nosePath = common.noses[nose] || common.noses.button;
 
-    return (
-        <svg viewBox="0 0 100 100" className={className || "w-full h-full"}>
+    const AvatarSVG = (
+        <svg viewBox="0 0 100 100" className={frameConfig ? "w-full h-full block rounded-full" : (className || "w-full h-full")}>
             <rect width="100" height="100" fill={bg} />
             {styleData.back && <path d={styleData.back} fill={hairColor} stroke={hairColor} strokeWidth="1" strokeLinejoin="round" />}
             <g transform="translate(0, 75)">
@@ -178,4 +178,22 @@ export default function MatchmakerAvatar({ config, gender, className }) {
             {styleData.front && (hairStyle === 'fade' ? <path d={styleData.front} stroke={hairColor} strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.8" /> : <path d={styleData.front} fill={hairColor} />)}
         </svg>
     );
+
+    if (frameConfig) {
+        return (
+            <div
+                className={className || "w-full h-full"}
+                style={{
+                    border: frameConfig.border,
+                    boxShadow: frameConfig.glow,
+                    borderRadius: '9999px',
+                    boxSizing: 'border-box'
+                }}
+            >
+                {AvatarSVG}
+            </div>
+        );
+    }
+
+    return AvatarSVG;
 }
