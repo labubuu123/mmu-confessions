@@ -11,6 +11,12 @@ import { Link } from 'react-router-dom'
 import { calculateBadges } from '../utils/badgeSystem'
 import dayjs from 'dayjs'
 
+const POINTS = {
+    PER_POST: 10,
+    PER_COMMENT: 5,
+    PER_LIKE_RECEIVED: 2
+};
+
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
     const [badges, setBadges] = useState([])
@@ -52,13 +58,26 @@ export default function UserAnalytics() {
                 if (eventData) events = eventData
             }
 
+            const { data: inventoryItems } = await supabase
+                .from('user_inventory')
+                .select('quantity, shop_items(cost)')
+                .eq('user_id', anonId);
+
             const totalPosts = posts?.length || 0
             const totalComments = comments?.length || 0
             const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0
-            const totalPostComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0
+            const approvedPosts = posts?.filter(p => p.approved).length || 0;
 
-            const approvedPosts = posts?.filter(p => p.approved).length || 0
-            const karmaScore = (approvedPosts * 10) + totalLikes + (totalPostComments * 2) + (totalComments * 5)
+            const totalEarned =
+                (approvedPosts * POINTS.PER_POST) +
+                (totalComments * POINTS.PER_COMMENT) +
+                (totalLikes * POINTS.PER_LIKE_RECEIVED);
+
+            const totalSpent = inventoryItems?.reduce((sum, slot) => {
+                return sum + (slot.shop_items.cost * slot.quantity);
+            }, 0) || 0;
+
+            const karmaBalance = Math.max(0, totalEarned - totalSpent);
 
             const today = dayjs()
             const heatmapData = []
@@ -122,7 +141,7 @@ export default function UserAnalytics() {
                 totalPosts,
                 totalComments,
                 totalLikes,
-                karmaScore,
+                karmaScore: karmaBalance,
                 heatmapData,
                 hourlyData: hours,
                 streak,
@@ -215,7 +234,7 @@ export default function UserAnalytics() {
                                 <Award className="w-5 h-5 text-yellow-300" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold uppercase opacity-80 tracking-wider">Karma Score</p>
+                                <p className="text-[10px] font-bold uppercase opacity-80 tracking-wider">Available Karma</p>
                                 <p className="text-xl md:text-2xl font-black leading-none">{stats.karmaScore}</p>
                             </div>
                         </div>
