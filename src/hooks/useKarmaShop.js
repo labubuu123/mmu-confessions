@@ -44,7 +44,7 @@ export function useKarmaShop(userId) {
         .from('confessions')
         .select('*', { count: 'exact', head: true })
         .eq('author_id', userId)
-        .eq('status', 'approved');
+        .eq('approved', true);
 
       const { count: commentCount } = await supabase
         .from('comments')

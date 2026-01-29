@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useKarmaShop } from '../hooks/useKarmaShop';
 import {
     Loader2, ShoppingBag, Zap, Palette, Crown, Lock, Check,
-    Sparkles, Box, Wallet, CreditCard, Tag
+    Sparkles, Box, Wallet, ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function KarmaShop() {
     const userId = localStorage.getItem('anonId');
@@ -32,6 +33,12 @@ export default function KarmaShop() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+                <div className="md:hidden mb-4">
+                    <Link to="/analytics" className="inline-flex items-center gap-2 text-gray-500 font-bold text-sm hover:text-indigo-600">
+                        <ArrowLeft className="w-4 h-4" /> Back to Analytics
+                    </Link>
+                </div>
+
                 <div className="relative overflow-hidden bg-gray-900 rounded-3xl p-6 md:p-12 mb-8 shadow-2xl">
                     <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-indigo-600/30 rounded-full blur-[80px] md:blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-fuchsia-600/20 rounded-full blur-[60px] md:blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
