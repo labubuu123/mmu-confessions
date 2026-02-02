@@ -130,7 +130,7 @@ export default function PostCard({ post, onOpen, onQuote }) {
         return inventory?.some(i => i.item_id === 'ticket_pin' && i.quantity > 0);
     }, [inventory]);
 
-    const isOwner = String(post.author_id) === String(anonId);
+    const isOwner = post.author_id && anonId && String(post.author_id) === String(anonId);
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0

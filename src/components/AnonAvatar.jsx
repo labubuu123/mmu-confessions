@@ -54,7 +54,7 @@ export default function AnonAvatar({ authorId, size = 'md', showBadge = false, b
     if (!authorId) {
         return (
             <div className={`rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-white font-bold flex-shrink-0 ${sizes[size]}`}>
-                A
+                ?
             </div>
         );
     }
