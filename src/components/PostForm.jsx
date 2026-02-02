@@ -1113,7 +1113,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     onChange={(e) => setCustomName(e.target.value)}
                                     placeholder={placeholderText}
                                     className="w-full pl-6 pr-3 py-2 text-base sm:text-sm border-b border-gray-200 dark:border-gray-700 bg-transparent focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500"
-                                    maxLength={15}
+                                    maxLength={20}
                                 />
                             </div>
 
