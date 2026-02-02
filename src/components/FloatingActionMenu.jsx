@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Heart, Sparkles, X, Send, ShieldCheck, Activity, Wrench, ShoppingBag } from 'lucide-react';
+import {
+    MessageSquare,
+    Heart,
+    LayoutGrid,
+    X,
+    Send,
+    ShieldCheck,
+    Activity,
+    Wrench,
+    ShoppingBag,
+    Lightbulb
+} from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
@@ -11,10 +22,52 @@ const EighteenPlusIcon = ({ className }) => (
     </div>
 );
 
+const MenuOnboardingTips = ({ onDismiss }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="fixed bottom-24 right-4 sm:right-6 z-50 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-indigo-100 dark:border-slate-700 p-4"
+    >
+        <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white dark:bg-slate-800 border-b border-r border-indigo-100 dark:border-slate-700 transform rotate-45"></div>
+
+        <div className="relative flex flex-col gap-3">
+            <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+                        <Lightbulb size={18} strokeWidth={2.5} />
+                    </div>
+                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Discover More!</h4>
+                </div>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                >
+                    <X size={16} />
+                </button>
+            </div>
+
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>MY西斯</b>, and more hidden features!
+            </p>
+
+            <button
+                onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200 dark:shadow-none"
+            >
+                Got it
+            </button>
+        </div>
+    </motion.div>
+);
+
 export default function FloatingActionMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
+    const [showTips, setShowTips] = useState(false);
+
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [identityId, setIdentityId] = useState(null);
@@ -23,9 +76,8 @@ export default function FloatingActionMenu() {
     const chatEndRef = useRef(null);
 
     useEffect(() => {
-        const initializeIdentity = async () => {
+        const initialize = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-
             if (session?.user) {
                 setIdentityId(session.user.id);
                 setIsGuest(false);
@@ -38,9 +90,14 @@ export default function FloatingActionMenu() {
                 setIdentityId(guestId);
                 setIsGuest(true);
             }
+
+            const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
+            if (!hasSeenTips) {
+                setTimeout(() => setShowTips(true), 1500);
+            }
         };
 
-        initializeIdentity();
+        initialize();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
@@ -150,7 +207,6 @@ export default function FloatingActionMenu() {
     const handleNightsClick = () => {
         setIsOpen(false);
         navigate('/adult');
-        //alert("🌙 Shh... The night is still young.\n\nMY西斯 (NSFW) is currently being prepared behind closed doors. Stay tuned for the grand opening!");
     };
 
     const handleContactAdminClick = () => {
@@ -168,6 +224,18 @@ export default function FloatingActionMenu() {
     const handleToolsClick = () => {
         setIsOpen(false);
         navigate('/tools');
+    };
+
+    const handleDismissTips = () => {
+        setShowTips(false);
+        localStorage.setItem('has_seen_menu_tips_v1', 'true');
+    };
+
+    const handleMainToggle = () => {
+        if (showTips) {
+            handleDismissTips();
+        }
+        setIsOpen(!isOpen);
     };
 
     const MenuButton = ({ icon: Icon, label, onClick, colorClass, bgClass, animateIcon }) => (
@@ -195,6 +263,12 @@ export default function FloatingActionMenu() {
                         className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
                         onClick={() => setIsOpen(false)}
                     />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showTips && !isOpen && (
+                    <MenuOnboardingTips onDismiss={handleDismissTips} />
                 )}
             </AnimatePresence>
 
@@ -275,11 +349,11 @@ export default function FloatingActionMenu() {
 
             <motion.button
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleMainToggle}
                 className={`fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center text-white rounded-full shadow-lg shadow-indigo-500/30 dark:shadow-none transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-900 ${isOpen ? 'bg-slate-700 rotate-90' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 aria-label="Open menu"
             >
-                {isOpen ? <X className="w-7 h-7" /> : <Sparkles className="w-7 h-7" />}
+                {isOpen ? <X className="w-7 h-7" /> : <LayoutGrid className="w-7 h-7" />}
             </motion.button>
 
             {isActivityOpen && (
