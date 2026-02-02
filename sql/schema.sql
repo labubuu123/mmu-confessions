@@ -897,11 +897,29 @@ DECLARE
     target_user_id TEXT;
     target_device_id TEXT;
 BEGIN
-    IF TG_TABLE_NAME = 'confessions' THEN target_user_id := NEW.author_id; target_device_id := NEW.device_id;
-    ELSIF TG_TABLE_NAME = 'comments' THEN target_user_id := NEW.author_id;
-    ELSE IF TG_TABLE_NAME = 'poll_votes' THEN target_user_id := NEW.voter_id; ELSE target_user_id := NEW.user_id; END IF; END IF;
-    IF EXISTS (SELECT 1 FROM public.user_reputation WHERE author_id = target_user_id AND is_blocked = TRUE) THEN RAISE EXCEPTION 'Action denied. Your account has been restricted.'; END IF;
-    IF target_device_id IS NOT NULL THEN IF EXISTS (SELECT 1 FROM public.blocked_devices WHERE device_id = target_device_id) THEN RAISE EXCEPTION 'Action denied. This device has been banned due to previous violations.'; END IF; END IF;
+    IF TG_TABLE_NAME = 'confessions' THEN
+        target_user_id := NEW.author_id;
+        target_device_id := NEW.device_id;
+    ELSIF TG_TABLE_NAME = 'comments' THEN
+        target_user_id := NEW.author_id;
+    ELSIF TG_TABLE_NAME = 'poll_votes' THEN
+        target_user_id := NEW.voter_id;
+    ELSIF TG_TABLE_NAME = 'marketplace_items' THEN
+        target_user_id := NEW.seller_id;
+    ELSE
+        target_user_id := NEW.user_id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.user_reputation WHERE author_id = target_user_id AND is_blocked = TRUE) THEN
+        RAISE EXCEPTION 'Action denied. Your account has been restricted.';
+    END IF;
+
+    IF target_device_id IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM public.blocked_devices WHERE device_id = target_device_id) THEN
+            RAISE EXCEPTION 'Action denied. This device has been banned due to previous violations.';
+        END IF;
+    END IF;
+
     RETURN NEW;
 END;
 $$;
