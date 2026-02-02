@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SmilePlus, ChevronDown } from 'lucide-react'
 
-const PRIMARY_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡', '🎉', '🤔', '🙏', '👏', '🤯', '😍','🔥', '💯']
+const PRIMARY_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡', '🎉', '🤔', '🙏', '👏', '🤯', '😍', '🔥', '💯']
 
 const EXTRA_EMOJIS = [
     '🚀', '🤡', '💀', '💩', '🥴', '👻',
@@ -151,7 +151,6 @@ export default function ReactionsBar({ postId }) {
     }
 
     const activeEmojis = ALL_EMOJIS.filter(emoji => (reactions[emoji] > 0) || userReaction === emoji);
-
     const pickerEmojis = isExpanded ? ALL_EMOJIS : PRIMARY_EMOJIS;
 
     return (
@@ -213,7 +212,7 @@ export default function ReactionsBar({ postId }) {
                             `}
                         >
                             <div className="flex flex-col gap-2">
-                                <div className="grid grid-cols-7 sm:grid-cols-[repeat(14,minmax(0,1fr))] gap-1">
+                                <div className="grid grid-cols-6 sm:grid-cols-[repeat(14,minmax(0,1fr))] gap-1">
                                     {pickerEmojis.map((emoji) => (
                                         <button
                                             key={emoji}
@@ -241,9 +240,7 @@ export default function ReactionsBar({ postId }) {
                                     )}
                                 </button>
                             </div>
-
                             <div className="hidden sm:block absolute top-1/2 -left-1.5 w-3 h-3 bg-white/95 dark:bg-slate-900/95 border-b border-l border-gray-200 dark:border-slate-700 rotate-45 transform -translate-y-1/2"></div>
-
                             <div className="block sm:hidden absolute -top-1.5 left-3 w-3 h-3 bg-white/95 dark:bg-slate-900/95 border-t border-l border-gray-200 dark:border-slate-700 rotate-45 transform"></div>
                         </motion.div>
                     )}
