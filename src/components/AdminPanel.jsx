@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
     Shield, Trash2, RefreshCw, LogIn, LogOut, AlertTriangle, CheckCircle,
@@ -7,7 +7,8 @@ import {
     Megaphone, Search, Menu, X, ArrowLeft, Infinity, Briefcase, Zap,
     Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag, Quote,
     Activity, MapPin, ClipboardList, Check, Search as SearchIcon, FileText,
-    Flame
+    Flame, XCircle, CornerDownRight, ShieldAlert, UserCheck, Ban, Loader2, Flag,
+    User, Hash, KeyRound
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -15,9 +16,8 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import PollDisplay from './PollDisplay'
 import EventDisplay from './EventDisplay'
 import UserManagement from './UserManagement'
-import MatchmakerAdmin from './matchmaker/admin/MatchmakerAdmin'
 import PostModal from './PostModal'
-import AdultAdmin from './adult/AdultAdmin'
+import MatchmakerAvatar from './matchmaker/MatchmakerAvatar'
 import imageCompression from 'browser-image-compression';
 
 dayjs.extend(relativeTime)
@@ -1403,7 +1403,7 @@ function Badge({ color, icon: Icon, label }) {
     }
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${colors[color]}`}>
-            <Icon className="w-3 h-3" /> {label}
+            {Icon && <Icon className="w-3 h-3" />} {label}
         </span>
     )
 }
@@ -1426,4 +1426,641 @@ function Button({ children, onClick, disabled, loading, icon: Icon, variant = 'p
             {children}
         </button>
     )
+}
+
+function AdultAdmin() {
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(0);
+    const [expandedPostId, setExpandedPostId] = useState(null);
+    const [comments, setComments] = useState({});
+    const [loadingComments, setLoadingComments] = useState({});
+    const [actionLoading, setActionLoading] = useState({});
+
+    useEffect(() => {
+        fetchPosts();
+    }, [filter, page]);
+
+    const fetchPosts = async () => {
+        setLoading(true);
+        let query = supabase
+            .from('adult_confessions')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(page * POSTS_PER_PAGE, (page + 1) * POSTS_PER_PAGE - 1);
+
+        if (filter === 'pending') query = query.eq('is_approved', false);
+        if (filter === 'approved') query = query.eq('is_approved', true);
+        if (filter === 'flagged') query = query.eq('ai_flagged', true);
+
+        if (searchQuery) {
+            query = query.ilike('content', `%${searchQuery}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) console.error('Error fetching adult posts:', error);
+        else setPosts(data || []);
+        setLoading(false);
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setPage(0);
+        fetchPosts();
+    };
+
+    const fetchComments = async (postId) => {
+        if (comments[postId]) return;
+        setLoadingComments(prev => ({ ...prev, [postId]: true }));
+
+        const { data, error } = await supabase
+            .from('adult_comments')
+            .select('*')
+            .eq('post_id', postId)
+            .order('created_at', { ascending: true });
+
+        if (!error) {
+            setComments(prev => ({ ...prev, [postId]: data }));
+        }
+        setLoadingComments(prev => ({ ...prev, [postId]: false }));
+    };
+
+    const toggleExpand = (postId) => {
+        if (expandedPostId === postId) {
+            setExpandedPostId(null);
+        } else {
+            setExpandedPostId(postId);
+            fetchComments(postId);
+        }
+    };
+
+    const handleAction = async (id, action, payload = {}) => {
+        setActionLoading(prev => ({ ...prev, [id]: action }));
+        try {
+            if (action === 'delete') {
+                if (!window.confirm("Permanently delete this confession?")) return;
+                const { error } = await supabase.from('adult_confessions').delete().eq('id', id);
+                if (!error) setPosts(prev => prev.filter(p => p.id !== id));
+            }
+            else if (action === 'approve') {
+                const { error } = await supabase.from('adult_confessions').update({ is_approved: true }).eq('id', id);
+                if (!error) updateLocalPost(id, { is_approved: true });
+            }
+            else if (action === 'reject') {
+                const { error } = await supabase.from('adult_confessions').update({ is_approved: false }).eq('id', id);
+                if (!error) updateLocalPost(id, { is_approved: false });
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Action failed");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: null }));
+        }
+    };
+
+    const handleDeleteComment = async (commentId, postId) => {
+        if (!window.confirm("Delete this comment? (Any replies to it will also be deleted)")) return;
+
+        const { error } = await supabase.from('adult_comments').delete().eq('id', commentId);
+
+        if (!error) {
+            setComments(prev => {
+                const postComments = prev[postId] || [];
+
+                const getDescendants = (parentId, all) => {
+                    const children = all.filter(c => c.parent_id === parentId);
+                    let ids = children.map(c => c.id);
+                    children.forEach(child => {
+                        ids = [...ids, ...getDescendants(child.id, all)];
+                    });
+                    return ids;
+                };
+
+                const idsToDelete = [commentId, ...getDescendants(commentId, postComments)];
+
+                return {
+                    ...prev,
+                    [postId]: postComments.filter(c => !idsToDelete.includes(c.id))
+                };
+            });
+        } else {
+            alert("Failed to delete comment");
+        }
+    };
+
+    const updateLocalPost = (id, updates) => {
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    };
+
+    const renderComments = (postComments) => {
+        if (!postComments) return null;
+
+        return postComments.map(comment => {
+            const isReply = !!comment.parent_id;
+            const aliasColor = comment.author_alias === 'Boy' ? 'text-cyan-600 dark:text-cyan-400' : 'text-pink-600 dark:text-pink-400';
+
+            return (
+                <div
+                    key={comment.id}
+                    className={`flex justify-between items-start gap-3 bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 ${isReply ? 'ml-8 border-l-4 border-l-gray-300 dark:border-l-gray-600' : ''}`}
+                >
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            {isReply && <CornerDownRight className="w-3 h-3 text-gray-400" />}
+                            <span className={`text-xs font-bold ${aliasColor}`}>
+                                {comment.author_alias}
+                            </span>
+                            <span className="text--[10px] text-gray-400 font-mono">
+                                {dayjs(comment.created_at).format('MMM D, h:mm A')}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {comment.text}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleDeleteComment(comment.id, comment.post_id)}
+                        className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        title="Delete Comment"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        });
+    };
+
+    return (
+        <div className="space-y-6 p-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                    <FilterButton active={filter === 'all'} onClick={() => setFilter('all')} label="All Posts" />
+                    <FilterButton active={filter === 'pending'} onClick={() => setFilter('pending')} label="Pending" icon={AlertTriangle} color="yellow" />
+                    <FilterButton active={filter === 'approved'} onClick={() => setFilter('approved')} label="Live" icon={CheckCircle} color="green" />
+                    <FilterButton active={filter === 'flagged'} onClick={() => setFilter('flagged')} label="Flagged" icon={Shield} color="red" />
+                </div>
+
+                <form onSubmit={handleSearch} className="flex w-full md:w-auto gap-2">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search content or ID..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none dark:text-white"
+                        />
+                    </div>
+                    <button type="submit" className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        <Search className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    </button>
+                    <button type="button" onClick={fetchPosts} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </form>
+            </div>
+
+            <div className="space-y-4">
+                {posts.length === 0 && !loading && (
+                    <div className="text-center py-20 text-gray-400">
+                        <p>No adult confessions found for this filter.</p>
+                    </div>
+                )}
+
+                {posts.map(post => (
+                    <div key={post.id} className={`bg-white dark:bg-gray-800 border rounded-xl overflow-hidden transition-all ${post.ai_flagged ? 'border-red-300 dark:border-red-900/50' : 'border-gray-200 dark:border-gray-700'}`}>
+                        <div className="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 flex justify-between items-center border-b border-gray-100 dark:border-gray-700 text-xs">
+                            <div className="flex items-center gap-3">
+                                <span className="font-mono text-gray-500">#{post.id}</span>
+                                <span className={`flex items-center gap-1 font-bold ${post.author_alias === 'Boy' ? 'text-cyan-600' : post.author_alias === 'Girl' ? 'text-pink-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    {post.author_alias}
+                                </span>
+                                <span className="text-gray-400">{dayjs(post.created_at).format('MMM D, h:mm A')}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                {post.is_approved
+                                    ? <AdultBadge color="green" label="Approved" />
+                                    : <AdultBadge color="yellow" label="Pending Approval" />
+                                }
+                                {post.ai_flagged && <AdultBadge color="red" label="AI Flagged" icon={Shield} />}
+                            </div>
+                        </div>
+
+                        <div className="p-4 md:p-6">
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {post.tags?.map((tag, i) => (
+                                    <span key={i} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+
+                            <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 text-sm leading-relaxed mb-4">
+                                {post.content}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                {!post.is_approved && (
+                                    <ActionButton
+                                        onClick={() => handleAction(post.id, 'approve')}
+                                        loading={actionLoading[post.id] === 'approve'}
+                                        color="green"
+                                        icon={CheckCircle}
+                                        label="Approve"
+                                    />
+                                )}
+                                {post.is_approved && (
+                                    <ActionButton
+                                        onClick={() => handleAction(post.id, 'reject')}
+                                        loading={actionLoading[post.id] === 'reject'}
+                                        color="orange"
+                                        icon={XCircle}
+                                        label="Unpublish"
+                                    />
+                                )}
+                                <ActionButton
+                                    onClick={() => handleAction(post.id, 'delete')}
+                                    loading={actionLoading[post.id] === 'delete'}
+                                    color="red"
+                                    icon={Trash2}
+                                    label="Delete"
+                                />
+
+                                <div className="flex-1"></div>
+
+                                <button
+                                    onClick={() => toggleExpand(post.id)}
+                                    className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    Comments {expandedPostId === post.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </button>
+                            </div>
+
+                            {expandedPostId === post.id && (
+                                <div className="mt-4 bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-700 animate-in slide-in-from-top-2">
+                                    <h4 className="text-xs font-bold uppercase text-gray-500 mb-3">User Comments</h4>
+
+                                    {loadingComments[post.id] && <div className="text-center text-xs text-gray-400 py-2">Loading comments...</div>}
+
+                                    {!loadingComments[post.id] && comments[post.id]?.length === 0 && (
+                                        <div className="text-center text-xs text-gray-400 py-2 italic">No comments yet.</div>
+                                    )}
+
+                                    <div className="space-y-3">
+                                        {renderComments(comments[post.id])}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex justify-center pt-4">
+                <button
+                    onClick={() => setPage(p => p + 1)}
+                    className="px-6 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
+                >
+                    Load More
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function FilterButton({ active, onClick, label, icon: Icon, color }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${active
+                ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700'
+                }`}
+        >
+            {Icon && <Icon className={`w-3.5 h-3.5 ${color === 'red' ? 'text-red-500' : color === 'green' ? 'text-green-500' : 'text-yellow-500'}`} />}
+            {label}
+        </button>
+    );
+}
+
+function AdultBadge({ color, label, icon: Icon }) {
+    const colors = {
+        green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        yellow: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        red: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    };
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${colors[color] || 'bg-gray-100 text-gray-600'}`}>
+            {Icon && <Icon className="w-3 h-3" />}
+            {label}
+        </span>
+    );
+}
+
+function ActionButton({ onClick, loading, icon: Icon, label, color }) {
+    const colors = {
+        green: 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30',
+        red: 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30',
+        orange: 'bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30',
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            disabled={loading}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${colors[color]}`}
+        >
+            {loading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
+            {label}
+        </button>
+    );
+}
+
+const ExpandableText = ({ text, limit = 100 }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!text) return null;
+    return (
+        <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="whitespace-pre-wrap">{expanded ? text : text.slice(0, limit) + (text.length > limit ? '...' : '')}</span>
+            {text.length > limit && (
+                <button onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }} className="text-indigo-500 font-bold ml-1 text-xs hover:underline">
+                    {expanded ? 'less' : 'more'}
+                </button>
+            )}
+        </div>
+    );
+};
+
+function MatchmakerAdmin() {
+    const [pending, setPending] = useState([]);
+    const [approved, setApproved] = useState([]);
+    const [rejected, setRejected] = useState([]);
+    const [loves, setLoves] = useState([]);
+    const [reports, setReports] = useState([]);
+    const [feed, setFeed] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [processingId, setProcessingId] = useState(null);
+    const [activeTab, setActiveTab] = useState('pending');
+    const [usernames, setUsernames] = useState({});
+
+    useEffect(() => { refreshAll(); }, []);
+
+    const refreshAll = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                fetchPending(),
+                fetchApproved(),
+                fetchRejected(),
+                fetchLoves(),
+                fetchReports(),
+                fetchFeed()
+            ]);
+            await fetchUsernames();
+        } catch (error) { console.error("Error refreshing admin data:", error); }
+        finally { setLoading(false); }
+    };
+
+    const fetchUsernames = async () => { const { data } = await supabase.from('matchmaker_credentials').select('user_id, username'); if (data) { const map = {}; data.forEach(u => { map[u.user_id] = u.username }); setUsernames(map); } };
+    const fetchPending = async () => { const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'pending').order('updated_at', { ascending: true }); setPending(data || []); };
+    const fetchApproved = async () => { const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'approved').order('updated_at', { ascending: false }); setApproved(data || []); };
+    const fetchRejected = async () => { const { data } = await supabase.from('matchmaker_profiles').select('*').eq('status', 'rejected').order('updated_at', { ascending: false }); setRejected(data || []); };
+    const fetchLoves = async () => { const { data } = await supabase.from('matchmaker_loves').select('*, from:from_user_id(nickname), to:to_user_id(nickname)').order('created_at', { ascending: false }).limit(50); setLoves(data || []); };
+    const fetchReports = async () => { const { data } = await supabase.from('matchmaker_reports').select('*, reporter:reporter_id(nickname), reported:reported_id(nickname, warning_count, status)').order('created_at', { ascending: false }); setReports(data || []); };
+
+    const fetchFeed = async () => {
+        const { data, error } = await supabase
+            .from('matchmaker_feed')
+            .select('*, author:matchmaker_profiles(nickname)')
+            .order('created_at', { ascending: false });
+
+        if (error) console.error("Error fetching feed:", error);
+        setFeed(data || []);
+    };
+
+    const handleDeletePost = async (id) => {
+        if (!confirm("Permanently delete this feed post?")) return;
+        try {
+            const { error } = await supabase.from('matchmaker_feed').delete().eq('id', id);
+            if (error) throw error;
+
+            setFeed(prev => prev.filter(p => p.id !== id));
+        } catch (err) {
+            alert("Failed to delete post: " + err.message);
+        }
+    };
+
+    const updateStatus = async (id, status, reason = null) => {
+        if (processingId) return; setProcessingId(id);
+        try {
+            const updates = { status, updated_at: new Date().toISOString() };
+            if (reason) updates.rejection_reason = reason;
+
+            if (status === 'rejected' || status === 'banned') {
+                updates.is_visible = false;
+            } else if (status === 'approved') {
+                updates.is_visible = true;
+                updates.rejection_reason = null;
+            }
+
+            await supabase.from('matchmaker_profiles').update(updates).eq('author_id', id);
+            await refreshAll();
+        } catch (err) { alert(`Error: ${err.message}`); } finally { setProcessingId(null); }
+    };
+
+    const handleReject = async (id, currentNickname) => {
+        const reason = window.prompt(`Rejection reason for ${currentNickname}:`, "Profile incomplete");
+        if (reason?.trim()) await updateStatus(id, 'rejected', reason);
+    };
+
+    const handleBan = async (id, nickname) => {
+        const reason = window.prompt(`BAN ${nickname}? Message:`, "TOS Violation");
+        if (reason) await updateStatus(id, 'banned', reason);
+    };
+
+    const handleWarnAndRevoke = async (userId, currentCount, reportReason) => {
+        if (processingId) return;
+        const newCount = (currentCount || 0) + 1;
+        const customReason = window.prompt("Warning message:", `Community Warning #${newCount}: ${reportReason || 'Violation'}.`);
+        if (!customReason) return;
+        setProcessingId(userId);
+        try {
+            await supabase.from('matchmaker_profiles').update({ status: 'rejected', warning_count: newCount, rejection_reason: customReason, is_visible: false }).eq('author_id', userId);
+            await supabase.from('matchmaker_reports').delete().eq('reported_id', userId);
+            await refreshAll();
+        } catch (err) { alert(`Error: ${err.message}`); } finally { setProcessingId(null); }
+    };
+
+    const handleDismissReport = async (reportId) => {
+        if (!window.confirm("Dismiss report?")) return;
+        await supabase.from('matchmaker_reports').delete().eq('id', reportId);
+        setReports(prev => prev.filter(r => r.id !== reportId));
+    };
+
+    const ProfileCard = ({ p, children }) => (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden">
+            <div className="p-4 flex items-center gap-4 bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-700">
+                <div className="w-16 h-16 rounded-3xl overflow-hidden bg-white shadow-sm shrink-0 border-2 border-white dark:border-gray-700">
+                    <MatchmakerAvatar config={p.avatar_config} gender={p.gender} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">{p.nickname}</h3>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
+                        <span className="capitalize bg-white dark:bg-gray-700 px-2 py-0.5 rounded border dark:border-gray-600">{p.gender}, {p.age}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</span>
+                        <span className="flex items-center gap-1 text-indigo-500"><KeyRound className="w-3 h-3" /> {usernames[p.author_id]}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 space-y-3 flex-1 text-sm">
+                {p.red_flags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                        {p.red_flags.map((f, i) => <span key={i} className="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded border border-red-100 font-bold">{f}</span>)}
+                    </div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    {p.mbti && <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-center font-bold">{p.mbti}</div>}
+                    {p.zodiac && <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-center font-bold">{p.zodiac}</div>}
+                </div>
+                <div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Self Intro</span>
+                    <ExpandableText text={p.self_intro} />
+                </div>
+                <div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Looking For</span>
+                    <ExpandableText text={p.looking_for} />
+                </div>
+                <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Contact</span>
+                    <p className="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded select-all truncate text-indigo-600 dark:text-indigo-400">{p.contact_info}</p>
+                </div>
+                {p.rejection_reason && p.status !== 'approved' && (
+                    <div className="p-2 bg-red-50 text-red-600 text-xs rounded border border-red-100">
+                        <strong>Reason:</strong> {p.rejection_reason}
+                    </div>
+                )}
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-2">
+                {children}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            {reports.length > 0 && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <h3 className="font-bold text-red-700 dark:text-red-400 flex items-center gap-2 mb-3"><ShieldAlert className="w-5 h-5" /> Active Reports ({reports.length})</h3>
+                    <div className="grid gap-3 md:grid-cols-2">
+                        {reports.map(r => (
+                            <div key={r.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm text-sm">
+                                <div className="flex justify-between font-bold mb-1 dark:text-white"><span>{r.reported?.nickname}</span><span className="text-xs text-red-500">{r.reported?.warning_count} Warns</span></div>
+                                <div className="text-gray-500 text-xs mb-2">Reporter: {r.reporter?.nickname}</div>
+                                <div className="bg-gray-50 dark:bg-gray-900 p-2 rounded text-gray-700 dark:text-gray-300 italic mb-3">"{r.reason}"</div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleDismissReport(r.id)} className="flex-1 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">Dismiss</button>
+                                    <button onClick={() => handleWarnAndRevoke(r.reported_id, r.reported?.warning_count, r.reason)} className="flex-1 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-bold">Warn</button>
+                                    <button onClick={() => handleBan(r.reported_id, r.reported?.nickname)} className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold">Ban</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto pb-1">
+                {['pending', 'approved', 'rejected', 'feed'].map(t => (
+                    <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-t-lg font-bold capitalize transition-colors ${activeTab === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`}>
+                        {t} ({t === 'pending' ? pending.length : t === 'approved' ? approved.length : t === 'feed' ? feed.length : rejected.length})
+                    </button>
+                ))}
+            </div>
+
+            {loading ? <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {activeTab === 'pending' && pending.map(p => (
+                        <ProfileCard key={p.author_id} p={p}>
+                            <button onClick={() => updateStatus(p.author_id, 'approved')} className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Approve</button>
+                            <button onClick={() => handleReject(p.author_id, p.nickname)} className="bg-red-100 hover:bg-red-200 text-red-600 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><X className="w-3 h-3" /> Reject</button>
+                        </ProfileCard>
+                    ))}
+                    {activeTab === 'approved' && approved.map(p => (
+                        <ProfileCard key={p.author_id} p={p}>
+                            <button onClick={() => updateStatus(p.author_id, 'pending')} className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Ban className="w-3 h-3" /> Revoke</button>
+                            <button onClick={() => handleBan(p.author_id, p.nickname)} className="bg-gray-800 hover:bg-black text-white py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1"><Trash2 className="w-3 h-3" /> Ban</button>
+                        </ProfileCard>
+                    ))}
+                    {activeTab === 'rejected' && rejected.map(p => (
+                        <ProfileCard key={p.author_id} p={p}>
+                            <div className="col-span-2 text-center text-xs text-gray-400 italic py-2">Waiting for user update...</div>
+                        </ProfileCard>
+                    ))}
+
+                    {activeTab === 'feed' && feed.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${post.gender === 'male' ? 'bg-indigo-100 text-indigo-600' : 'bg-pink-100 text-pink-600'}`}>
+                                        <Megaphone className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                                            {post.author?.nickname || 'Unknown'}
+                                            <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">{post.location_tag}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400">{new Date(post.created_at).toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-300 italic">
+                                "{post.content}"
+                            </div>
+                            <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="w-full py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" /> Delete Post
+                            </button>
+                        </div>
+                    ))}
+
+                    {((activeTab === 'pending' && !pending.length) || (activeTab === 'approved' && !approved.length) || (activeTab === 'feed' && !feed.length)) && (
+                        <div className="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">No content found.</div>
+                    )}
+                </div>
+            )}
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700 font-bold flex items-center gap-2"><Heart className="w-4 h-4 text-pink-500" /> Recent Love Activity</div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700"><tr><th className="px-4 py-3">From</th><th className="px-4 py-3">To</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Time</th></tr></thead>
+                        <tbody className="divide-y dark:divide-gray-700">
+                            {loves.map(l => (
+                                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <td className="px-4 py-2 font-medium">{l.from?.nickname}</td>
+                                    <td className="px-4 py-2">{l.to?.nickname}</td>
+                                    <td className="px-4 py-2">
+                                        <span className={`text-xs font-bold ${l.status === 'accepted' ? 'text-green-500' :
+                                            l.status === 'rejected' ? 'text-red-500' :
+                                                'text-gray-500 dark:text-gray-400'
+                                            }`}>
+                                            {l.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-gray-400 text-xs">
+                                        {new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 }
