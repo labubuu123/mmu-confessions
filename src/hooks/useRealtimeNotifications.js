@@ -55,6 +55,14 @@ export const useRealtimeNotifications = () => {
         { event: "*", schema: "public", table: "confessions" },
         (payload) => {
           if (payload.new && payload.new.approved === true) {
+            const myAnonId = localStorage.getItem("anonId");
+            if (
+              myAnonId &&
+              String(payload.new.author_id) === String(myAnonId)
+            ) {
+              return;
+            }
+
             const isNewlyVisible =
               payload.eventType === "INSERT" ||
               (payload.eventType === "UPDATE" &&
@@ -106,6 +114,14 @@ export const useRealtimeNotifications = () => {
         { event: "*", schema: "public", table: "adult_confessions" },
         (payload) => {
           if (payload.new && payload.new.is_approved === true) {
+            const myAnonId = localStorage.getItem("anonId");
+            if (
+              myAnonId &&
+              String(payload.new.author_id) === String(myAnonId)
+            ) {
+              return;
+            }
+
             const isNewlyVisible =
               payload.eventType === "INSERT" ||
               (payload.eventType === "UPDATE" &&
