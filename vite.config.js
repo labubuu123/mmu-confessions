@@ -6,11 +6,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'ads.txt', 'sitemap.xml'],
-      devOptions: {
-        enabled: true
-      },
+      devOptions: { enabled: true, type: 'module' },
       manifest: {
         name: 'MMU Confessions',
         short_name: 'MMU Confess',

@@ -9,8 +9,10 @@ import {
     Search,
     Users,
     BarChart3,
+    Bell
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { usePushSubscription } from '../hooks/usePushSubscription'
 
 const navLinks = [
     { to: '/', label: 'Home', icon: Home },
@@ -23,6 +25,7 @@ const navLinks = [
 
 export default function Header({ onlineCount }) {
     const location = useLocation()
+    const { toggleSubscription, loading, isSubscribed } = usePushSubscription()
 
     const isActive = (path) => {
         if (path === '/' && location.pathname === '/') return true
@@ -82,6 +85,30 @@ export default function Header({ onlineCount }) {
                             <span className="text-sm font-semibold">{onlineCount}</span>
                             <Users className="w-4 h-4" />
                         </div>
+
+                        <button
+                            onClick={toggleSubscription}
+                            disabled={loading}
+                            className={`flex items-center justify-center p-2 rounded-lg transition-all border backdrop-blur-sm relative overflow-hidden group ${isSubscribed
+                                ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700'
+                                : loading
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700'
+                                    : 'bg-white/50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:border-indigo-200 dark:hover:border-indigo-700'
+                                }`}
+                            title={isSubscribed ? "Tap to disable notifications" : "Enable Notifications"}
+                        >
+                            <Bell
+                                className={`w-5 h-5 transition-all ${isSubscribed
+                                    ? 'fill-blue-500 text-blue-600 dark:text-blue-400' // Blue icon
+                                    : loading
+                                        ? 'text-indigo-500 animate-pulse'
+                                        : 'text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
+                                    }`}
+                            />
+                            {isSubscribed && (
+                                <span className="absolute inset-0 bg-blue-400/10 dark:bg-blue-400/5 animate-pulse"></span>
+                            )}
+                        </button>
                     </div>
                 </div>
 
