@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
     Home,
     TrendingUp,
     Shield,
-    Sun,
-    Moon,
     MessageSquare,
     FileText,
     Search,
@@ -23,8 +21,9 @@ const navLinks = [
     { to: '/admin', label: 'Admin', icon: Shield },
 ];
 
-export default function Header({ theme, setTheme, onlineCount }) {
+export default function Header({ onlineCount }) {
     const location = useLocation()
+
     const isActive = (path) => {
         if (path === '/' && location.pathname === '/') return true
         if (path !== '/' && location.pathname.startsWith(path)) return true
@@ -32,8 +31,10 @@ export default function Header({ theme, setTheme, onlineCount }) {
     }
 
     return (
-        <header className="sticky top-0 z-30 border-b border-gray-200 dark:border-slate-800 shadow-sm bg-white/70 dark:bg-slate-900/80 backdrop-blur-md transition-colors duration-300">
-            <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3">
+        <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b-0 transition-all duration-300">
+            <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+
+            <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
                         <motion.div
@@ -53,23 +54,23 @@ export default function Header({ theme, setTheme, onlineCount }) {
                         </div>
                     </Link>
 
-                    <nav className="hidden lg:flex items-center gap-1">
+                    <nav className="hidden lg:flex items-center gap-1 bg-gray-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-gray-200/50 dark:border-slate-700/50">
                         {navLinks.map(link => (
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                className={`flex items-center gap-2 px-3 xl:px-4 py-2 rounded-lg transition text-sm ${isActive(link.to)
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-sm font-medium ${isActive(link.to)
+                                    ? 'text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-sm'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
                                     }`}
                             >
-                                <link.icon className="w-4 h-4" />
-                                <span className="font-medium">{link.desktopLabel || link.label}</span>
+                                <link.icon className={`w-4 h-4 ${isActive(link.to) ? 'stroke-[2.5px]' : ''}`} />
+                                <span>{link.desktopLabel || link.label}</span>
                             </Link>
                         ))}
                     </nav>
 
-                    <div className="flex items-center gap-2 sm:gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <div
                             className="flex items-center gap-1.5 text-gray-600 dark:text-slate-300 px-2 py-1 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700 backdrop-blur-sm"
                             title={`${onlineCount} users online`}
@@ -81,40 +82,30 @@ export default function Header({ theme, setTheme, onlineCount }) {
                             <span className="text-sm font-semibold">{onlineCount}</span>
                             <Users className="w-4 h-4" />
                         </div>
-
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                                const newTheme = theme === 'light' ? 'dark' : 'light';
-                                setTheme(newTheme);
-                                document.documentElement.classList.toggle('dark', newTheme === 'dark');
-                            }}
-                            className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition border border-gray-200 dark:border-slate-700"
-                            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-                        >
-                            {theme === 'light' ? (
-                                <Moon className="w-5 h-5 text-gray-700 dark:text-slate-300" />
-                            ) : (
-                                <Sun className="w-5 h-5 text-gray-700 dark:text-slate-300" />
-                            )}
-                        </motion.button>
                     </div>
                 </div>
 
-                <nav className="lg:hidden grid grid-cols-6 items-center justify-around mt-2 pt-2 border-t border-gray-200 dark:border-slate-800 gap-1">
-                    {navLinks.map(link => (
-                        <Link
-                            key={link.to}
-                            to={link.to}
-                            className={`flex flex-col items-center gap-0.5 sm:gap-1 py-1.5 sm:py-2 rounded-lg transition ${isActive(link.to)
-                                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
-                                : 'text-gray-700 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                                }`}
-                        >
-                            <link.icon className="w-5 h-5" />
-                            <span className="text-[10px] sm:text-xs font-medium">{link.label}</span>
-                        </Link>
-                    ))}
+                <nav className="lg:hidden mt-3 pt-1">
+                    <div className="grid grid-cols-6 gap-1 p-1 bg-gray-50/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-xl border border-gray-100 dark:border-slate-700/50">
+                        {navLinks.map(link => {
+                            const active = isActive(link.to);
+                            return (
+                                <Link
+                                    key={link.to}
+                                    to={link.to}
+                                    className={`flex flex-col items-center justify-center gap-1 py-1.5 rounded-lg transition-all duration-200 ${active
+                                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                        : 'text-gray-500 dark:text-slate-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/30'
+                                        }`}
+                                >
+                                    <link.icon className={`w-4 h-4 ${active ? 'stroke-[2.5px]' : ''}`} />
+                                    <span className={`text-[9px] font-bold leading-none ${active ? 'opacity-100' : 'opacity-70'}`}>
+                                        {link.label}
+                                    </span>
+                                </Link>
+                            )
+                        })}
+                    </div>
                 </nav>
             </div>
         </header>

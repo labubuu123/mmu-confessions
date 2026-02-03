@@ -20,6 +20,7 @@ import KarmaShop from "./components/KarmaShop";
 import { NotificationProvider } from "./components/NotificationSystem";
 import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
+import ReloadPrompt from "./components/ReloadPrompt";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
@@ -138,10 +139,9 @@ const AppContent = () => {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-          <Route path="/matchmaker" element={<Matchmaker />} />
+          <Route path="/matchmaker/*" element={<Matchmaker />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/adult" element={<AdultSection />} />
-          <Route path="/adult/:id" element={<AdultSection />} />
+          <Route path="/adult/*" element={<AdultSection />} />
           <Route path="/karma-shop" element={<KarmaShop />} />
         </Routes>
       </main>
@@ -172,6 +172,7 @@ const AppContent = () => {
           </div>
         </div>
       </footer>
+      <ReloadPrompt />
     </div>
   );
 };

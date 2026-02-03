@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'robots.txt', 'ads.txt', 'sitemap.xml'],
       devOptions: {
         enabled: true
@@ -37,10 +37,14 @@ export default defineConfig({
             src: '/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png'
-          }
-        ]
+          },
+        ],
+      },
+      workbox: {
+        skipWaiting: false,
+        clientsClaim: false,
       }
-    })
+    }),
   ],
   base: '/',
   build: {
