@@ -32,10 +32,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ message: 'No subscribers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    const SITE_URL = 'https://mmuconfessions.fun';
+
     const payload = JSON.stringify({
       title: 'New Confession! 📢',
       body: record.text ? `${record.text.substring(0, 50)}...` : 'Someone posted a new confession.',
-      url: window.location.origin + `/post/${record.id}`,
+      url: `${SITE_URL}/post/${record.id}`,
       icon: '/favicon.svg'
     });
 
