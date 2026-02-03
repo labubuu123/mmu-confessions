@@ -9,9 +9,13 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
+
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'ads.txt', 'sitemap.xml'],
-      devOptions: { enabled: true, type: 'module' },
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      },
       manifest: {
         name: 'MMU Confessions',
         short_name: 'MMU Confess',
@@ -41,11 +45,6 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        skipWaiting: false,
-        clientsClaim: false,
-      }
     }),
   ],
   base: '/',
