@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { RefreshCw, X, Zap, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,10 +11,22 @@ export default function ReloadPrompt() {
     } = useRegisterSW({
         onRegistered(r) {
             if (r) {
+                r.update().catch(err => console.log('SW update check failed:', err))
+
                 setInterval(() => {
-                    console.log('Checking for new service worker version...')
+                    console.log('Checking for new service worker version (interval)...')
                     r.update()
-                }, 60 * 60 * 1000)
+                }, 30 * 60 * 1000)
+
+                const checkUpdate = () => {
+                    if (document.visibilityState === 'visible') {
+                        console.log('User returned to app, checking for updates...')
+                        r.update().catch(e => console.error(e))
+                    }
+                }
+
+                document.addEventListener('visibilitychange', checkUpdate)
+                window.addEventListener('focus', checkUpdate)
             }
         },
         onRegisterError(error) {
@@ -49,11 +61,11 @@ export default function ReloadPrompt() {
                         </div>
                         <div className="flex-1">
                             <h3 className="font-bold text-gray-900 dark:text-white text-sm">
-                                {needRefresh ? 'New Update Available!' : 'Ready to work offline'}
+                                {needRefresh ? 'New Version Available' : 'Ready to work offline'}
                             </h3>
                             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
                                 {needRefresh
-                                    ? 'A new version of MMU Confessions is available with fresh features. Refresh to update.'
+                                    ? 'A new update is available. Refresh to see the latest content.'
                                     : 'App has been cached for offline use.'}
                             </p>
                         </div>
@@ -79,7 +91,7 @@ export default function ReloadPrompt() {
                                 className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Clock className="w-3.5 h-3.5" />
-                                Remind Later
+                                Later
                             </button>
                         </div>
                     ) : (

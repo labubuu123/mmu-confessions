@@ -291,7 +291,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
                 onClick={() => onOpen && onOpen(post)}
                 style={containerStyle}
                 className={`
-                    relative mb-6 rounded-2xl transition-all duration-300 cursor-pointer group w-full
+                    relative mb-2 rounded-2xl transition-all duration-300 cursor-pointer group w-full
                     ${showLangMenu ? 'z-30' : 'z-0'}
                     ${post.is_sponsored ? 'transform hover:-translate-y-1' : ''}
                     ${moodData?.birthday

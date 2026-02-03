@@ -183,7 +183,7 @@ export default function Feed() {
                             endReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
                             overscan={500}
                             itemContent={(index, post) => (
-                                <div className="pb-6">
+                                <div className="pb-2">
                                     <PostCard
                                         post={post}
                                         onOpen={(p) => navigate(`/post/${p.id}`)}
