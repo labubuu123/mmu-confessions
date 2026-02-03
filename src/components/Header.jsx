@@ -46,7 +46,7 @@ export default function Header({ onlineCount }) {
                         </motion.div>
                         <div>
                             <span className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-purple-600 dark:from-indigo-400 dark:via-purple-400 dark:to-purple-400 bg-clip-text text-transparent block leading-tight whitespace-nowrap">
-                                MMU Confessions
+                                MMU Confessionss
                             </span>
                             <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 leading-tight">
                                 Share Anonymously
