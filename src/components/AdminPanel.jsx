@@ -1278,62 +1278,6 @@ export default function AdminPanel() {
                         </div>
                     )}
 
-                    {activeTab === 'announcements' && (
-                        <div className="space-y-6">
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Megaphone className="w-5 h-5 text-indigo-500" /> Create Announcement</h3>
-                                <form onSubmit={createAnnouncement} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <div className="md:col-span-3 space-y-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Title</label>
-                                            <input type="text" value={newAnnouncement.title} onChange={e => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Server Maintenance" required />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
-                                            <select value={newAnnouncement.type} onChange={e => setNewAnnouncement({ ...newAnnouncement, type: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                <option value="info">Info (Blue)</option>
-                                                <option value="alert">Alert (Red)</option>
-                                                <option value="success">Success (Green)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase">Content</label>
-                                        <textarea value={newAnnouncement.content} onChange={e => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })} className="w-full p-2.5 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" placeholder="Announcement details..." required />
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <button type="submit" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">Post Announcement</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-600 dark:text-gray-400 uppercase text-sm">Active Announcements</h3>
-                                {announcements.length === 0 && <p className="text-gray-400 italic">No announcements found.</p>}
-                                {announcements.map(a => (
-                                    <div key={a.id} className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 p-5 shadow-sm flex justify-between items-start gap-4 ${a.type === 'alert' ? 'border-red-500' : a.type === 'success' ? 'border-green-500' : 'border-indigo-500'}`}>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="font-bold text-lg dark:text-white">{a.title}</h4>
-                                                {!a.is_active && <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-xs rounded text-gray-600 dark:text-gray-400">Inactive</span>}
-                                            </div>
-                                            <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{a.content}</p>
-                                            <p className="text-xs text-gray-400 mt-2">{dayjs(a.created_at).format('MMM D, YYYY h:mm A')}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <button onClick={() => toggleAnnouncement(a.id, a.is_active)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title={a.is_active ? 'Deactivate' : 'Activate'}>
-                                                {a.is_active ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Square className="w-5 h-5" />}
-                                            </button>
-                                            <button onClick={() => deleteAnnouncement(a.id)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete">
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {activeTab === 'lostfound' && (
                         <div className="space-y-6">
                             <div className="flex justify-between items-center">
