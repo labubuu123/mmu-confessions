@@ -18,6 +18,17 @@ import SEO from './SEO'
 
 dayjs.extend(relativeTime)
 
+const THEME_STYLES = {
+    sunset: 'bg-gradient-to-br from-orange-400 to-pink-500 text-white shadow-inner',
+    ocean: 'bg-gradient-to-br from-blue-400 to-emerald-400 text-white shadow-inner',
+    love: 'bg-gradient-to-br from-red-400 to-pink-600 text-white shadow-inner',
+    forest: 'bg-gradient-to-br from-emerald-600 to-teal-900 text-emerald-50 shadow-inner',
+    galaxy: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-800 text-white shadow-inner',
+    fire: 'bg-gradient-to-br from-red-600 via-orange-600 to-yellow-500 text-white shadow-inner',
+    arctic: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-inner',
+    coffee: 'bg-gradient-to-br from-amber-900 to-stone-900 text-amber-50 shadow-inner border border-amber-900'
+};
+
 export default function PostModal({ post, postId, onClose, onNavigate }) {
     const navigate = useNavigate()
     const [internalPost, setInternalPost] = useState(post)
@@ -37,6 +48,13 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
             return null;
         }
     }, [internalPost?.mood]);
+
+    const themeStyle = useMemo(() => {
+        if (moodData?.text_theme && moodData.text_theme !== 'default') {
+            return THEME_STYLES[moodData.text_theme] || null;
+        }
+        return null;
+    }, [moodData]);
 
     useEffect(() => {
         function onKey(e) {
@@ -360,9 +378,17 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             )}
 
-                            <p className="text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
-                                {renderTextWithHashtags(internalPost.text)}
-                            </p>
+                            {themeStyle ? (
+                                <div className={`w-full p-6 sm:p-8 rounded-xl flex items-center justify-center text-center min-h-[200px] sm:min-h-[240px] mb-3 shadow-sm ${themeStyle}`}>
+                                    <p className="text-lg sm:text-xl md:text-2xl font-bold whitespace-pre-wrap break-words leading-snug">
+                                        {renderTextWithHashtags(internalPost.text)}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm sm:text-base md:text-lg text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed break-words">
+                                    {renderTextWithHashtags(internalPost.text)}
+                                </p>
+                            )}
 
                             {internalPost.media_type === 'images' && displayImages.length > 0 && (
                                 <div className={`mt-4 ${displayImages.length === 1 ? '' :

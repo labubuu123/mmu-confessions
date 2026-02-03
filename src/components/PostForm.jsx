@@ -35,6 +35,18 @@ const MEME_TEMPLATES = [
     { id: 'toy', name: 'Toy Story Everywhere' }
 ];
 
+const TEXT_THEMES = [
+    { id: 'default', name: 'Classic (Default)', css: 'bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100' },
+    { id: 'sunset', name: 'Sunset', css: 'bg-gradient-to-br from-orange-400 to-pink-500 text-white placeholder-white/70' },
+    { id: 'ocean', name: 'Ocean', css: 'bg-gradient-to-br from-blue-400 to-emerald-400 text-white placeholder-white/70' },
+    { id: 'love', name: 'Love', css: 'bg-gradient-to-br from-red-400 to-pink-600 text-white placeholder-white/70' },
+    { id: 'forest', name: 'Forest', css: 'bg-gradient-to-br from-emerald-600 to-teal-900 text-emerald-50 placeholder-emerald-200/70' },
+    { id: 'galaxy', name: 'Galaxy', css: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-800 text-white placeholder-white/70' },
+    { id: 'fire', name: 'Fire', css: 'bg-gradient-to-br from-red-600 via-orange-600 to-yellow-500 text-white placeholder-white/70' },
+    { id: 'arctic', name: 'Arctic', css: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white placeholder-white/70' },
+    { id: 'coffee', name: 'Coffee', css: 'bg-gradient-to-br from-amber-900 to-stone-900 text-amber-50 placeholder-amber-200/70' }
+];
+
 function getAnonId() {
     let anonId = localStorage.getItem('anonId');
     if (!anonId) {
@@ -141,6 +153,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const textAreaRef = useRef(null);
     const [showBirthdayCreator, setShowBirthdayCreator] = useState(false);
     const [birthdayData, setBirthdayData] = useState(null);
+    const [selectedTheme, setSelectedTheme] = useState(TEXT_THEMES[0]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -178,6 +191,10 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 if (draft.surveyLink) {
                     setSurveyLink(draft.surveyLink);
                     setShowSurveyInput(true);
+                }
+                if (draft.textThemeId) {
+                    const theme = TEXT_THEMES.find(t => t.id === draft.textThemeId);
+                    if (theme) setSelectedTheme(theme);
                 }
 
                 if (draft.pollData) {
@@ -226,6 +243,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                 policyAccepted,
                 isDebate,
                 surveyLink,
+                textThemeId: selectedTheme.id,
                 lastSaved: Date.now()
             };
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftState));
@@ -236,7 +254,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         if (viralData && Math.abs(text.length - (viralData.textLength || 0)) > 20) {
             setViralData(null);
         }
-    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded, isDebate, surveyLink]);
+    }, [text, customName, selectedMood, selectedCampus, pollData, eventData, seriesData, lostFoundData, policyAccepted, draftLoaded, isDebate, surveyLink, selectedTheme]);
 
     useEffect(() => {
         if (audio) {
@@ -250,9 +268,47 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
         }
     }, [audio]);
 
+    const handleThemeChange = (theme) => {
+        setSelectedTheme(theme);
+
+        if (theme.id !== 'default') {
+            setImages([]);
+            setPreviews([]);
+            setVideo(null);
+            setVideoPreview(null);
+            setAudio(null);
+            setOriginalAudio(null);
+            setShowAudioOptions(false);
+
+            setPollData(null);
+            setShowPollCreator(false);
+
+            setEventData(null);
+            setShowEventCreator(false);
+
+            setLostFoundData(null);
+            setShowLostFoundCreator(false);
+
+            setSeriesData(null);
+            setShowSeriesManager(false);
+
+            setBirthdayData(null);
+            setShowBirthdayCreator(false);
+
+            setIsDebate(false);
+            setSurveyLink('');
+            setShowSurveyInput(false);
+        }
+    };
+
     const handleMemeify = async () => {
         if (!text.trim()) {
             warning('Write a confession to meme-ify!');
+            return;
+        }
+
+        if (selectedTheme.id !== 'default') {
+            warning('Memes are not available in themed mode. Switch to Default (Gray).');
             return;
         }
 
@@ -635,14 +691,15 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             }
 
             let moodData = null;
-            if (selectedMood || birthdayData || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment || surveyLink) {
+            if (selectedMood || birthdayData || (voiceEffect && voiceEffect !== 'normal') || aiAnalysis.sentiment || surveyLink || selectedTheme.id !== 'default') {
                 moodData = {
                     ...(selectedMood || {}),
                     voice_effect: voiceEffect !== 'normal' ? voiceEffect : null,
                     ai_sentiment: aiAnalysis.sentiment,
                     toxicity_flag: aiAnalysis.toxic,
                     birthday: birthdayData,
-                    survey_link: surveyLink ? surveyLink.trim() : null
+                    survey_link: surveyLink ? surveyLink.trim() : null,
+                    text_theme: selectedTheme.id
                 };
             }
 
@@ -797,6 +854,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
             setShowSurveyInput(false);
             setBirthdayData(null);
             setShowBirthdayCreator(false);
+            setSelectedTheme(TEXT_THEMES[0]);
 
             if (!aiAnalysis.toxic) {
                 success('Posted successfully!');
@@ -1067,6 +1125,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const charCount = text.length;
     const isNearLimit = charCount > MAX_TEXT_LENGTH * 0.9;
 
+    const isThemed = selectedTheme.id !== 'default';
+
     return (
         <>
             <div className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg border p-4 sm:p-6 mb-4 sm:mb-6 transition-colors ${isDebate ? 'border-orange-500 dark:border-orange-500 shadow-orange-100 dark:shadow-orange-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
@@ -1141,12 +1201,33 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 </div>
                             )}
 
+                            <div className="mb-2">
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {TEXT_THEMES.map((theme) => (
+                                        <button
+                                            key={theme.id}
+                                            type="button"
+                                            onClick={() => handleThemeChange(theme)}
+                                            className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all flex-shrink-0 ${theme.css.includes('gradient') ? theme.css : 'bg-gray-100 dark:bg-gray-800'
+                                                } ${selectedTheme.id === theme.id
+                                                    ? 'border-indigo-600 scale-110 ring-2 ring-indigo-200 dark:ring-indigo-900'
+                                                    : 'border-transparent hover:scale-105'
+                                                }`}
+                                            title={theme.name}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
                             <textarea
                                 ref={textAreaRef}
                                 value={text}
                                 onChange={e => setText(e.target.value)}
                                 placeholder={isDebate ? "State your hot take! (e.g., 'Pineapple belongs on pizza')" : (replyingTo ? "Share your thoughts on this..." : "What's on your mind? Share anonymously... (Use #hashtags to categorize)")}
-                                className={`w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100 ${isDebate ? 'ring-2 ring-orange-500/50' : 'focus:ring-2 focus:ring-indigo-500'}`}
+                                className={selectedTheme.id === 'default'
+                                    ? `w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100 ${isDebate ? 'ring-2 ring-orange-500/50' : 'focus:ring-2 focus:ring-indigo-500'}`
+                                    : `w-full p-6 sm:p-8 border-0 rounded-lg sm:rounded-xl resize-none outline-none transition-all text-center font-bold text-xl sm:text-2xl min-h-[200px] flex items-center justify-center shadow-inner ${selectedTheme.css}`
+                                }
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
                                 disabled={isRewriting}
@@ -1229,8 +1310,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     <button
                                         type="button"
                                         onClick={handleMemeify}
-                                        disabled={isGeneratingMeme || !text.trim()}
-                                        className={`group flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 transition-all shadow-sm ${isGeneratingMeme ? 'opacity-70 cursor-wait' : ''}`}
+                                        disabled={isGeneratingMeme || !text.trim() || isThemed}
+                                        className={`group flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 transition-all shadow-sm ${isGeneratingMeme || isThemed ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         {isGeneratingMeme ? (
                                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1573,9 +1654,9 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
 
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-1 sm:gap-1">
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Image className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            <label className={`cursor-pointer flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-lg transition ${isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                                <Image className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-green-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Photos
                                 </span>
                                 <input
@@ -1584,13 +1665,13 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     multiple
                                     onChange={handleImageChange}
                                     className="hidden"
-                                    disabled={loading || !!video || !!audio}
+                                    disabled={loading || !!video || !!audio || isThemed}
                                 />
                             </label>
 
-                            <label className="cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <Film className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                            <label className={`cursor-pointer flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                                <Film className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-red-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Video
                                 </span>
                                 <input
@@ -1598,7 +1679,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                     accept="video/*"
                                     onChange={handleVideoChange}
                                     className="hidden"
-                                    disabled={loading || images.length > 0 || !!audio}
+                                    disabled={loading || images.length > 0 || !!audio || isThemed}
                                 />
                             </label>
 
@@ -1609,12 +1690,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${(audio || isRecording || showAudioOptions)
                                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || images.length > 0 || !!video}
+                                disabled={loading || images.length > 0 || !!video || isThemed}
                             >
-                                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <Mic className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-purple-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Audio
                                 </span>
                             </button>
@@ -1631,12 +1712,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${isDebate
                                     ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || showLostFoundCreator || showBirthdayCreator}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || showLostFoundCreator || showBirthdayCreator || isThemed}
                             >
-                                <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <Scale className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-orange-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Debate
                                 </span>
                             </button>
@@ -1653,12 +1734,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showPollCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator}
+                                disabled={loading || showEventCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator || isThemed}
                             >
-                                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <BarChart3 className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-indigo-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Poll
                                 </span>
                             </button>
@@ -1675,12 +1756,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showEventCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator}
+                                disabled={loading || showPollCreator || showSeriesManager || showLostFoundCreator || isDebate || showBirthdayCreator || isThemed}
                             >
-                                <CalendarPlus className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <CalendarPlus className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-orange-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Event
                                 </span>
                             </button>
@@ -1697,12 +1778,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showLostFoundCreator
                                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || isDebate || showBirthdayCreator}
+                                disabled={loading || showPollCreator || showEventCreator || showSeriesManager || isDebate || showBirthdayCreator || isThemed}
                             >
-                                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-indigo-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Lost & Found
                                 </span>
                             </button>
@@ -1712,12 +1793,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 onClick={handleToggleSeries}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSeriesManager
                                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showBirthdayCreator}
+                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showBirthdayCreator || isThemed}
                             >
-                                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <Sparkles className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-purple-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Series
                                 </span>
                             </button>
@@ -1737,12 +1818,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 onClick={() => setShowSurveyInput(!showSurveyInput)}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showSurveyInput
                                     ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading}
+                                disabled={loading || isThemed}
                             >
-                                <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <ClipboardList className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-teal-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Survey
                                 </span>
                             </button>
@@ -1759,12 +1840,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 }}
                                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition ${showBirthdayCreator
                                     ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    : (isThemed ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700')
                                     }`}
-                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showSeriesManager}
+                                disabled={loading || showPollCreator || showEventCreator || showLostFoundCreator || isDebate || showSeriesManager || isThemed}
                             >
-                                <Cake className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
-                                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                                <Cake className={`w-4 h-4 sm:w-5 sm:h-5 ${isThemed ? 'text-gray-400' : 'text-pink-500'}`} />
+                                <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${isThemed ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
                                     Birthday
                                 </span>
                             </button>

@@ -34,6 +34,8 @@ const PATTERNS = [
     '🪁', '🪀', '🎡', '🎢', '🖌️', '🖍️', '🧵', '🧶'
 ];
 
+const AVATAR_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 function simpleHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -62,7 +64,7 @@ export default function AnonAvatar({ authorId, size = 'md', showBadge = false, b
     const hash = simpleHash(authorId);
     const gradient = GRADIENTS[hash % GRADIENTS.length];
     const pattern = PATTERNS[hash % PATTERNS.length];
-    const letter = authorId.substring(0, 1).toUpperCase();
+    const letter = AVATAR_CHARS[hash % AVATAR_CHARS.length];
 
     const topBadge = badges && badges.length > 0 ? badges[0] : null;
 
