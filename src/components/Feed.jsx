@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUp, Loader2 } from 'lucide-react'
+import { Virtuoso } from 'react-virtuoso'
 import PostCard from './PostCard'
 import PostForm from './PostForm'
 import PostModal from './PostModal'
@@ -12,7 +13,13 @@ import SEO from './SEO'
 const fetchConfessions = async ({ pageParam = 0 }) => {
     const { data, error } = await supabase
         .from('confessions')
-        .select('*')
+        .select(`
+            *,
+            reactions ( emoji, count ),
+            events ( * ),
+            polls ( * ),
+            lost_and_found ( * )
+        `)
         .eq('approved', true)
         .order('pinned', { ascending: false })
         .order('created_at', { ascending: false })
@@ -28,7 +35,6 @@ export default function Feed() {
     const { id: modalPostId } = useParams();
     const [replyingTo, setReplyingTo] = useState(null);
     const [newPostsQueue, setNewPostsQueue] = useState([]);
-    const loadMoreRef = useRef(null);
 
     const {
         data,
@@ -45,6 +51,10 @@ export default function Feed() {
         },
         staleTime: 1000 * 60 * 5,
     });
+
+    const allPosts = useMemo(() => {
+        return data?.pages.flatMap(page => page) || [];
+    }, [data]);
 
     useEffect(() => {
         const channel = supabase
@@ -82,27 +92,6 @@ export default function Feed() {
         };
     }, [queryClient]);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-                    fetchNextPage();
-                }
-            },
-            { threshold: 0.5 }
-        );
-
-        if (loadMoreRef.current) {
-            observer.observe(loadMoreRef.current);
-        }
-
-        return () => {
-            if (loadMoreRef.current) {
-                observer.unobserve(loadMoreRef.current);
-            }
-        };
-    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
     function handleLoadNewPosts() {
         queryClient.setQueryData(['confessions'], (oldData) => {
             if (!oldData) return oldData;
@@ -124,7 +113,14 @@ export default function Feed() {
     function handlePosted(newPost) {
         queryClient.setQueryData(['confessions'], (oldData) => {
             if (!oldData) return oldData;
-            const newFirstPage = [newPost, ...oldData.pages[0]];
+            const formattedPost = {
+                ...newPost,
+                reactions: [],
+                events: [],
+                polls: [],
+                lost_and_found: []
+            };
+            const newFirstPage = [formattedPost, ...oldData.pages[0]];
             return {
                 ...oldData,
                 pages: [newFirstPage, ...oldData.pages.slice(1)]
@@ -158,7 +154,7 @@ export default function Feed() {
                 schema={websiteSchema}
             />
 
-            <div className="max-w-2xl mx-auto px-4 py-8">
+            <div className="max-w-2xl mx-auto px-4 py-8 min-h-screen">
                 <PostForm
                     onPosted={handlePosted}
                     replyingTo={replyingTo}
@@ -181,27 +177,33 @@ export default function Feed() {
                     ) : status === 'error' ? (
                         <p className="text-red-500 text-center">Error: {error.message}</p>
                     ) : (
-                        <>
-                            {data?.pages.map((page, i) => (
-                                <React.Fragment key={i}>
-                                    {page.map(post => (
-                                        <PostCard
-                                            key={post.id}
-                                            post={post}
-                                            onOpen={(p) => navigate(`/post/${p.id}`)}
-                                            onQuote={handleQuote}
-                                        />
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </>
-                    )}
-                </div>
-
-                <div ref={loadMoreRef} className="py-8 flex justify-center">
-                    {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-gray-400" />}
-                    {!hasNextPage && status === 'success' && (
-                        <p className="text-gray-400 text-sm">You've reached the end.</p>
+                        <Virtuoso
+                            useWindowScroll
+                            data={allPosts}
+                            endReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+                            overscan={500}
+                            itemContent={(index, post) => (
+                                <div className="pb-6">
+                                    <PostCard
+                                        post={post}
+                                        onOpen={(p) => navigate(`/post/${p.id}`)}
+                                        onQuote={handleQuote}
+                                        priority={index < 2}
+                                    />
+                                </div>
+                            )}
+                            components={{
+                                Footer: () => (
+                                    <div className="py-8 flex justify-center">
+                                        {isFetchingNextPage ? (
+                                            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                                        ) : !hasNextPage ? (
+                                            <p className="text-gray-400 text-sm">You've reached the end.</p>
+                                        ) : null}
+                                    </div>
+                                )
+                            }}
+                        />
                     )}
                 </div>
 

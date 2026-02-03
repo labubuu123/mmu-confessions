@@ -119,12 +119,20 @@ const BirthdayHero = ({ birthdayData }) => {
     );
 };
 
-export default function PostCard({ post, onOpen, onQuote }) {
-    const [reactions, setReactions] = useState({})
+export default function PostCard({ post, onOpen, onQuote, priority = false }) {
+    const [reactions, setReactions] = useState(() => {
+        const map = {};
+        if (post.reactions && Array.isArray(post.reactions)) {
+            post.reactions.forEach(r => { map[r.emoji] = r.count });
+        }
+        return map;
+    });
+
     const [isReported, setIsReported] = useState(post.reported || false)
-    const [poll, setPoll] = useState(null)
-    const [event, setEvent] = useState(null)
-    const [lostFound, setLostFound] = useState(null)
+    const [poll] = useState(Array.isArray(post.polls) ? post.polls[0] : null)
+    const [event] = useState(Array.isArray(post.events) ? post.events[0] : null)
+    const [lostFound] = useState(Array.isArray(post.lost_and_found) ? post.lost_and_found[0] : null)
+    
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
     const [translation, setTranslation] = useState(null)
@@ -177,8 +185,6 @@ export default function PostCard({ post, onOpen, onQuote }) {
         return null;
     }, [moodData]);
 
-    useEffect(() => { fetchReactions(); fetchAttachments(); }, [post.id])
-
     useEffect(() => {
         function handleClickOutside(event) {
             if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
@@ -188,22 +194,6 @@ export default function PostCard({ post, onOpen, onQuote }) {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [langMenuRef]);
-
-    async function fetchReactions() {
-        const { data } = await supabase.from('reactions').select('emoji, count').eq('post_id', post.id)
-        if (data) {
-            const reactionsMap = {}; data.forEach(r => { reactionsMap[r.emoji] = r.count }); setReactions(reactionsMap)
-        }
-    }
-
-    async function fetchAttachments() {
-        const { data: eventData } = await supabase.from('events').select('*').eq('confession_id', post.id).limit(1).maybeSingle()
-        if (eventData) { setEvent(eventData); return; }
-        const { data: pollData } = await supabase.from('polls').select('*').eq('confession_id', post.id).maybeSingle()
-        if (pollData) { setPoll(pollData); return; }
-        const { data: lfData } = await supabase.from('lost_and_found').select('*').eq('confession_id', post.id).maybeSingle()
-        if (lfData) { setLostFound(lfData) }
-    }
 
     async function handleReport(e) {
         e.stopPropagation()
@@ -475,6 +465,8 @@ export default function PostCard({ post, onOpen, onQuote }) {
                             srcSet={generateSrcSet(displayImages[0])}
                             sizes="(max-width: 640px) 100vw, 640px"
                             alt="Sponsored Content"
+                            loading={priority ? "eager" : "lazy"}
+                            fetchPriority={priority ? "high" : "auto"}
                             className="w-full h-auto max-h-[80vh] object-contain bg-black/5 dark:bg-black/20 shadow-inner transition-transform duration-700 group-hover/img:scale-[1.01]"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
@@ -490,7 +482,8 @@ export default function PostCard({ post, onOpen, onQuote }) {
                         {displayImages.slice(0, 4).map((url, idx) => (
                             <div key={idx} className="relative cursor-pointer group/img" onClick={(e) => handleImageClick(e, url)}>
                                 <img
-                                    loading="lazy"
+                                    loading={priority ? "eager" : "lazy"}
+                                    fetchPriority={priority ? "high" : "auto"}
                                     src={getOptimizedUrl(url, 800)}
                                     srcSet={generateSrcSet(url)}
                                     sizes={getImageSizes()}

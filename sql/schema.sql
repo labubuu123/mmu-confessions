@@ -993,7 +993,7 @@ DECLARE
     post RECORD;
     deleted_count INT := 0;
 BEGIN
-    FOR post IN SELECT id FROM public.confessions WHERE created_at < NOW() - INTERVAL '15 days' AND is_permanent = FALSE LOOP
+    FOR post IN SELECT id FROM public.confessions WHERE created_at < NOW() - INTERVAL '20 days' AND is_permanent = FALSE LOOP
         PERFORM public.delete_post_and_storage(post.id);
         deleted_count := deleted_count + 1;
     END LOOP;

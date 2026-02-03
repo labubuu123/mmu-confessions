@@ -5,6 +5,7 @@ import './index.css'
 import { BrowserRouter as Router } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import ReloadPrompt from "./components/ReloadPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <HelmetProvider>
         <Router>
           <App />
+          <ReloadPrompt />
         </Router>
       </HelmetProvider>
     </QueryClientProvider>

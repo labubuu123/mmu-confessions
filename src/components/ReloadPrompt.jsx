@@ -1,6 +1,6 @@
 import React from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
-import { RefreshCw, X, Zap } from 'lucide-react'
+import { RefreshCw, X, Zap, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ReloadPrompt() {
@@ -10,6 +10,12 @@ export default function ReloadPrompt() {
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r) {
+            if (r) {
+                setInterval(() => {
+                    console.log('Checking for new service worker version...')
+                    r.update()
+                }, 60 * 60 * 1000)
+            }
         },
         onRegisterError(error) {
             console.log('SW registration error', error)
@@ -19,6 +25,13 @@ export default function ReloadPrompt() {
     const close = () => {
         setOfflineReady(false)
         setNeedRefresh(false)
+    }
+
+    const remindLater = () => {
+        setNeedRefresh(false)
+        setTimeout(() => {
+            setNeedRefresh(true)
+        }, 60 * 60 * 1000)
     }
 
     return (
@@ -52,7 +65,7 @@ export default function ReloadPrompt() {
                         </button>
                     </div>
 
-                    {needRefresh && (
+                    {needRefresh ? (
                         <div className="flex gap-2 mt-1">
                             <button
                                 onClick={() => updateServiceWorker(true)}
@@ -62,10 +75,20 @@ export default function ReloadPrompt() {
                                 Refresh Now
                             </button>
                             <button
-                                onClick={close}
-                                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors"
+                                onClick={remindLater}
+                                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
                             >
-                                Dismiss
+                                <Clock className="w-3.5 h-3.5" />
+                                Remind Later
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2 mt-1">
+                            <button
+                                onClick={close}
+                                className="w-full px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors"
+                            >
+                                Close
                             </button>
                         </div>
                     )}
