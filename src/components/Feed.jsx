@@ -65,6 +65,11 @@ export default function Feed() {
                 table: 'confessions'
             }, (payload) => {
                 if (payload.new.approved) {
+                    const myAnonId = localStorage.getItem('anonId');
+                    if (myAnonId && String(payload.new.author_id) === String(myAnonId)) {
+                        return;
+                    }
+
                     setNewPostsQueue(prev => [payload.new, ...prev]);
                 }
             })
