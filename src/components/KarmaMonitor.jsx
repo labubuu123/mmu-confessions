@@ -19,10 +19,10 @@ export default function KarmaMonitor() {
     const fetchAllUsers = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.rpc('get_all_users_karma');
-
+            const { data, error } = await supabase.rpc('get_karma_ledger');
+            
             if (error) throw error;
-
+            
             setUsers(data || []);
         } catch (err) {
             console.error("Error fetching karma data:", err);
@@ -32,7 +32,7 @@ export default function KarmaMonitor() {
         }
     };
 
-    const filteredUsers = users.filter(user =>
+    const filteredUsers = users.filter(user => 
         user.user_id && user.user_id.toLowerCase().includes(filterQuery.toLowerCase())
     );
 
@@ -71,7 +71,7 @@ export default function KarmaMonitor() {
                     </div>
                     <p className="text-3xl font-black text-gray-900 dark:text-white">{users.length}</p>
                 </div>
-
+                
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-lg">
@@ -92,7 +92,7 @@ export default function KarmaMonitor() {
                         <h3 className="font-bold text-gray-700 dark:text-gray-200">Total Points Spent</h3>
                     </div>
                     <p className="text-3xl font-black text-gray-900 dark:text-white">
-                        {users.reduce((acc, curr) => acc + (curr.spent_points || 0), 0).toLocaleString()}
+                        {users.reduce((acc, curr) => acc + (curr.total_spent || 0), 0).toLocaleString()}
                     </p>
                 </div>
             </div>
@@ -103,20 +103,20 @@ export default function KarmaMonitor() {
                         <Activity className="w-5 h-5 text-indigo-600" />
                         Karma Ledger
                     </h2>
-
+                    
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <div className="relative flex-1 md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Filter by User ID..."
+                            <input 
+                                type="text" 
+                                placeholder="Filter by User ID..." 
                                 value={filterQuery}
                                 onChange={(e) => setFilterQuery(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                             />
                         </div>
-                        <button
-                            onClick={fetchAllUsers}
+                        <button 
+                            onClick={fetchAllUsers} 
                             disabled={loading}
                             className="p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition"
                             title="Refresh Data"
@@ -145,8 +145,8 @@ export default function KarmaMonitor() {
                                 <th className="px-6 py-4 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition text-green-600 dark:text-green-400" onClick={() => handleSort('total_earned')}>
                                     <div className="flex items-center justify-end gap-1">Total Earned <SortIcon columnKey="total_earned" /></div>
                                 </th>
-                                <th className="px-6 py-4 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition text-red-600 dark:text-red-400" onClick={() => handleSort('spent_points')}>
-                                    <div className="flex items-center justify-end gap-1">Spent <SortIcon columnKey="spent_points" /></div>
+                                <th className="px-6 py-4 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition text-red-600 dark:text-red-400" onClick={() => handleSort('total_spent')}>
+                                    <div className="flex items-center justify-end gap-1">Spent <SortIcon columnKey="total_spent" /></div>
                                 </th>
                                 <th className="px-6 py-4 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10" onClick={() => handleSort('current_balance')}>
                                     <div className="flex items-center justify-end gap-1">Current Balance <SortIcon columnKey="current_balance" /></div>
@@ -164,7 +164,7 @@ export default function KarmaMonitor() {
                                     </td>
                                 </tr>
                             )}
-
+                            
                             {!loading && sortedUsers.length === 0 && (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-12 text-center text-gray-400 italic">
@@ -178,8 +178,8 @@ export default function KarmaMonitor() {
                                     <td className="px-6 py-4 font-mono text-xs text-gray-500">
                                         <div className="flex items-center gap-2">
                                             <span className="truncate max-w-[150px]" title={user.user_id}>{user.user_id}</span>
-                                            <button
-                                                onClick={() => { navigator.clipboard.writeText(user.user_id); alert('ID Copied!'); }}
+                                            <button 
+                                                onClick={() => {navigator.clipboard.writeText(user.user_id); alert('ID Copied!');}}
                                                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                                             >
                                                 <span className="text-[10px] font-bold uppercase">Copy</span>
@@ -199,7 +199,7 @@ export default function KarmaMonitor() {
                                         +{user.total_earned}
                                     </td>
                                     <td className="px-6 py-4 text-right font-bold text-red-600 dark:text-red-400">
-                                        {user.spent_points > 0 ? `-${user.spent_points}` : '0'}
+                                        {user.total_spent > 0 ? `-${user.total_spent}` : '0'}
                                     </td>
                                     <td className="px-6 py-4 text-right font-black text-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10">
                                         {user.current_balance}

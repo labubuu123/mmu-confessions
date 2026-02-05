@@ -1302,66 +1302,14 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_global_karma_leaderboard()
+CREATE OR REPLACE FUNCTION public.get_karma_ledger()
 RETURNS TABLE (
     user_id TEXT,
     post_count BIGINT,
     comment_count BIGINT,
     likes_received BIGINT,
     total_earned BIGINT,
-    spent_points INTEGER,
-    current_balance BIGINT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    RETURN QUERY
-    WITH p_stats AS (
-        SELECT author_id, COUNT(*) as p_count, COALESCE(SUM(likes_count), 0) as l_count
-        FROM public.confessions
-        WHERE approved = TRUE AND author_id IS NOT NULL
-        GROUP BY author_id
-    ),
-    c_stats AS (
-        SELECT author_id, COUNT(*) as c_count
-        FROM public.comments
-        WHERE author_id IS NOT NULL
-        GROUP BY author_id
-    )
-    SELECT
-        COALESCE(p.author_id, c.author_id) as u_id,
-        COALESCE(p.p_count, 0) as p_count,
-        COALESCE(c.c_count, 0) as c_count,
-        COALESCE(p.l_count, 0) as l_count,
-        (
-            (COALESCE(p.p_count, 0) * 10) +
-            (COALESCE(c.c_count, 0) * 5) +
-            (COALESCE(p.l_count, 0) * 2)
-        ) as t_earned,
-        COALESCE(r.spent_points, 0) as s_points,
-        (
-            (COALESCE(p.p_count, 0) * 10) +
-            (COALESCE(c.c_count, 0) * 5) +
-            (COALESCE(p.l_count, 0) * 2) -
-            COALESCE(r.spent_points, 0)
-        ) as cur_bal
-    FROM p_stats p
-    FULL OUTER JOIN c_stats c ON p.author_id = c.author_id
-    LEFT JOIN public.user_reputation r ON COALESCE(p.author_id, c.author_id) = r.author_id
-    ORDER BY cur_bal DESC
-    LIMIT 100;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.get_all_users_karma()
-RETURNS TABLE (
-    user_id TEXT,
-    post_count BIGINT,
-    comment_count BIGINT,
-    likes_received BIGINT,
-    total_earned BIGINT,
-    spent_points BIGINT,
+    total_spent BIGINT,
     current_balance BIGINT
 )
 LANGUAGE plpgsql
@@ -1370,7 +1318,7 @@ AS $$
 BEGIN
     RETURN QUERY
     WITH
-    all_users AS (
+    base_users AS (
         SELECT author_id FROM public.confessions WHERE author_id IS NOT NULL
         UNION
         SELECT author_id FROM public.comments WHERE author_id IS NOT NULL
@@ -1379,48 +1327,48 @@ BEGIN
     ),
     p_stats AS (
         SELECT
-            author_id,
-            COUNT(*)::BIGINT as p_count,
-            COALESCE(SUM(likes_count), 0)::BIGINT as l_count
+            confessions.author_id,
+            COUNT(*)::BIGINT as cnt,
+            COALESCE(SUM(confessions.likes_count), 0)::BIGINT as likes
         FROM public.confessions
-        WHERE approved = TRUE
-        GROUP BY author_id
+        WHERE confessions.approved = TRUE
+        GROUP BY confessions.author_id
     ),
     c_stats AS (
-        SELECT 
-            author_id, 
-            COUNT(*)::BIGINT as c_count
+        SELECT
+            comments.author_id,
+            COUNT(*)::BIGINT as cnt
         FROM public.comments
-        GROUP BY author_id
+        GROUP BY comments.author_id
     ),
     r_stats AS (
         SELECT
-            author_id,
-            COALESCE(spent_points, 0)::BIGINT as s_points
-        FROM public.user_reputation
+            ur.author_id,
+            COALESCE(ur.spent_points, 0)::BIGINT as spent
+        FROM public.user_reputation ur
     )
     SELECT
-        u.author_id,
-        COALESCE(p.p_count, 0) as post_count,
-        COALESCE(c.c_count, 0) as comment_count,
-        COALESCE(p.l_count, 0) as likes_received,
+        bu.author_id,
+        COALESCE(p.cnt, 0),
+        COALESCE(c.cnt, 0),
+        COALESCE(p.likes, 0),
         (
-            (COALESCE(p.p_count, 0) * 10) +
-            (COALESCE(c.c_count, 0) * 5) +
-            (COALESCE(p.l_count, 0) * 2)
-        ) as total_earned,
-        COALESCE(r.s_points, 0) as spent_points,
+            (COALESCE(p.cnt, 0) * 10) +
+            (COALESCE(c.cnt, 0) * 5) +
+            (COALESCE(p.likes, 0) * 2)
+        ),
+        COALESCE(r.spent, 0),
         (
-            (COALESCE(p.p_count, 0) * 10) +
-            (COALESCE(c.c_count, 0) * 5) +
-            (COALESCE(p.l_count, 0) * 2) -
-            COALESCE(r.s_points, 0)
-        ) as current_balance
-    FROM all_users u
-    LEFT JOIN p_stats p ON u.author_id = p.author_id
-    LEFT JOIN c_stats c ON u.author_id = c.author_id
-    LEFT JOIN r_stats r ON u.author_id = r.author_id
-    ORDER BY current_balance DESC;
+            (COALESCE(p.cnt, 0) * 10) +
+            (COALESCE(c.cnt, 0) * 5) +
+            (COALESCE(p.likes, 0) * 2) -
+            COALESCE(r.spent, 0)
+        )
+    FROM base_users bu
+    LEFT JOIN p_stats p ON bu.author_id = p.author_id
+    LEFT JOIN c_stats c ON bu.author_id = c.author_id
+    LEFT JOIN r_stats r ON bu.author_id = r.author_id
+    ORDER BY 7 DESC;
 END;
 $$;
 
@@ -1623,8 +1571,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_love_action(TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_global_karma_leaderboard() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_all_users_karma() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_karma_ledger() TO authenticated;
 
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
