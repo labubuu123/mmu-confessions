@@ -15,7 +15,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { renderTextWithHashtags } from '../utils/hashtags'
 import SeriesIndicator from './SeriesIndicator';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { useKarmaShop } from '../hooks/useKarmaShop'
+import { useKarma } from '../hooks/useKarma'
 
 dayjs.extend(relativeTime)
 
@@ -144,7 +144,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
     const langMenuRef = useRef(null)
 
     const anonId = localStorage.getItem('anonId');
-    const { inventory, usePinTicket } = useKarmaShop(anonId);
+    const { inventory, usePinTicket } = useKarma(anonId);
 
     useEffect(() => {
         setIsReported(post.reported || false);
