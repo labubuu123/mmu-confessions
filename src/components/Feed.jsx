@@ -159,7 +159,7 @@ export default function Feed() {
                 schema={websiteSchema}
             />
 
-            <div className="max-w-2xl mx-auto px-4 py-8 min-h-screen">
+            <div className="max-w-2xl mx-auto px-4 py-4 min-h-screen">
                 <PostForm
                     onPosted={handlePosted}
                     replyingTo={replyingTo}

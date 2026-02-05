@@ -39,7 +39,6 @@ export function useKarmaShop(userId) {
     queryKey: ['karmaBalance', userId],
     enabled: !!userId && !inventoryLoading,
     queryFn: async () => {
-
       const { count: postCount } = await supabase
         .from('confessions')
         .select('*', { count: 'exact', head: true })
@@ -80,24 +79,12 @@ export function useKarmaShop(userId) {
 
   const buyItem = useMutation({
     mutationFn: async (itemId) => {
-      const item = items.find(i => i.id === itemId);
-      if (!item) throw new Error('Item not found');
-      if (balance < item.cost) throw new Error('Insufficient Karma Score');
-
-      const existingSlot = inventory.find(slot => slot.item_id === itemId);
-
-      if (existingSlot) {
-        const { error } = await supabase
-          .from('user_inventory')
-          .update({ quantity: existingSlot.quantity + 1 })
-          .eq('id', existingSlot.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_inventory')
-          .insert({ user_id: userId, item_id: itemId, quantity: 1 });
-        if (error) throw error;
-      }
+      const { data, error } = await supabase.rpc('buy_shop_item', {
+        item_id_in: itemId
+      });
+      
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['userInventory', userId]);
@@ -107,17 +94,10 @@ export function useKarmaShop(userId) {
 
   const equipItem = useMutation({
     mutationFn: async (itemId) => {
-      await supabase
-        .from('user_inventory')
-        .update({ is_equipped: false })
-        .eq('user_id', userId);
-
-      const { error } = await supabase
-        .from('user_inventory')
-        .update({ is_equipped: true })
-        .eq('user_id', userId)
-        .eq('item_id', itemId);
-        
+      const { error } = await supabase.rpc('equip_item', {
+        item_id_in: itemId
+      });
+      
       if (error) throw error;
     },
     onSuccess: () => {
