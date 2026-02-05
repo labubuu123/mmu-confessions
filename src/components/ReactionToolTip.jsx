@@ -5,11 +5,18 @@ export default function ReactionTooltip({ reactions }) {
         return null;
     }
 
-    const sortedReactions = Object.entries(reactions)
+    const validReactions = Object.entries(reactions)
+        .filter(([, count]) => Number(count) > 0);
+
+    if (validReactions.length === 0) {
+        return null;
+    }
+
+    const sortedReactions = validReactions
         .sort(([, countA], [, countB]) => countB - countA)
         .slice(0, 5);
 
-    const totalReactions = Object.values(reactions).reduce((sum, count) => sum + count, 0);
+    const totalReactions = validReactions.reduce((sum, [, count]) => sum + Number(count), 0);
 
     return (
         <div className="flex items-center gap-2">

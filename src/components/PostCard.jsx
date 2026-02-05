@@ -132,7 +132,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
     const [poll] = useState(Array.isArray(post.polls) ? post.polls[0] : null)
     const [event] = useState(Array.isArray(post.events) ? post.events[0] : null)
     const [lostFound] = useState(Array.isArray(post.lost_and_found) ? post.lost_and_found[0] : null)
-    
+
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
     const [translation, setTranslation] = useState(null)
@@ -153,7 +153,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
 
     const getTotalReactions = useCallback((reactionsObj) => {
         if (!reactionsObj) return 0
-        return Object.values(reactionsObj).reduce((sum, count) => sum + count, 0)
+        return Object.values(reactionsObj).reduce((sum, count) => sum + (Number(count) || 0), 0)
     }, [])
 
     const excerpt = useMemo(() => post.text?.length > 280 ? post.text.slice(0, 280) + '...' : post.text, [post.text])

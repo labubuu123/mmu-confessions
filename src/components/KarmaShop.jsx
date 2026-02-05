@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useNotifications } from './NotificationSystem';
 
 export default function KarmaShop() {
     const userId = localStorage.getItem('anonId');
     const { balance, items, inventory, loading, buyItem, equipItem } = useKarmaShop(userId);
     const [activeTab, setActiveTab] = useState('shop');
+    const { success, error } = useNotifications();
 
     if (loading) return (
         <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
@@ -104,7 +106,14 @@ export default function KarmaShop() {
                                     key={item.id}
                                     item={item}
                                     balance={balance}
-                                    onBuy={() => buyItem.mutate(item.id)}
+                                    onBuy={() => buyItem.mutate(item.id, {
+                                        onSuccess: () => {
+                                            success(`Successfully purchased ${item.name}!`);
+                                        },
+                                        onError: (err) => {
+                                            error(err.message || 'Failed to purchase item.');
+                                        }
+                                    })}
                                     isPending={buyItem.isPending}
                                     getIcon={getIcon}
                                 />
@@ -125,7 +134,10 @@ export default function KarmaShop() {
                                     <InventoryItem
                                         key={slot.id}
                                         slot={slot}
-                                        onEquip={() => equipItem.mutate(slot.item_id)}
+                                        onEquip={() => equipItem.mutate(slot.item_id, {
+                                            onSuccess: () => success('Item equipped successfully!'),
+                                            onError: () => error('Failed to equip item.')
+                                        })}
                                         getIcon={getIcon}
                                     />
                                 ))
