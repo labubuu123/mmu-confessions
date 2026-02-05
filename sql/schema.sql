@@ -541,30 +541,56 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_users_with_reputation_and_counts()
 RETURNS TABLE (
-    author_id TEXT,
-    post_count BIGINT,
-    comment_count INTEGER,
-    post_reactions_received_count INTEGER,
-    comment_reactions_received_count INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE,
-    is_blocked BOOLEAN
+    author_id                     TEXT,
+    post_count                    BIGINT,
+    comment_count                 BIGINT,
+    post_reactions_received_count BIGINT,
+    spent_points                  INTEGER,
+    is_blocked                    BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
 AS $$
 BEGIN
-    IF (auth.jwt() -> 'user_metadata' ->> 'role') <> 'admin' THEN
-        RAISE EXCEPTION 'Access denied: Must be an admin.';
-    END IF;
-
     RETURN QUERY
-    SELECT ur.author_id,
-        (SELECT COUNT(*) FROM public.confessions c WHERE c.author_id = ur.author_id) AS post_count,
-        ur.comment_count, ur.post_reactions_received_count, ur.comment_reactions_received_count, ur.created_at, ur.updated_at, ur.is_blocked
-    FROM public.user_reputation ur
-    ORDER BY ur.created_at DESC;
+    WITH posts_agg AS (
+        SELECT
+            confessions.author_id,
+            COUNT(*)                      AS p_count,
+            COALESCE(SUM(likes_count), 0) AS p_likes
+        FROM confessions
+        GROUP BY author_id
+    ),
+    
+    comments_agg AS (
+        SELECT
+            comments.author_id,
+            COUNT(*)                      AS c_count
+        FROM comments
+        GROUP BY author_id
+    ),
+    
+    spending_agg AS (
+        SELECT
+            ur.author_id,
+            ur.spent_points
+        FROM public.user_reputation ur
+    )
+
+    SELECT
+        COALESCE(p.author_id, c.author_id) AS author_id,
+        COALESCE(p.p_count, 0)             AS post_count,
+        COALESCE(c.c_count, 0)             AS comment_count,
+        COALESCE(p.p_likes, 0)             AS post_reactions_received_count,
+        COALESCE(s.spent_points, 0)        AS spent_points,
+        EXISTS (
+            SELECT 1
+            FROM public.blocked_devices bd
+            WHERE bd.reason LIKE '%' || COALESCE(p.author_id, c.author_id) || '%'
+        ) AS is_blocked
+    FROM posts_agg p
+    FULL OUTER JOIN comments_agg c ON p.author_id = c.author_id
+    LEFT JOIN spending_agg s       ON COALESCE(p.author_id, c.author_id) = s.author_id;
 END;
 $$;
 
