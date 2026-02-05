@@ -37,7 +37,7 @@ export function useKarmaShop(userId) {
         .rpc('get_karma_balance', { target_user_id: userId });
       
       if (error) {
-        console.error("Error fetching balance:", error);
+        console.error("Balance fetch error:", error);
         return 0;
       }
       return data || 0;
@@ -46,8 +46,9 @@ export function useKarmaShop(userId) {
 
   const buyItem = useMutation({
     mutationFn: async (itemId) => {
-      const { data, error } = await supabase.rpc('buy_shop_item', { 
-        item_id_in: itemId
+      const { data, error } = await supabase.rpc('buy_shop_item', {
+        item_id_in: itemId,
+        user_id_in: userId
       });
       
       if (error) throw error;
@@ -61,7 +62,7 @@ export function useKarmaShop(userId) {
 
   const equipItem = useMutation({
     mutationFn: async (itemId) => {
-      const { error } = await supabase.rpc('equip_item', { 
+      const { error } = await supabase.rpc('equip_item', {
         item_id_in: itemId
       });
       

@@ -350,6 +350,16 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.karma_activity_log (
+    id BIGSERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    activity_type TEXT NOT NULL CHECK (activity_type IN ('purchase', 'refund', 'adjustment', 'sync')),
+    amount INTEGER NOT NULL,
+    description TEXT,
+    related_item_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 INSERT INTO public.shop_items (id, name, description, cost, category, type, config, icon) VALUES
 ('frame_gold', 'Golden Glory', 'A shiny gold border for your Matchmaker avatar.', 500, 'cosmetic', 'frame', '{"border": "4px solid #F59E0B", "glow": "0 0 10px #F59E0B"}'::jsonb, 'Crown'),
 ('frame_neon', 'Cyberpunk Neon', ' glowing neon pink border.', 750, 'cosmetic', 'frame', '{"border": "3px solid #EC4899", "glow": "0 0 15px #EC4899"}'::jsonb, 'Zap'),
@@ -402,6 +412,7 @@ ALTER TABLE public.shop_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1085,65 +1096,47 @@ DECLARE
     v_spent INTEGER;
     total_earned INTEGER;
 BEGIN
-    SELECT COUNT(*) INTO v_post_count
-    FROM public.confessions
-    WHERE author_id = target_user_id AND approved = TRUE;
-
-    SELECT COUNT(*) INTO v_comment_count
-    FROM public.comments
-    WHERE author_id = target_user_id;
-
-    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received 
-    FROM public.confessions
-    WHERE author_id = target_user_id;
+    SELECT COUNT(*) INTO v_post_count FROM public.confessions WHERE author_id = target_user_id AND approved = TRUE;
+    SELECT COUNT(*) INTO v_comment_count FROM public.comments WHERE author_id = target_user_id;
+    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received FROM public.confessions WHERE author_id = target_user_id;
 
     total_earned := (v_post_count * 10) + (v_comment_count * 5) + (v_likes_received * 2);
 
-    SELECT spent_points INTO v_spent 
-    FROM public.user_reputation 
-    WHERE author_id = target_user_id;
+    SELECT spent_points INTO v_spent FROM public.user_reputation WHERE author_id = target_user_id;
     
-    IF v_spent IS NULL THEN 
-        v_spent := 0; 
-    END IF;
-
-    RETURN GREATEST(0, total_earned - v_spent);
+    RETURN GREATEST(0, total_earned - COALESCE(v_spent, 0));
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.buy_shop_item(item_id_in TEXT)
+CREATE OR REPLACE FUNCTION public.buy_shop_item(item_id_in TEXT, user_id_in TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_user_id TEXT;
     v_cost INTEGER;
     v_balance INTEGER;
+    v_item_name TEXT;
 BEGIN
-    v_user_id := auth.uid()::text;
-    
-    SELECT cost INTO v_cost FROM public.shop_items WHERE id = item_id_in;
+    SELECT cost, name INTO v_cost, v_item_name FROM public.shop_items WHERE id = item_id_in;
     IF NOT FOUND THEN RAISE EXCEPTION 'Item not found'; END IF;
 
-    v_balance := public.get_karma_balance(v_user_id);
+    v_balance := public.get_karma_balance(user_id_in);
     
     IF v_balance < v_cost THEN
-        RAISE EXCEPTION 'Insufficient Karma Points (Required: %, Balance: %)', v_cost, v_balance;
+        RAISE EXCEPTION 'Insufficient Karma Points. You have % but need %.', v_balance, v_cost;
     END IF;
 
-    UPDATE public.user_reputation
-    SET spent_points = COALESCE(spent_points, 0) + v_cost,
-        updated_at = NOW()
-    WHERE author_id = v_user_id;
+    INSERT INTO public.user_reputation (author_id, spent_points)
+    VALUES (user_id_in, v_cost)
+    ON CONFLICT (author_id)
+    DO UPDATE SET spent_points = COALESCE(public.user_reputation.spent_points, 0) + v_cost;
 
-    IF NOT FOUND THEN
-        INSERT INTO public.user_reputation (author_id, spent_points)
-        VALUES (v_user_id, v_cost);
-    END IF;
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id)
+    VALUES (user_id_in, 'purchase', -v_cost, 'Purchased ' || v_item_name, item_id_in);
 
     INSERT INTO public.user_inventory (user_id, item_id, quantity)
-    VALUES (v_user_id, item_id_in, 1)
+    VALUES (user_id_in, item_id_in, 1)
     ON CONFLICT (user_id, item_id)
     DO UPDATE SET quantity = public.user_inventory.quantity + 1;
 
@@ -1209,6 +1202,31 @@ BEGIN
     WHERE user_id = v_user_id AND item_id = 'ticket_pin';
     
     DELETE FROM public.user_inventory WHERE quantity <= 0;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_user_karma_stats(target_user_id TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_post_count INTEGER;
+    v_comment_count INTEGER;
+    v_likes_received INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_post_count FROM public.confessions WHERE author_id = target_user_id AND approved = TRUE;
+    SELECT COUNT(*) INTO v_comment_count FROM public.comments WHERE author_id = target_user_id;
+    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received FROM public.confessions WHERE author_id = target_user_id;
+
+    INSERT INTO public.user_reputation (author_id, post_count, comment_count, post_reactions_received_count, updated_at)
+    VALUES (target_user_id, v_post_count, v_comment_count, v_likes_received, NOW())
+    ON CONFLICT (author_id)
+    DO UPDATE SET
+        post_count = EXCLUDED.post_count,
+        comment_count = EXCLUDED.comment_count,
+        post_reactions_received_count = EXCLUDED.post_reactions_received_count,
+        updated_at = NOW();
 END;
 $$;
 
@@ -1392,6 +1410,8 @@ CREATE POLICY "Admin manage blocked devices" ON public.blocked_devices FOR ALL U
 CREATE POLICY "Read items" ON public.shop_items FOR SELECT USING (true);
 CREATE POLICY "Read own inventory" ON public.user_inventory FOR SELECT USING (user_id = auth.uid()::text);
 CREATE POLICY "Allow anon insert" ON public.push_subscriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can view all logs" ON public.karma_activity_log FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Users can view own logs" ON public.karma_activity_log FOR SELECT USING (user_id = current_setting('request.header.x-anon-id', true)::text);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
