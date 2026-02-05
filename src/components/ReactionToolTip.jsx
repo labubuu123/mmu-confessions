@@ -4,7 +4,6 @@ export default function ReactionTooltip({ reactions }) {
     if (!reactions || Object.keys(reactions).length === 0) {
         return null;
     }
-
     const validReactions = Object.entries(reactions)
         .filter(([, count]) => Number(count) > 0);
 

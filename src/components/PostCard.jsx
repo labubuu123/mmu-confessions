@@ -120,18 +120,19 @@ const BirthdayHero = ({ birthdayData }) => {
 };
 
 export default function PostCard({ post, onOpen, onQuote, priority = false }) {
-    const [reactions, setReactions] = useState(() => {
+    const reactions = useMemo(() => {
         const map = {};
         if (post.reactions && Array.isArray(post.reactions)) {
             post.reactions.forEach(r => { map[r.emoji] = r.count });
         }
         return map;
-    });
+    }, [post.reactions]);
 
     const [isReported, setIsReported] = useState(post.reported || false)
-    const [poll] = useState(Array.isArray(post.polls) ? post.polls[0] : null)
-    const [event] = useState(Array.isArray(post.events) ? post.events[0] : null)
-    const [lostFound] = useState(Array.isArray(post.lost_and_found) ? post.lost_and_found[0] : null)
+
+    const poll = useMemo(() => Array.isArray(post.polls) ? post.polls[0] : null, [post.polls])
+    const event = useMemo(() => Array.isArray(post.events) ? post.events[0] : null, [post.events])
+    const lostFound = useMemo(() => Array.isArray(post.lost_and_found) ? post.lost_and_found[0] : null, [post.lost_and_found])
 
     const [zoomedImage, setZoomedImage] = useState(null)
     const [showHeartAnimation, setShowHeartAnimation] = useState(false)
@@ -144,6 +145,16 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
 
     const anonId = localStorage.getItem('anonId');
     const { inventory, usePinTicket } = useKarmaShop(anonId);
+
+    useEffect(() => {
+        setIsReported(post.reported || false);
+        setTranslation(null);
+        setShowTranslation(false);
+        setIsTranslating(false);
+        setZoomedImage(null);
+        setShowHeartAnimation(false);
+        setShowLangMenu(false);
+    }, [post.id, post.reported]);
 
     const hasPinTicket = useMemo(() => {
         return inventory?.some(i => i.item_id === 'ticket_pin' && i.quantity > 0);
