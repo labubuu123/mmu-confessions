@@ -1079,21 +1079,31 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    rep RECORD;
-    total_earned INTEGER := 0;
+    v_post_count INTEGER;
+    v_comment_count INTEGER;
+    v_likes_received INTEGER;
+    v_spent INTEGER;
+    total_earned INTEGER;
 BEGIN
-    SELECT * INTO rep FROM public.user_reputation WHERE author_id = target_user_id;
-    
-    IF NOT FOUND THEN
-        RETURN 0;
-    END IF;
+    SELECT COUNT(*) INTO v_post_count
+    FROM public.confessions
+    WHERE author_id = target_user_id AND approved = TRUE;
 
-    total_earned := (COALESCE(rep.post_count, 0) * 10) +
-                    (COALESCE(rep.comment_count, 0) * 5) +
-                    (COALESCE(rep.post_reactions_received_count, 0) * 2) +
-                    (COALESCE(rep.comment_reactions_received_count, 0) * 2);
+    SELECT COUNT(*) INTO v_comment_count
+    FROM public.comments
+    WHERE author_id = target_user_id;
 
-    RETURN GREATEST(0, total_earned - COALESCE(rep.spent_points, 0));
+    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received
+    FROM public.confessions
+    WHERE author_id = target_user_id;
+
+    total_earned := (v_post_count * 10) + (v_comment_count * 5) + (v_likes_received * 2);
+
+    SELECT COALESCE(spent_points, 0) INTO v_spent
+    FROM public.user_reputation
+    WHERE author_id = target_user_id;
+
+    RETURN GREATEST(0, total_earned - v_spent);
 END;
 $$;
 
