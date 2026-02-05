@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.user_reputation (
     comment_count INTEGER DEFAULT 0,
     post_reactions_received_count INTEGER DEFAULT 0,
     comment_reactions_received_count INTEGER DEFAULT 0,
+    spent_points INTEGER DEFAULT 0,
     is_blocked BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -353,10 +354,11 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
 CREATE TABLE IF NOT EXISTS public.karma_activity_log (
     id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,
-    activity_type TEXT NOT NULL CHECK (activity_type IN ('purchase', 'refund', 'adjustment', 'sync')),
+    activity_type TEXT NOT NULL,
     amount INTEGER NOT NULL,
     description TEXT,
     related_item_id TEXT,
+    balance_after INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -412,6 +414,7 @@ ALTER TABLE public.shop_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1176,7 +1179,7 @@ BEGIN
     SELECT spent_points INTO v_spent FROM public.user_reputation WHERE author_id = target_user_id;
     
     current_balance := GREATEST(0, total_earned - COALESCE(v_spent, 0));
-    
+
     RETURN current_balance;
 END;
 $$;
@@ -1455,6 +1458,8 @@ CREATE POLICY "Read own inventory" ON public.user_inventory FOR SELECT USING (us
 CREATE POLICY "Allow anon insert" ON public.push_subscriptions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admins can view all logs" ON public.karma_activity_log FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 CREATE POLICY "Users can view own logs" ON public.karma_activity_log FOR SELECT USING (user_id = current_setting('request.header.x-anon-id', true)::text);
+CREATE POLICY "Users can view own reputation" ON public.user_reputation FOR SELECT USING (author_id = current_setting('request.header.x-anon-id', true)::text);
+CREATE POLICY "Admins can view all reputation" ON public.user_reputation FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
