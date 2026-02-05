@@ -411,7 +411,6 @@ ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS spent_points INTEGER
 ALTER TABLE public.shop_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -1116,6 +1115,7 @@ AS $$
 DECLARE
     v_cost INTEGER;
     v_balance INTEGER;
+    v_new_balance INTEGER;
     v_item_name TEXT;
 BEGIN
     SELECT cost, name INTO v_cost, v_item_name FROM public.shop_items WHERE id = item_id_in;
@@ -1127,20 +1127,22 @@ BEGIN
         RAISE EXCEPTION 'Insufficient Karma Points. You have % but need %.', v_balance, v_cost;
     END IF;
 
+    v_new_balance := v_balance - v_cost;
+
     INSERT INTO public.user_reputation (author_id, spent_points)
     VALUES (user_id_in, v_cost)
     ON CONFLICT (author_id)
     DO UPDATE SET spent_points = COALESCE(public.user_reputation.spent_points, 0) + v_cost;
 
-    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id)
-    VALUES (user_id_in, 'purchase', -v_cost, 'Purchased ' || v_item_name, item_id_in);
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id, balance_after)
+    VALUES (user_id_in, 'purchase', -v_cost, 'Purchased ' || v_item_name, item_id_in, v_new_balance);
 
     INSERT INTO public.user_inventory (user_id, item_id, quantity)
     VALUES (user_id_in, item_id_in, 1)
     ON CONFLICT (user_id, item_id)
     DO UPDATE SET quantity = public.user_inventory.quantity + 1;
 
-    RETURN jsonb_build_object('success', true, 'new_balance', v_balance - v_cost);
+    RETURN jsonb_build_object('success', true, 'new_balance', v_new_balance);
 END;
 $$;
 
@@ -1214,6 +1216,7 @@ DECLARE
     v_post_count INTEGER;
     v_comment_count INTEGER;
     v_likes_received INTEGER;
+    v_current_balance INTEGER;
 BEGIN
     SELECT COUNT(*) INTO v_post_count FROM public.confessions WHERE author_id = target_user_id AND approved = TRUE;
     SELECT COUNT(*) INTO v_comment_count FROM public.comments WHERE author_id = target_user_id;
@@ -1227,6 +1230,11 @@ BEGIN
         comment_count = EXCLUDED.comment_count,
         post_reactions_received_count = EXCLUDED.post_reactions_received_count,
         updated_at = NOW();
+
+    v_current_balance := public.get_karma_balance(target_user_id);
+        
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
+    VALUES (target_user_id, 'sync', 0, 'System synchronized user stats', v_current_balance);
 END;
 $$;
 

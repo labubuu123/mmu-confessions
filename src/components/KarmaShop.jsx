@@ -17,7 +17,7 @@ export default function KarmaShop() {
     if (loading) return (
         <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
             <Loader2 className="animate-spin text-indigo-600 w-10 h-10" />
-            <p className="text-gray-500 font-medium animate-pulse">Loading marketplace...</p>
+            <p className="text-gray-500 font-medium animate-pulse">Loading Karma Shop...</p>
         </div>
     );
 

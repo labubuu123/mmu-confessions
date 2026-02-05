@@ -11,12 +11,6 @@ import { Link } from 'react-router-dom'
 import { calculateBadges } from '../utils/badgeSystem'
 import dayjs from 'dayjs'
 
-const POINTS = {
-    PER_POST: 10,
-    PER_COMMENT: 5,
-    PER_LIKE_RECEIVED: 2
-};
-
 export default function UserAnalytics() {
     const [stats, setStats] = useState(null)
     const [badges, setBadges] = useState([])
@@ -58,27 +52,15 @@ export default function UserAnalytics() {
                 if (eventData) events = eventData
             }
 
-            const { data: inventoryItems } = await supabase
-                .from('user_inventory')
-                .select('quantity, shop_items(cost)')
-                .eq('user_id', anonId);
+            const { data: serverBalance, error: balanceError } = await supabase
+                .rpc('get_karma_balance', { target_user_id: anonId })
+
+            if (balanceError) console.error("Balance sync error:", balanceError)
 
             const totalPosts = posts?.length || 0
             const totalComments = comments?.length || 0
             const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0
-            const approvedPosts = posts?.filter(p => p.approved).length || 0;
-
-            const totalEarned =
-                (approvedPosts * POINTS.PER_POST) +
-                (totalComments * POINTS.PER_COMMENT) +
-                (totalLikes * POINTS.PER_LIKE_RECEIVED);
-
-            const totalSpent = inventoryItems?.reduce((sum, slot) => {
-                return sum + (slot.shop_items.cost * slot.quantity);
-            }, 0) || 0;
-
-            const karmaBalance = Math.max(0, totalEarned - totalSpent);
-
+            
             const today = dayjs()
             const heatmapData = []
             const dateMap = {}
@@ -141,7 +123,7 @@ export default function UserAnalytics() {
                 totalPosts,
                 totalComments,
                 totalLikes,
-                karmaScore: karmaBalance,
+                karmaScore: serverBalance ?? 0,
                 heatmapData,
                 hourlyData: hours,
                 streak,
@@ -203,7 +185,7 @@ export default function UserAnalytics() {
                 <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
                     Start posting confessions to unlock analytics!
                 </p>
-                <Link to="/create" className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 dark:shadow-none">
+                <Link to="/" className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 dark:shadow-none">
                     Create First Post
                 </Link>
             </div>
