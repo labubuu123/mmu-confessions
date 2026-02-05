@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { RefreshCw, X, Zap, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,22 +11,9 @@ export default function ReloadPrompt() {
     } = useRegisterSW({
         onRegistered(r) {
             if (r) {
-                r.update().catch(err => console.log('SW update check failed:', err))
-
                 setInterval(() => {
-                    console.log('Checking for new service worker version (interval)...')
                     r.update()
-                }, 30 * 60 * 1000)
-
-                const checkUpdate = () => {
-                    if (document.visibilityState === 'visible') {
-                        console.log('User returned to app, checking for updates...')
-                        r.update().catch(e => console.error(e))
-                    }
-                }
-
-                document.addEventListener('visibilitychange', checkUpdate)
-                window.addEventListener('focus', checkUpdate)
+                }, 60 * 60 * 1000)
             }
         },
         onRegisterError(error) {
@@ -39,11 +26,9 @@ export default function ReloadPrompt() {
         setNeedRefresh(false)
     }
 
-    const remindLater = () => {
-        setNeedRefresh(false)
-        setTimeout(() => {
-            setNeedRefresh(true)
-        }, 60 * 60 * 1000)
+    const handleRefresh = async () => {
+        await updateServiceWorker(true);
+        window.location.reload();
     }
 
     return (
@@ -80,14 +65,14 @@ export default function ReloadPrompt() {
                     {needRefresh ? (
                         <div className="flex gap-2 mt-1">
                             <button
-                                onClick={() => updateServiceWorker(true)}
+                                onClick={handleRefresh}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shadow-md shadow-indigo-500/20"
                             >
                                 <RefreshCw className="w-3.5 h-3.5" />
                                 Refresh Now
                             </button>
                             <button
-                                onClick={remindLater}
+                                onClick={() => setNeedRefresh(false)}
                                 className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Clock className="w-3.5 h-3.5" />

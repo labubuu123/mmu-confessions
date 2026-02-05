@@ -8,7 +8,7 @@ import {
     Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag, Quote,
     Activity, MapPin, ClipboardList, Check, Search as SearchIcon, FileText,
     Flame, XCircle, CornerDownRight, ShieldAlert, UserCheck, Ban, Loader2, Flag,
-    User, Hash, KeyRound
+    User, Hash, KeyRound, Coins
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -19,6 +19,7 @@ import UserManagement from './UserManagement'
 import PostModal from './PostModal'
 import MatchmakerAvatar from './matchmaker/MatchmakerAvatar'
 import imageCompression from 'browser-image-compression';
+import KarmaMonitor from './KarmaMonitor';
 
 dayjs.extend(relativeTime)
 
@@ -613,6 +614,7 @@ export default function AdminPanel() {
     const menuItems = [
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'moderation', label: 'Moderation', icon: Shield },
+        { id: 'karma', label: 'Karma Monitor', icon: Coins },
         { id: 'adult', label: 'Adult/NSFW', icon: Flame },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
@@ -698,6 +700,7 @@ export default function AdminPanel() {
 
                 <div className="p-4 md:p-6 max-w-7xl mx-auto">
                     {activeTab === 'adult' && <AdultAdmin />}
+                    {activeTab === 'karma' && <KarmaMonitor />}
 
                     {activeTab === 'analytics' && (
                         <div className="space-y-6">
