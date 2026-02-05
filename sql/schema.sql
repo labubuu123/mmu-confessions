@@ -1093,15 +1093,19 @@ BEGIN
     FROM public.comments
     WHERE author_id = target_user_id;
 
-    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received
+    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received 
     FROM public.confessions
     WHERE author_id = target_user_id;
 
     total_earned := (v_post_count * 10) + (v_comment_count * 5) + (v_likes_received * 2);
 
-    SELECT COALESCE(spent_points, 0) INTO v_spent
-    FROM public.user_reputation
+    SELECT spent_points INTO v_spent 
+    FROM public.user_reputation 
     WHERE author_id = target_user_id;
+    
+    IF v_spent IS NULL THEN 
+        v_spent := 0; 
+    END IF;
 
     RETURN GREATEST(0, total_earned - v_spent);
 END;
@@ -1116,21 +1120,27 @@ DECLARE
     v_user_id TEXT;
     v_cost INTEGER;
     v_balance INTEGER;
-    v_item_type TEXT;
 BEGIN
     v_user_id := auth.uid()::text;
     
-    SELECT cost, type INTO v_cost, v_item_type FROM public.shop_items WHERE id = item_id_in;
+    SELECT cost INTO v_cost FROM public.shop_items WHERE id = item_id_in;
     IF NOT FOUND THEN RAISE EXCEPTION 'Item not found'; END IF;
 
     v_balance := public.get_karma_balance(v_user_id);
+    
     IF v_balance < v_cost THEN
-        RAISE EXCEPTION 'Insufficient Karma Points';
+        RAISE EXCEPTION 'Insufficient Karma Points (Required: %, Balance: %)', v_cost, v_balance;
     END IF;
 
     UPDATE public.user_reputation
-    SET spent_points = COALESCE(spent_points, 0) + v_cost
+    SET spent_points = COALESCE(spent_points, 0) + v_cost,
+        updated_at = NOW()
     WHERE author_id = v_user_id;
+
+    IF NOT FOUND THEN
+        INSERT INTO public.user_reputation (author_id, spent_points)
+        VALUES (v_user_id, v_cost);
+    END IF;
 
     INSERT INTO public.user_inventory (user_id, item_id, quantity)
     VALUES (v_user_id, item_id_in, 1)

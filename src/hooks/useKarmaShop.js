@@ -36,7 +36,10 @@ export function useKarmaShop(userId) {
       const { data, error } = await supabase
         .rpc('get_karma_balance', { target_user_id: userId });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching balance:", error);
+        return 0;
+      }
       return data || 0;
     }
   });
