@@ -1121,7 +1121,7 @@ BEGIN
     SELECT cost, name INTO v_cost, v_item_name FROM public.shop_items WHERE id = item_id_in;
     IF NOT FOUND THEN RAISE EXCEPTION 'Item not found'; END IF;
 
-    v_balance := public.get_karma_balance(user_id_in);
+    v_balance := public.fetch_and_sync_karma(user_id_in);
     
     IF v_balance < v_cost THEN
         RAISE EXCEPTION 'Insufficient Karma Points. You have % but need %.', v_balance, v_cost;
@@ -1129,10 +1129,9 @@ BEGIN
 
     v_new_balance := v_balance - v_cost;
 
-    INSERT INTO public.user_reputation (author_id, spent_points)
-    VALUES (user_id_in, v_cost)
-    ON CONFLICT (author_id)
-    DO UPDATE SET spent_points = COALESCE(public.user_reputation.spent_points, 0) + v_cost;
+    UPDATE public.user_reputation
+    SET spent_points = COALESCE(spent_points, 0) + v_cost
+    WHERE author_id = user_id_in;
 
     INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id, balance_after)
     VALUES (user_id_in, 'purchase', -v_cost, 'Purchased ' || v_item_name, item_id_in, v_new_balance);
@@ -1143,6 +1142,42 @@ BEGIN
     DO UPDATE SET quantity = public.user_inventory.quantity + 1;
 
     RETURN jsonb_build_object('success', true, 'new_balance', v_new_balance);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fetch_and_sync_karma(target_user_id TEXT)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_post_count INTEGER;
+    v_comment_count INTEGER;
+    v_likes_received INTEGER;
+    v_spent INTEGER;
+    total_earned INTEGER;
+    current_balance INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_post_count FROM public.confessions WHERE author_id = target_user_id AND approved = TRUE;
+    SELECT COUNT(*) INTO v_comment_count FROM public.comments WHERE author_id = target_user_id;
+    SELECT COALESCE(SUM(likes_count), 0) INTO v_likes_received FROM public.confessions WHERE author_id = target_user_id;
+
+    total_earned := (v_post_count * 10) + (v_comment_count * 5) + (v_likes_received * 2);
+
+    INSERT INTO public.user_reputation (author_id, post_count, comment_count, post_reactions_received_count, updated_at)
+    VALUES (target_user_id, v_post_count, v_comment_count, v_likes_received, NOW())
+    ON CONFLICT (author_id)
+    DO UPDATE SET
+        post_count = EXCLUDED.post_count,
+        comment_count = EXCLUDED.comment_count,
+        post_reactions_received_count = EXCLUDED.post_reactions_received_count,
+        updated_at = NOW();
+
+    SELECT spent_points INTO v_spent FROM public.user_reputation WHERE author_id = target_user_id;
+    
+    current_balance := GREATEST(0, total_earned - COALESCE(v_spent, 0));
+    
+    RETURN current_balance;
 END;
 $$;
 

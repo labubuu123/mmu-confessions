@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useKarma } from '../hooks/useKarma'
 import {
     TrendingUp, MessageSquare, Heart, Zap, Award,
-    Moon, Sun, Coffee, Flame, Crown, Ghost,
-    CalendarDays, BarChart2, Share2, Camera, ArrowRight,
-    Star, Activity
+    Moon, Coffee, Flame, Crown, Ghost,
+    CalendarDays, BarChart2, ArrowRight, Star, Activity
 } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
@@ -12,24 +12,24 @@ import { calculateBadges } from '../utils/badgeSystem'
 import dayjs from 'dayjs'
 
 export default function UserAnalytics() {
+    const anonId = localStorage.getItem('anonId')
+
+    const { balance, loading: karmaLoading } = useKarma(anonId)
+
     const [stats, setStats] = useState(null)
     const [badges, setBadges] = useState([])
     const [loading, setLoading] = useState(true)
     const [persona, setPersona] = useState(null)
 
     useEffect(() => {
-        fetchUserStats()
-    }, [])
-
-    async function fetchUserStats() {
-        const anonId = localStorage.getItem('anonId')
-        if (!anonId) {
+        if (anonId) {
+            fetchHistoryStats()
+        } else {
             setLoading(false)
-            return
         }
+    }, [anonId])
 
-        setLoading(true)
-
+    async function fetchHistoryStats() {
         try {
             const { data: posts } = await supabase
                 .from('confessions')
@@ -52,15 +52,10 @@ export default function UserAnalytics() {
                 if (eventData) events = eventData
             }
 
-            const { data: serverBalance, error: balanceError } = await supabase
-                .rpc('get_karma_balance', { target_user_id: anonId })
-
-            if (balanceError) console.error("Balance sync error:", balanceError)
-
             const totalPosts = posts?.length || 0
             const totalComments = comments?.length || 0
             const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0
-            
+
             const today = dayjs()
             const heatmapData = []
             const dateMap = {}
@@ -87,25 +82,20 @@ export default function UserAnalytics() {
             posts?.forEach(p => hours[new Date(p.created_at).getHours()]++)
             comments?.forEach(c => hours[new Date(c.created_at).getHours()]++)
 
-            const determinedPersona = calculatePersona(posts, comments, hours, totalLikes)
-
             const activityDates = [
                 ...(posts?.map(p => dayjs(p.created_at).format('YYYY-MM-DD')) || []),
                 ...(comments?.map(c => dayjs(c.created_at).format('YYYY-MM-DD')) || [])
             ].sort().reverse()
-
             const uniqueActivityDates = [...new Set(activityDates)]
 
             let streak = 0
             let currentCheck = today
-
             if (uniqueActivityDates.includes(currentCheck.format('YYYY-MM-DD'))) {
                 streak = 1
             } else if (uniqueActivityDates.includes(currentCheck.subtract(1, 'day').format('YYYY-MM-DD'))) {
                 streak = 1
                 currentCheck = currentCheck.subtract(1, 'day')
             }
-
             if (streak > 0) {
                 for (let i = 1; i < uniqueActivityDates.length; i++) {
                     const prevDate = currentCheck.subtract(i, 'day').format('YYYY-MM-DD')
@@ -117,13 +107,13 @@ export default function UserAnalytics() {
                 }
             }
 
+            const determinedPersona = calculatePersona(posts, comments, hours, totalLikes)
             const earnedBadges = calculateBadges(posts || [], events || [])
 
             setStats({
                 totalPosts,
                 totalComments,
                 totalLikes,
-                karmaScore: serverBalance ?? 0,
                 heatmapData,
                 hourlyData: hours,
                 streak,
@@ -166,11 +156,11 @@ export default function UserAnalytics() {
         return { title: "The NPC", icon: Coffee, color: "text-green-500", bg: "bg-green-50 dark:bg-green-900/20", desc: "Just trying to survive." }
     }
 
-    if (loading) {
+    if (loading || karmaLoading) {
         return (
             <div className="flex flex-col justify-center items-center py-20 min-h-[50vh]">
                 <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-gray-500 font-medium animate-pulse">Calculating vibe...</p>
+                <p className="text-gray-500 font-medium animate-pulse">Syncing Karma...</p>
             </div>
         )
     }
@@ -217,7 +207,7 @@ export default function UserAnalytics() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase opacity-80 tracking-wider">Available Karma</p>
-                                <p className="text-xl md:text-2xl font-black leading-none">{stats.karmaScore}</p>
+                                <p className="text-xl md:text-2xl font-black leading-none">{balance}</p>
                             </div>
                         </div>
                         <Link to="/karma-shop" className="text-xs font-bold bg-white text-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-transform">

@@ -1,8 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 
-export function useKarmaShop(userId) {
+export function useKarma(userId) {
   const queryClient = useQueryClient();
+  const enabled = !!userId;
+
+  const { data: balance = 0, isLoading: balanceLoading } = useQuery({
+    queryKey: ['karmaBalance', userId],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .rpc('fetch_and_sync_karma', { target_user_id: userId });
+      
+      if (error) {
+        console.error("Karma Sync Failed:", error);
+        return 0;
+      }
+      return data;
+    },
+    staleTime: 1000 * 60 * 1,
+  });
+
+  const { data: inventory = [], isLoading: inventoryLoading } = useQuery({
+    queryKey: ['userInventory', userId],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_inventory')
+        .select('*, shop_items(*)')
+        .eq('user_id', userId);
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ['shopItems'],
@@ -16,41 +46,12 @@ export function useKarmaShop(userId) {
     }
   });
 
-  const { data: inventory = [], isLoading: inventoryLoading } = useQuery({
-    queryKey: ['userInventory', userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_inventory')
-        .select('*, shop_items(*)')
-        .eq('user_id', userId);
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: balance = 0, isLoading: balanceLoading } = useQuery({
-    queryKey: ['karmaBalance', userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc('get_karma_balance', { target_user_id: userId });
-      
-      if (error) {
-        console.error("Balance fetch error:", error);
-        return 0;
-      }
-      return data || 0;
-    }
-  });
-
   const buyItem = useMutation({
     mutationFn: async (itemId) => {
-      const { data, error } = await supabase.rpc('buy_shop_item', {
+      const { data, error } = await supabase.rpc('buy_shop_item', { 
         item_id_in: itemId,
         user_id_in: userId
       });
-      
       if (error) throw error;
       return data;
     },
@@ -65,7 +66,6 @@ export function useKarmaShop(userId) {
       const { error } = await supabase.rpc('equip_item', {
         item_id_in: itemId
       });
-      
       if (error) throw error;
     },
     onSuccess: () => {
@@ -74,10 +74,10 @@ export function useKarmaShop(userId) {
   });
 
   return {
-    items,
-    inventory,
     balance,
-    loading: itemsLoading || inventoryLoading || balanceLoading,
+    inventory,
+    items,
+    loading: balanceLoading || inventoryLoading || itemsLoading,
     buyItem,
     equipItem
   };
