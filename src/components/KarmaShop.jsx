@@ -14,6 +14,8 @@ export default function KarmaShop() {
     const [activeTab, setActiveTab] = useState('shop');
     const { success, error } = useNotifications();
 
+    const [filter, setFilter] = useState('all');
+
     if (loading) return (
         <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
             <Loader2 className="animate-spin text-indigo-600 w-10 h-10" />
@@ -29,8 +31,6 @@ export default function KarmaShop() {
         { id: 'feature', label: 'Features' },
         { id: 'badge', label: 'Badges' }
     ];
-
-    const [filter, setFilter] = useState('all');
 
     const filteredItems = items?.filter(item =>
         filter === 'all' ? true : item.category === filter
