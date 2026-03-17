@@ -317,6 +317,7 @@ export default function AdminPanel() {
         const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
         setAnnouncements(data || []);
     }
+
     async function createAnnouncement(e) {
         e.preventDefault();
         const { error } = await supabase.from('announcements').insert([newAnnouncement]);
@@ -326,10 +327,12 @@ export default function AdminPanel() {
             fetchAnnouncements();
         }
     }
+
     async function toggleAnnouncement(id, currentState) {
         await supabase.from('announcements').update({ is_active: !currentState }).eq('id', id);
         fetchAnnouncements();
     }
+
     async function deleteAnnouncement(id) {
         if (!window.confirm("Delete announcement?")) return;
         await supabase.from('announcements').delete().eq('id', id);
@@ -1326,6 +1329,96 @@ export default function AdminPanel() {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'announcements' && (
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Megaphone className="w-5 h-5 text-indigo-500" /> Create Announcement
+                                </h3>
+                                <form onSubmit={createAnnouncement} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Title</label>
+                                            <input
+                                                type="text"
+                                                value={newAnnouncement.title}
+                                                onChange={e => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                                                required
+                                                className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
+                                            <select
+                                                value={newAnnouncement.type}
+                                                onChange={e => setNewAnnouncement({...newAnnouncement, type: e.target.value})}
+                                                className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            >
+                                                <option value="info">Info</option>
+                                                <option value="warning">Warning</option>
+                                                <option value="success">Success</option>
+                                                <option value="error">Error</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Content</label>
+                                        <textarea
+                                            value={newAnnouncement.content}
+                                            onChange={e => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
+                                            required
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none"
+                                        />
+                                    </div>
+                                    <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition">
+                                        Post Announcement
+                                    </button>
+                                </form>
+                            </div>
+                
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Announcements</h3>
+                                {announcements.length === 0 ? (
+                                    <p className="text-gray-500 italic">No announcements found.</p>
+                                ) : (
+                                    announcements.map(a => (
+                                        <div key={a.id} className={`bg-white dark:bg-gray-800 p-4 rounded-xl border ${a.is_active ? 'border-indigo-500 shadow-sm' : 'border-gray-200 dark:border-gray-700 opacity-75'}`}>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
+                                                        a.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
+                                                        a.type === 'error' ? 'bg-red-100 text-red-700' :
+                                                        a.type === 'success' ? 'bg-green-100 text-green-700' :
+                                                        'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                        {a.type}
+                                                    </span>
+                                                    <h4 className="font-bold text-gray-900 dark:text-white">{a.title}</h4>
+                                                </div>
+                                                <span className="text-xs text-gray-500">{dayjs(a.created_at).fromNow()}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">{a.content}</p>
+                                            <div className="flex items-center gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                                <button
+                                                    onClick={() => toggleAnnouncement(a.id, a.is_active)}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${a.is_active ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300' : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20'}`}
+                                                >
+                                                    {a.is_active ? 'Deactivate' : 'Activate'}
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteAnnouncement(a.id)}
+                                                    className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
