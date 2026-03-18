@@ -5,7 +5,7 @@ const ADJECTIVES = ['Sleepy', 'Caffeinated', 'Stressed', 'Chill', 'Panicking', '
 const ANIMALS = ['Capybara', 'Monyet', 'Cat', 'Dog', 'Panda', 'Raccoon', 'Labubu', 'OwaOwa', 'Hamster', 'Owl'];
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
-const TRENDING_ROOMS = ['#FinalExams', '#FOB', '#FET', '#FCI', '#FIST', '#FCM', '#FOM', '#FOL', '#FAC', '#FCA', '#FAIE', '#CyberjayaLife', '#MelakaCampus', '#Dating'];
+const TRENDING_ROOMS = ['#FinalExams', '#FOB', '#FET', '#FCI', '#FIST', '#FCM', '#FOM', '#FOL', '#FAC', '#FCA', '#FAIE', , '#BadLecturer', '#CyberjayaLife', '#MelakaCampus', '#Dating'];
 
 export default function WhisperChat() {
     const [activeRoom, setActiveRoom] = useState(TRENDING_ROOMS[0]);
