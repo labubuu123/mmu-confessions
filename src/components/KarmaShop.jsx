@@ -61,7 +61,7 @@ export default function KarmaShop() {
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <h1 className="text-xl font-bold flex items-center gap-2">
-                            <Gift className="w-5 h-5" /> Karma Sho
+                            <Gift className="w-5 h-5" /> Karma Shop
                         </h1>
                     </div>
                     <div className="flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full backdrop-blur-sm">

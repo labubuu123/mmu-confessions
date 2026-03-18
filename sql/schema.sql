@@ -1,6 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+SELECT cron.schedule(
+    'cleanup_whisper_messages',
+    '0 * * * *',
+    $$ DELETE FROM whisper_messages WHERE created_at < NOW() - INTERVAL '24 hours'; $$
+);
+
 SELECT cron.schedule('daily-cleanup-posts', '0 0 * * *', 'SELECT public.auto_delete_expired_posts()');
 SELECT cron.schedule('cleanup-adult-whispers', '* * * * *', 'SELECT public.auto_delete_expired_adult_posts()');
 
@@ -372,6 +379,15 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE whisper_messages (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    room_tag TEXT NOT NULL,
+    content TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    author_color TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 INSERT INTO public.shop_items (id, name, description, cost, category, type, config, icon) VALUES
 ('frame_gold', 'Golden Glory', 'A shiny gold border for your Matchmaker avatar.', 500, 'cosmetic', 'frame', '{"border": "4px solid #F59E0B", "glow": "0 0 10px #F59E0B"}'::jsonb, 'Crown'),
 ('frame_neon', 'Cyberpunk Neon', ' glowing neon pink border.', 750, 'cosmetic', 'frame', '{"border": "3px solid #EC4899", "glow": "0 0 15px #EC4899"}'::jsonb, 'Zap'),
@@ -425,9 +441,12 @@ ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whisper_messages ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory DISABLE ROW LEVEL SECURITY;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE whisper_messages;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1622,6 +1641,8 @@ CREATE POLICY "Admins can view all logs" ON public.karma_activity_log FOR SELECT
 CREATE POLICY "Users can view own logs" ON public.karma_activity_log FOR SELECT USING (user_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Users can view own reputation" ON public.user_reputation FOR SELECT USING (author_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Admins can view all reputation" ON public.user_reputation FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Allow anonymous select" ON whisper_messages FOR SELECT USING (true);
+CREATE POLICY "Allow anonymous insert" ON whisper_messages FOR INSERT WITH CHECK (true);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
