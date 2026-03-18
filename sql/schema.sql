@@ -426,6 +426,9 @@ ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_inventory DISABLE ROW LEVEL SECURITY;
+
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -1635,6 +1638,8 @@ GRANT EXECUTE ON FUNCTION public.get_my_connections(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.handle_love_action(TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_karma_ledger() TO authenticated;
+GRANT EXECUTE ON FUNCTION process_daily_checkin(TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION process_daily_checkin(TEXT) TO authenticated;
 
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
