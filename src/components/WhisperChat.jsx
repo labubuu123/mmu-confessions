@@ -128,10 +128,10 @@ export default function WhisperChat() {
     };
 
     return (
-        <div className="flex flex-row h-[100dvh] md:h-[700px] max-w-6xl mx-auto md:my-6 bg-white dark:bg-gray-800 md:rounded-xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 relative">
+        <div className="flex flex-row h-[calc(100dvh-2rem)] md:h-[700px] max-w-6xl mx-3 my-4 md:mx-auto md:my-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 relative">
             {showInstructions && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-300">
                         <div className="text-center">
                             <div className="text-4xl mb-4">🤫</div>
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Whisper!</h3>
@@ -159,7 +159,6 @@ export default function WhisperChat() {
                 className={`md:hidden absolute inset-0 bg-black/60 z-30 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={() => setIsMobileMenuOpen(false)}
             />
-
             <div className={`absolute md:relative z-40 w-[75%] max-w-[300px] md:w-1/4 md:max-w-none h-full flex flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} md:translate-x-0`}>
                 <div className="p-5 md:p-6 pb-4 md:pb-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-800 md:border-none">
                     <div>
@@ -179,7 +178,6 @@ export default function WhisperChat() {
                         </svg>
                     </button>
                 </div>
-
                 <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-hide">
                     <p className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Trending Rooms</p>
                     {TRENDING_ROOMS.map((room) => (
@@ -312,7 +310,7 @@ export default function WhisperChat() {
                                             {formatTime(msg.created_at)}
                                         </span>
                                     </div>
-                                    <div className={`p-3 md:p-4 rounded-2xl inline-block max-w-[85%] md:max-w-[70%] shadow-sm ${isMe
+                                    <div className={`p-3 md:p-4 rounded-xl inline-block max-w-[85%] md:max-w-[70%] shadow-sm ${isMe
                                         ? 'bg-blue-600 text-white rounded-tr-none'
                                         : 'bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'
                                         }`}>
@@ -326,7 +324,7 @@ export default function WhisperChat() {
                 </div>
 
                 <div className="p-3 md:p-4 border-t border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md pb-safe">
-                    <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-gray-100 dark:bg-gray-900 p-1.5 md:p-2 rounded-full ring-1 ring-gray-200 dark:ring-gray-700 focus-within:ring-2 focus-within:ring-blue-500 transition-all shadow-inner">
+                    <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-gray-100 dark:bg-gray-900 p-1.5 md:p-2 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 focus-within:ring-2 focus-within:ring-blue-500 transition-all shadow-inner">
                         <input
                             type="text"
                             value={newMessage}
@@ -338,7 +336,7 @@ export default function WhisperChat() {
                         <button
                             type="submit"
                             disabled={!newMessage.trim()}
-                            className="p-2.5 md:p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-full transition-all shadow-md active:scale-95 flex-shrink-0"
+                            className="p-2.5 md:p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl transition-all shadow-md active:scale-95 flex-shrink-0"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-6 md:h-6 -rotate-45 ml-0.5 mb-0.5">
                                 <path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 2.304 2.304 0 00.063.012l17.456-5.682a.75.75 0 000-1.396L3.541 2.392a.75.75 0 00-.063.012zm.112 16.112l1.395-4.518H12a.75.75 0 010-1.5H4.985L3.59 17.518l11.41-3.715a.75.75 0 010 1.5l-11.41 3.715z" />

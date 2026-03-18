@@ -10,7 +10,7 @@ import {
     Users,
     BarChart3,
     Bell,
-    Ghost // NEW: Imported the Ghost icon for Whisper
+    Ghost
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { usePushSubscription } from '../hooks/usePushSubscription'
@@ -87,7 +87,6 @@ export default function Header({ onlineCount }) {
                             <Users className="w-4 h-4" />
                         </div>
 
-                        {/* NEW: Whisper Quick Action Button */}
                         <Link
                             to="/whisper"
                             className={`flex items-center justify-center p-2 rounded-lg transition-all border backdrop-blur-sm relative group ${isActive('/whisper')
@@ -102,7 +101,6 @@ export default function Header({ onlineCount }) {
                                     : 'text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:rotate-12'
                                     }`}
                             />
-                            {/* Small Live Indicator Dot */}
                             {!isActive('/whisper') && (
                                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -124,7 +122,7 @@ export default function Header({ onlineCount }) {
                         >
                             <Bell
                                 className={`w-5 h-5 transition-all ${isSubscribed
-                                    ? 'fill-blue-500 text-blue-600 dark:text-blue-400' // Blue icon
+                                    ? 'fill-blue-500 text-blue-600 dark:text-blue-400'
                                     : loading
                                         ? 'text-indigo-500 animate-pulse'
                                         : 'text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
