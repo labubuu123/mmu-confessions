@@ -1,33 +1,31 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { text } = await req.json()
-    if (!text) throw new Error("No text provided")
+    const { text } = await req.json();
+    if (!text) throw new Error("No text provided");
 
-    const apiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY")
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-    const prompt = `
+    const systemInstruction = `
         You are a Zero-Tolerance Safety System for a Malaysian adult website.
-        
-        INPUT TEXT: "${text}"
 
         INSTRUCTIONS:
-        Analyze the text in this STRICT order. If any Step 1, 2, or 3 is violated, STOP and return "safe": false.
+        Analyze the text provided by the user in this STRICT order. If any Step 1, 2, or 3 is violated, STOP and return "safe": false.
         
         STEP 1: CHECK FOR SOLICITATION (Buying/Selling Services)
         - Mentions "price", "rate", "money", "pay", "deposit"?
@@ -49,23 +47,31 @@ serve(async (req) => {
 
         OUTPUT JSON ONLY:
         { "safe": boolean, "reason": "Step X: Reason" }
-    `
+    `;
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-lite",
+      systemInstruction: systemInstruction,
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
 
-    const result = await model.generateContent(prompt)
-    const responseText = result.response.text()
+    const result = await model.generateContent(text);
+    const responseText = result.response.text();
 
-    const cleanText = responseText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/```$/, '').trim()
-    const jsonData = JSON.parse(cleanText)
+    const jsonData = JSON.parse(responseText);
 
     return new Response(JSON.stringify(jsonData), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error("Error:", error.message)
-    return new Response(JSON.stringify({ safe: false, reason: "Server Error: " + error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    console.error("Error:", error.message);
+    return new Response(
+      JSON.stringify({ safe: false, reason: "Server Error: " + error.message }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      },
+    );
   }
-})
+});

@@ -332,14 +332,15 @@ CREATE TABLE IF NOT EXISTS public.shop_items (
 );
 
 CREATE TABLE IF NOT EXISTS public.user_inventory (
-    id BIGSERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES public.matchmaker_profiles(author_id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL REFERENCES public.shop_items(id) ON DELETE CASCADE,
-    is_equipped BOOLEAN DEFAULT FALSE,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    anon_id TEXT REFERENCES public.user_profiles(anon_id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    rarity TEXT NOT NULL,
     quantity INTEGER DEFAULT 1,
     acquired_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    expires_at TIMESTAMP WITH TIME ZONE,
-    UNIQUE(user_id, item_id)
+    UNIQUE(anon_id, item_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
@@ -359,6 +360,15 @@ CREATE TABLE IF NOT EXISTS public.karma_activity_log (
     description TEXT,
     related_item_id TEXT,
     balance_after INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    anon_id TEXT PRIMARY KEY,
+    karma_points INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    highest_streak INTEGER DEFAULT 0,
+    last_login_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -1371,6 +1381,59 @@ BEGIN
     ORDER BY 7 DESC;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION process_daily_checkin(p_anon_id TEXT)
+RETURNS json AS $$
+DECLARE
+    v_profile record;
+    v_today date := current_date;
+    v_points_awarded int := 10;
+    v_is_new_streak boolean := false;
+BEGIN
+    SELECT * INTO v_profile FROM user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
+    
+    IF NOT FOUND THEN
+        INSERT INTO user_profiles (anon_id, karma_points, current_streak, highest_streak, last_login_date)
+        VALUES (p_anon_id, v_points_awarded, 1, 1, v_today)
+        RETURNING * INTO v_profile;
+        v_is_new_streak := true;
+    ELSE
+        IF v_profile.last_login_date = v_today THEN
+            RETURN json_build_object('success', false, 'message', 'Already checked in today', 'profile', row_to_json(v_profile));
+        END IF;
+
+        IF v_profile.last_login_date = v_today - interval '1 day' THEN
+            v_profile.current_streak := v_profile.current_streak + 1;
+            IF v_profile.current_streak % 7 = 0 THEN
+                v_points_awarded := 50;
+            END IF;
+        ELSE
+            v_profile.current_streak := 1;
+        END IF;
+
+        IF v_profile.current_streak > v_profile.highest_streak THEN
+            v_profile.highest_streak := v_profile.current_streak;
+        END IF;
+
+        v_profile.karma_points := v_profile.karma_points + v_points_awarded;
+        v_profile.last_login_date := v_today;
+
+        UPDATE user_profiles
+        SET karma_points = v_profile.karma_points,
+            current_streak = v_profile.current_streak,
+            highest_streak = v_profile.highest_streak,
+            last_login_date = v_profile.last_login_date
+        WHERE anon_id = p_anon_id;
+        v_is_new_streak := true;
+    END IF;
+
+    RETURN json_build_object(
+        'success', true,
+        'points_awarded', v_points_awarded,
+        'profile', row_to_json(v_profile)
+    );
+END;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();

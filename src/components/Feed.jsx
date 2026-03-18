@@ -101,7 +101,7 @@ export default function Feed() {
         queryClient.setQueryData(['confessions'], (oldData) => {
             if (!oldData) return oldData;
 
-            const firstPage = [...oldData.pages[0]];
+            const firstPage = oldData?.pages?.[0] ? [...oldData.pages[0]] : [];
             const newFirstPage = [...newPostsQueue, ...firstPage];
             const uniqueFirstPage = Array.from(new Map(newFirstPage.map(item => [item.id, item])).values());
 

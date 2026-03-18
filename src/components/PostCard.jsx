@@ -225,6 +225,11 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
             const prompt = `Translate the following text to ${lang}. Keep the tone, slang, and humor if possible: "${post.text}"`;
             const result = await model.generateContent(prompt);
             const response = await result.response;
+            if (response.promptFeedback?.blockReason) {
+                setTranslation("Translation blocked due to content safety filters.");
+                setShowTranslation(true);
+                return;
+            }
             setTranslation(response.text());
             setShowTranslation(true);
         } catch (err) { console.error("Translation error:", err); alert("Failed to translate. Please try again later."); } finally { setIsTranslating(false); }
