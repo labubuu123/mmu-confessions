@@ -375,13 +375,11 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     karma_points INTEGER DEFAULT 0,
     current_streak INTEGER DEFAULT 0,
     highest_streak INTEGER DEFAULT 0,
-    total_earned INTEGER DEFAULT 0,
-    total_spent INTEGER DEFAULT 0,
     last_login_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE whisper_messages (
+CREATE TABLE IF NOT EXISTS whisper_messages (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     room_tag TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -447,8 +445,6 @@ ALTER TABLE whisper_messages ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_inventory DISABLE ROW LEVEL SECURITY;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE whisper_messages;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -868,21 +864,31 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.handle_new_confession() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_confession()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 BEGIN
     IF NEW.author_id IS NOT NULL THEN
-        INSERT INTO public.user_reputation (author_id, post_count) VALUES (NEW.author_id, 1) ON CONFLICT (author_id) DO UPDATE SET post_count = public.user_reputation.post_count + 1, updated_at = NOW();
-        PERFORM public.earn_karma(NEW.author_id, 10, 'Created a confession');
+        INSERT INTO public.user_reputation (author_id, post_count) VALUES (NEW.author_id, 1)
+        ON CONFLICT (author_id) DO UPDATE SET post_count = public.user_reputation.post_count + 1, updated_at = NOW();
     END IF;
     RETURN NEW;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.handle_new_comment() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_comment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 BEGIN
     IF NEW.author_id IS NOT NULL THEN
-        INSERT INTO public.user_reputation (author_id, comment_count) VALUES (NEW.author_id, 1) ON CONFLICT (author_id) DO UPDATE SET comment_count = public.user_reputation.comment_count + 1, updated_at = NOW();
-        PERFORM public.earn_karma(NEW.author_id, 5, 'Wrote a comment');
+        INSERT INTO public.user_reputation (author_id, comment_count) VALUES (NEW.author_id, 1)
+        ON CONFLICT (author_id) DO UPDATE SET comment_count = public.user_reputation.comment_count + 1, updated_at = NOW();
     END IF;
     RETURN NEW;
 END;
@@ -1341,17 +1347,58 @@ SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
+    WITH
+    base_users AS (
+        SELECT author_id FROM public.confessions WHERE author_id IS NOT NULL
+        UNION
+        SELECT author_id FROM public.comments WHERE author_id IS NOT NULL
+        UNION
+        SELECT author_id FROM public.user_reputation WHERE author_id IS NOT NULL
+    ),
+    p_stats AS (
+        SELECT
+            confessions.author_id,
+            COUNT(*)::BIGINT as cnt,
+            COALESCE(SUM(confessions.likes_count), 0)::BIGINT as likes
+        FROM public.confessions
+        WHERE confessions.approved = TRUE
+        GROUP BY confessions.author_id
+    ),
+    c_stats AS (
+        SELECT
+            comments.author_id,
+            COUNT(*)::BIGINT as cnt
+        FROM public.comments
+        GROUP BY comments.author_id
+    ),
+    r_stats AS (
+        SELECT
+            ur.author_id,
+            COALESCE(ur.spent_points, 0)::BIGINT as spent
+        FROM public.user_reputation ur
+    )
     SELECT
-        up.anon_id AS user_id,
-        COALESCE(ur.post_count, 0)::BIGINT AS post_count,
-        COALESCE(ur.comment_count, 0)::BIGINT AS comment_count,
-        COALESCE(ur.post_reactions_received_count, 0)::BIGINT AS likes_received,
-        COALESCE(up.total_earned, 0)::BIGINT AS total_earned,
-        COALESCE(up.total_spent, 0)::BIGINT AS total_spent,
-        COALESCE(up.karma_points, 0)::BIGINT AS current_balance
-    FROM public.user_profiles up
-    LEFT JOIN public.user_reputation ur ON up.anon_id = ur.author_id
-    ORDER BY up.karma_points DESC;
+        bu.author_id,
+        COALESCE(p.cnt, 0),
+        COALESCE(c.cnt, 0),
+        COALESCE(p.likes, 0),
+        (
+            (COALESCE(p.cnt, 0) * 10) +
+            (COALESCE(c.cnt, 0) * 5) +
+            (COALESCE(p.likes, 0) * 2)
+        ),
+        COALESCE(r.spent, 0),
+        (
+            (COALESCE(p.cnt, 0) * 10) +
+            (COALESCE(c.cnt, 0) * 5) +
+            (COALESCE(p.likes, 0) * 2) -
+            COALESCE(r.spent, 0)
+        )
+    FROM base_users bu
+    LEFT JOIN p_stats p ON bu.author_id = p.author_id
+    LEFT JOIN c_stats c ON bu.author_id = c.author_id
+    LEFT JOIN r_stats r ON bu.author_id = r.author_id
+    ORDER BY 7 DESC;
 END;
 $$;
 
@@ -1407,67 +1454,6 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION public.earn_karma(p_user_id TEXT, p_amount INTEGER, p_reason TEXT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    v_new_balance INTEGER;
-BEGIN
-    INSERT INTO public.user_profiles (anon_id, karma_points, total_earned)
-    VALUES (p_user_id, p_amount, p_amount)
-    ON CONFLICT (anon_id)
-    DO UPDATE SET
-        karma_points = COALESCE(public.user_profiles.karma_points, 0) + p_amount,
-        total_earned = COALESCE(public.user_profiles.total_earned, 0) + p_amount
-    RETURNING karma_points INTO v_new_balance;
-
-    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
-    VALUES (p_user_id, 'earn', p_amount, p_reason, v_new_balance);
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.process_gacha_pull(
-    p_anon_id TEXT,
-    p_cost INTEGER,
-    p_item_id TEXT,
-    p_item_type TEXT,
-    p_item_name TEXT,
-    p_rarity TEXT,
-    p_quantity_to_add INTEGER
-) RETURNS jsonb AS $$
-DECLARE
-    v_balance INTEGER;
-    v_existing_id UUID;
-    v_existing_qty INTEGER;
-BEGIN
-    SELECT karma_points INTO v_balance FROM user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
-    
-    IF v_balance IS NULL OR v_balance < p_cost THEN
-        RAISE EXCEPTION 'Insufficient karma points';
-    END IF;
-    
-    UPDATE user_profiles
-    SET karma_points = karma_points - p_cost,
-        total_spent = COALESCE(total_spent, 0) + p_cost
-    WHERE anon_id = p_anon_id;
-    
-    SELECT id, quantity INTO v_existing_id, v_existing_qty FROM user_inventory WHERE anon_id = p_anon_id AND item_id = p_item_id;
-    IF FOUND THEN
-        UPDATE user_inventory SET quantity = quantity + p_quantity_to_add WHERE id = v_existing_id;
-    ELSE
-        INSERT INTO user_inventory (anon_id, item_id, item_type, item_name, rarity, quantity)
-        VALUES (p_anon_id, p_item_id, p_item_type, p_item_name, p_rarity, p_quantity_to_add);
-    END IF;
-    
-    INSERT INTO karma_activity_log (user_id, activity_type, amount, description, balance_after)
-    VALUES (p_anon_id, 'gacha', -p_cost, 'Pulled ' || p_item_name, v_balance - p_cost);
-    
-    RETURN jsonb_build_object('success', true, 'new_balance', v_balance - p_cost);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
