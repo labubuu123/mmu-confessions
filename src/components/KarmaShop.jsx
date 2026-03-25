@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Flame, Gift, Sparkles, Coins, PackageOpen, Ticket, Palette, Shield } from 'lucide-react';
 import { useKarma } from '../hooks/useKarma';
@@ -22,13 +22,13 @@ export default function KarmaShop() {
     const isCheckedInToday = profile?.last_login_date === dayjs().format('YYYY-MM-DD');
 
     const handleCheckIn = () => {
-        if (!isCheckedInToday) {
+        if (!isCheckedInToday && !checkIn.isPending) {
             checkIn.mutate();
         }
     };
 
     const handlePullGacha = async () => {
-        if (profile?.karma_points < GACHA_COST) return;
+        if (profile?.karma_points < GACHA_COST || isOpeningBox || pullGacha.isPending) return;
 
         setIsOpeningBox(true);
         setReward(null);
@@ -186,16 +186,16 @@ export default function KarmaShop() {
 
                         <button
                             onClick={handlePullGacha}
-                            disabled={isOpeningBox || profile?.karma_points < GACHA_COST}
+                            disabled={isOpeningBox || pullGacha.isPending || profile?.karma_points < GACHA_COST}
                             className={`group relative px-8 py-4 rounded-2xl font-black text-lg shadow-2xl transition-all overflow-hidden
-                                ${profile?.karma_points < GACHA_COST || isOpeningBox
+                                ${profile?.karma_points < GACHA_COST || isOpeningBox || pullGacha.isPending
                                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                                     : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)]'
                                 }`}
                         >
                             <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full skew-x-12 transition-transform duration-700"></div>
                             <span className="relative flex items-center justify-center gap-2">
-                                {isOpeningBox ? 'Opening...' : `Pull 1x (${GACHA_COST} Karma)`}
+                                {isOpeningBox || pullGacha.isPending ? 'Opening...' : `Pull 1x (${GACHA_COST} Karma)`}
                             </span>
                         </button>
 
@@ -240,7 +240,6 @@ export default function KarmaShop() {
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
     );

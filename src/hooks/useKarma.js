@@ -16,6 +16,7 @@ const GACHA_POOL = [
 
 export function useKarma(anonId) {
     const queryClient = useQueryClient();
+
     const { data: profile, isLoading: isProfileLoading } = useQuery({
         queryKey: ['user_profile', anonId],
         queryFn: async () => {
@@ -56,7 +57,7 @@ export function useKarma(anonId) {
         onSuccess: (res) => {
             if (res.success) {
                 toast.success(`Daily Check-in! +${res.points_awarded} Karma 🔥`);
-                queryClient.invalidateQueries(['user_profile', anonId]);
+                queryClient.invalidateQueries({ queryKey: ['user_profile', anonId] });
             } else {
                 toast.error("You've already checked in today!");
             }
@@ -65,16 +66,9 @@ export function useKarma(anonId) {
 
     const pullGacha = useMutation({
         mutationFn: async () => {
-            if (profile.karma_points < GACHA_COST) {
+            if (profile?.karma_points < GACHA_COST) {
                 throw new Error("Not enough Karma points!");
             }
-
-            const { error: deductError } = await supabase
-                .from('user_profiles')
-                .update({ karma_points: profile.karma_points - GACHA_COST })
-                .eq('anon_id', anonId);
-            
-            if (deductError) throw deductError;
 
             const totalWeight = GACHA_POOL.reduce((sum, item) => sum + item.weight, 0);
             let random = Math.random() * totalWeight;
@@ -90,34 +84,24 @@ export function useKarma(anonId) {
 
             const quantityToAdd = droppedItem.id.startsWith('ticket_pin_') ? parseInt(droppedItem.id.split('_').pop()) : 1;
             const itemIdForDb = droppedItem.type === 'ticket' ? 'ticket_pin' : droppedItem.id;
-            const existingItem = inventory?.find(i => i.item_id === itemIdForDb);
 
-            if (existingItem) {
-                const { error: updateError } = await supabase
-                    .from('user_inventory')
-                    .update({ quantity: existingItem.quantity + quantityToAdd })
-                    .eq('id', existingItem.id);
-                if (updateError) throw updateError;
-            } else {
-                const { error: insertError } = await supabase
-                    .from('user_inventory')
-                    .insert([{
-                        anon_id: anonId,
-                        item_id: itemIdForDb,
-                        item_type: droppedItem.type,
-                        item_name: droppedItem.name,
-                        rarity: droppedItem.rarity,
-                        quantity: quantityToAdd
-                    }]);
-                if (insertError) throw insertError;
-            }
+            const { data, error } = await supabase.rpc('process_gacha_pull', {
+                p_anon_id: anonId,
+                p_cost: GACHA_COST,
+                p_item_id: itemIdForDb,
+                p_item_type: droppedItem.type,
+                p_item_name: droppedItem.name,
+                p_rarity: droppedItem.rarity,
+                p_quantity_to_add: quantityToAdd
+            });
+
+            if (error) throw new Error(error.message || "Failed to process Gacha transaction.");
 
             return droppedItem;
         },
-        onSuccess: (droppedItem) => {
-            queryClient.invalidateQueries(['user_profile', anonId]);
-            queryClient.invalidateQueries(['user_inventory', anonId]);
-            return droppedItem;
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user_profile', anonId] });
+            queryClient.invalidateQueries({ queryKey: ['user_inventory', anonId] });
         },
         onError: (err) => {
             toast.error(err.message || "Failed to pull Gacha.");
@@ -129,22 +113,13 @@ export function useKarma(anonId) {
             const ticket = inventory?.find(i => i.item_id === 'ticket_pin');
             if (!ticket || ticket.quantity < 1) throw new Error("No Pin Tickets available.");
 
-            const { error: postError } = await supabase
-                .from('confessions')
-                .update({ pinned: true })
-                .eq('id', postId);
-            if (postError) throw postError;
-
-            const { error: ticketError } = await supabase
-                .from('user_inventory')
-                .update({ quantity: ticket.quantity - 1 })
-                .eq('id', ticket.id);
-            if (ticketError) throw ticketError;
+            const { error: rpcError } = await supabase.rpc('use_pin_ticket', { post_id_in: postId });
+            if (rpcError) throw rpcError;
         },
         onSuccess: () => {
             toast.success("Post pinned successfully!");
-            queryClient.invalidateQueries(['user_inventory', anonId]);
-            queryClient.invalidateQueries(['confessions']);
+            queryClient.invalidateQueries({ queryKey: ['user_inventory', anonId] });
+            queryClient.invalidateQueries({ queryKey: ['confessions'] });
         },
         onError: (err) => {
             toast.error(err.message || "Failed to pin post.");
