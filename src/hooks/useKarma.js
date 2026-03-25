@@ -14,12 +14,14 @@ const GACHA_POOL = [
     { id: 'ticket_pin_3', type: 'ticket', name: '3x Pin Ticket', rarity: 'rare', weight: 10 },
 ];
 
+const TOTAL_GACHA_WEIGHT = GACHA_POOL.reduce((sum, item) => sum + item.weight, 0);
+
 export function useKarma(anonId) {
     const queryClient = useQueryClient();
+
     const { data: profile, isLoading: isProfileLoading } = useQuery({
         queryKey: ['user_profile', anonId],
         queryFn: async () => {
-            if (!anonId) return null;
             const { data, error } = await supabase
                 .from('user_profiles')
                 .select('*')
@@ -30,12 +32,12 @@ export function useKarma(anonId) {
             return data || { karma_points: 0, current_streak: 0, highest_streak: 0, last_login_date: null };
         },
         enabled: !!anonId,
+        staleTime: 1000 * 60 * 5,
     });
 
     const { data: inventory, isLoading: isInventoryLoading } = useQuery({
         queryKey: ['user_inventory', anonId],
         queryFn: async () => {
-            if (!anonId) return [];
             const { data, error } = await supabase
                 .from('user_inventory')
                 .select('*')
@@ -45,6 +47,7 @@ export function useKarma(anonId) {
             return data || [];
         },
         enabled: !!anonId,
+        staleTime: 1000 * 60 * 5,
     });
 
     const checkIn = useMutation({
@@ -56,16 +59,17 @@ export function useKarma(anonId) {
         onSuccess: (res) => {
             if (res.success) {
                 toast.success(`Daily Check-in! +${res.points_awarded} Karma 🔥`);
-                queryClient.invalidateQueries(['user_profile', anonId]);
+                queryClient.invalidateQueries({ queryKey: ['user_profile', anonId] });
             } else {
                 toast.error("You've already checked in today!");
             }
         },
+        onError: () => toast.error("Failed to check in.")
     });
 
     const pullGacha = useMutation({
         mutationFn: async () => {
-            if (profile.karma_points < GACHA_COST) {
+            if ((profile?.karma_points || 0) < GACHA_COST) {
                 throw new Error("Not enough Karma points!");
             }
 
@@ -74,22 +78,23 @@ export function useKarma(anonId) {
                 .update({ karma_points: profile.karma_points - GACHA_COST })
                 .eq('anon_id', anonId);
             
-            if (deductError) throw deductError;
+            if (deductError) throw new Error("Failed to deduct Karma.");
 
-            const totalWeight = GACHA_POOL.reduce((sum, item) => sum + item.weight, 0);
-            let random = Math.random() * totalWeight;
+            let random = Math.random() * TOTAL_GACHA_WEIGHT;
             let droppedItem = GACHA_POOL[0];
 
             for (const item of GACHA_POOL) {
-                random -= item.weight;
-                if (random <= 0) {
+                if (random < item.weight) {
                     droppedItem = item;
                     break;
                 }
+                random -= item.weight;
             }
 
-            const quantityToAdd = droppedItem.id.startsWith('ticket_pin_') ? parseInt(droppedItem.id.split('_').pop()) : 1;
-            const itemIdForDb = droppedItem.type === 'ticket' ? 'ticket_pin' : droppedItem.id;
+            const isTicket = droppedItem.type === 'ticket';
+            const quantityToAdd = isTicket ? parseInt(droppedItem.id.split('_').pop(), 10) : 1;
+            const itemIdForDb = isTicket ? 'ticket_pin' : droppedItem.id;
+            
             const existingItem = inventory?.find(i => i.item_id === itemIdForDb);
 
             if (existingItem) {
@@ -97,7 +102,7 @@ export function useKarma(anonId) {
                     .from('user_inventory')
                     .update({ quantity: existingItem.quantity + quantityToAdd })
                     .eq('id', existingItem.id);
-                if (updateError) throw updateError;
+                if (updateError) throw new Error("Item dropped, but failed to save to inventory!");
             } else {
                 const { error: insertError } = await supabase
                     .from('user_inventory')
@@ -109,15 +114,14 @@ export function useKarma(anonId) {
                         rarity: droppedItem.rarity,
                         quantity: quantityToAdd
                     }]);
-                if (insertError) throw insertError;
+                if (insertError) throw new Error("Item dropped, but failed to save to inventory!");
             }
 
             return droppedItem;
         },
-        onSuccess: (droppedItem) => {
-            queryClient.invalidateQueries(['user_profile', anonId]);
-            queryClient.invalidateQueries(['user_inventory', anonId]);
-            return droppedItem;
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user_profile', anonId] });
+            queryClient.invalidateQueries({ queryKey: ['user_inventory', anonId] });
         },
         onError: (err) => {
             toast.error(err.message || "Failed to pull Gacha.");
@@ -143,8 +147,8 @@ export function useKarma(anonId) {
         },
         onSuccess: () => {
             toast.success("Post pinned successfully!");
-            queryClient.invalidateQueries(['user_inventory', anonId]);
-            queryClient.invalidateQueries(['confessions']);
+            queryClient.invalidateQueries({ queryKey: ['user_inventory', anonId] });
+            queryClient.invalidateQueries({ queryKey: ['confessions'] });
         },
         onError: (err) => {
             toast.error(err.message || "Failed to pin post.");

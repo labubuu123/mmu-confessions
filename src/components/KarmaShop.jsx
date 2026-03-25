@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Flame, Gift, Sparkles, Coins, PackageOpen, Ticket, Palette, Shield } from 'lucide-react';
 import { useKarma } from '../hooks/useKarma';
@@ -12,37 +12,53 @@ const rarityColors = {
     legendary: 'from-yellow-400 to-yellow-600 text-yellow-800',
 };
 
+const STREAK_DAYS = [1, 2, 3, 4, 5, 6, 7];
+
 export default function KarmaShop() {
     const anonId = localStorage.getItem('anonId');
     const { profile, inventory, isLoading, checkIn, pullGacha, GACHA_COST } = useKarma(anonId);
 
     const [isOpeningBox, setIsOpeningBox] = useState(false);
     const [reward, setReward] = useState(null);
+    const timerRef = useRef(null);
 
-    const isCheckedInToday = profile?.last_login_date === dayjs().format('YYYY-MM-DD');
+    const isCheckedInToday = useMemo(() => {
+        return profile?.last_login_date === dayjs().format('YYYY-MM-DD');
+    }, [profile?.last_login_date]);
 
-    const handleCheckIn = () => {
-        if (!isCheckedInToday) {
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, []);
+
+    const handleCheckIn = useCallback(() => {
+        if (!isCheckedInToday && !checkIn.isPending) {
             checkIn.mutate();
         }
-    };
+    }, [isCheckedInToday, checkIn]);
 
-    const handlePullGacha = async () => {
-        if (profile?.karma_points < GACHA_COST) return;
+    const handlePullGacha = useCallback(async () => {
+        if ((profile?.karma_points || 0) < GACHA_COST || isOpeningBox) return;
 
         setIsOpeningBox(true);
         setReward(null);
 
         try {
             const droppedItem = await pullGacha.mutateAsync();
-            setTimeout(() => {
+            timerRef.current = setTimeout(() => {
                 setIsOpeningBox(false);
                 setReward(droppedItem);
             }, 2000);
         } catch (error) {
             setIsOpeningBox(false);
+            console.error("Gacha pull failed", error);
         }
-    };
+    }, [profile?.karma_points, GACHA_COST, isOpeningBox, pullGacha]);
+
+    const currentStreak = profile?.current_streak || 0;
+    const currentCycleDay = currentStreak % 7 || (currentStreak > 0 ? 7 : 0);
+    const progressWidth = `${Math.min((currentCycleDay / 7) * 100, 100)}%`;
 
     if (isLoading) {
         return (
@@ -82,7 +98,7 @@ export default function KarmaShop() {
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
                                 Daily Login Streak
                                 <span className="px-2 py-0.5 bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 text-xs rounded-full font-bold">
-                                    {profile?.current_streak || 0} Days
+                                    {currentStreak} Days
                                 </span>
                             </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -108,11 +124,10 @@ export default function KarmaShop() {
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full z-0"></div>
                         <div
                             className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-orange-500 rounded-full z-0 transition-all duration-1000"
-                            style={{ width: `${Math.min(((profile?.current_streak || 0) % 7) / 7 * 100, 100)}%` }}
+                            style={{ width: progressWidth }}
                         ></div>
 
-                        {[1, 2, 3, 4, 5, 6, 7].map((day) => {
-                            const currentCycleDay = (profile?.current_streak || 0) % 7 || (profile?.current_streak > 0 ? 7 : 0);
+                        {STREAK_DAYS.map((day) => {
                             const isPast = day <= currentCycleDay;
                             return (
                                 <div key={day} className="relative z-10 flex flex-col items-center gap-2">
@@ -160,7 +175,7 @@ export default function KarmaShop() {
                                     key="reward"
                                     initial={{ scale: 0, opacity: 0, y: 50 }}
                                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                                    className={`mb-8 p-6 rounded-2xl bg-gradient-to-br ${rarityColors[reward.rarity]} border-2 border-white/20 shadow-2xl backdrop-blur-md`}
+                                    className={`mb-8 p-6 rounded-2xl bg-gradient-to-br ${rarityColors[reward.rarity] || rarityColors.common} border-2 border-white/20 shadow-2xl backdrop-blur-md`}
                                 >
                                     <div className="bg-white/90 rounded-xl p-4 flex flex-col items-center">
                                         <span className="text-xs font-black uppercase tracking-widest mb-2 opacity-70">
@@ -186,9 +201,9 @@ export default function KarmaShop() {
 
                         <button
                             onClick={handlePullGacha}
-                            disabled={isOpeningBox || profile?.karma_points < GACHA_COST}
+                            disabled={isOpeningBox || (profile?.karma_points || 0) < GACHA_COST}
                             className={`group relative px-8 py-4 rounded-2xl font-black text-lg shadow-2xl transition-all overflow-hidden
-                                ${profile?.karma_points < GACHA_COST || isOpeningBox
+                                ${(profile?.karma_points || 0) < GACHA_COST || isOpeningBox
                                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                                     : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)]'
                                 }`}
@@ -199,7 +214,7 @@ export default function KarmaShop() {
                             </span>
                         </button>
 
-                        {profile?.karma_points < GACHA_COST && (
+                        {(profile?.karma_points || 0) < GACHA_COST && (
                             <p className="text-red-400 text-xs mt-3 font-medium">Not enough Karma points.</p>
                         )}
                     </div>
@@ -223,7 +238,7 @@ export default function KarmaShop() {
                                         x{item.quantity}
                                     </div>
 
-                                    <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center bg-gradient-to-br ${rarityColors[item.rarity]} shadow-inner`}>
+                                    <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center bg-gradient-to-br ${rarityColors[item.rarity] || rarityColors.common} shadow-inner`}>
                                         {item.item_type === 'border' && <Shield className="w-6 h-6 text-white" />}
                                         {item.item_type === 'theme' && <Palette className="w-6 h-6 text-white" />}
                                         {item.item_type === 'ticket' && <Ticket className="w-6 h-6 text-white" />}
@@ -240,7 +255,6 @@ export default function KarmaShop() {
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
     );
