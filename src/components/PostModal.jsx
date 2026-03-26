@@ -244,14 +244,14 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
 
     const schemaData = {
         "@context": "https://schema.org",
-        "@type": "SocialMediaPosting",
+        "@type": "DiscussionForumPosting",
         "headline": metaTitle,
         "datePublished": internalPost.created_at,
         "author": {
             "@type": "Person",
-            "name": internalPost.author_name || "Anonymous"
+            "name": internalPost.author_name || "Anonymous MMU Student"
         },
-        "articleBody": internalPost.text,
+        "text": internalPost.text,
         "image": metaImage ? [metaImage] : [],
         "url": metaUrl,
         "interactionStatistic": [
