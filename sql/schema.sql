@@ -1266,38 +1266,51 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.use_pin_ticket(post_id_in BIGINT)
+CREATE OR REPLACE FUNCTION public.use_pin_ticket(post_id_in BIGINT, p_anon_id TEXT DEFAULT NULL)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_user_id TEXT;
-    v_ticket_count INTEGER;
+    v_user_id       TEXT;
+    v_ticket_count  INTEGER;
 BEGIN
-    v_user_id := auth.uid()::text;
+    v_user_id := COALESCE(p_anon_id, auth.uid()::text);
 
-    SELECT quantity INTO v_ticket_count
-    FROM public.user_inventory
-    WHERE user_id = v_user_id AND item_id = 'ticket_pin';
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Cannot identify user.';
+    END IF;
 
-    IF v_ticket_count IS NULL OR v_ticket_count < 1 THEN
+    SELECT COALESCE(
+        (SELECT quantity FROM public.user_inventory WHERE anon_id   = v_user_id AND item_id = 'ticket_pin'),
+        (SELECT quantity FROM public.user_inventory WHERE user_id   = v_user_id AND item_id = 'ticket_pin'),
+        0
+    ) INTO v_ticket_count;
+
+    IF v_ticket_count < 1 THEN
         RAISE EXCEPTION 'No Pin Tickets in inventory!';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM public.confessions WHERE id = post_id_in AND author_id = v_user_id) THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.confessions WHERE id = post_id_in AND author_id = v_user_id
+    ) THEN
         RAISE EXCEPTION 'You can only pin your own posts.';
     END IF;
 
-    UPDATE public.confessions
-    SET pinned = TRUE
-    WHERE id = post_id_in;
+    UPDATE public.confessions SET pinned = TRUE WHERE id = post_id_in;
 
     UPDATE public.user_inventory
     SET quantity = quantity - 1
-    WHERE user_id = v_user_id AND item_id = 'ticket_pin';
-    
-    DELETE FROM public.user_inventory WHERE quantity <= 0;
+    WHERE item_id = 'ticket_pin'
+        AND (anon_id = v_user_id OR user_id = v_user_id);
+
+    DELETE FROM public.user_inventory
+    WHERE quantity <= 0
+        AND item_id = 'ticket_pin'
+        AND (anon_id = v_user_id OR user_id = v_user_id);
+
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id, balance_after)
+    VALUES (v_user_id, 'item_used', 0, 'Used Pin Ticket on post ' || post_id_in, 'ticket_pin', NULL);
 END;
 $$;
 
@@ -1334,66 +1347,69 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_karma_ledger()
 RETURNS TABLE (
-    user_id TEXT,
-    post_count BIGINT,
-    comment_count BIGINT,
-    likes_received BIGINT,
-    total_earned BIGINT,
-    total_spent BIGINT,
+    user_id         TEXT,
+    post_count      BIGINT,
+    comment_count   BIGINT,
+    likes_received  BIGINT,
+    total_earned    BIGINT,
+    total_spent     BIGINT,
     current_balance BIGINT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    -- Admin check
+    IF (auth.jwt() -> 'user_metadata' ->> 'role') <> 'admin' THEN
+        RAISE EXCEPTION 'Admin role required.';
+    END IF;
+
     RETURN QUERY
     WITH
     base_users AS (
         SELECT author_id FROM public.confessions WHERE author_id IS NOT NULL
         UNION
-        SELECT author_id FROM public.comments WHERE author_id IS NOT NULL
+        SELECT author_id FROM public.comments     WHERE author_id IS NOT NULL
         UNION
         SELECT author_id FROM public.user_reputation WHERE author_id IS NOT NULL
     ),
     p_stats AS (
         SELECT
-            confessions.author_id,
-            COUNT(*)::BIGINT as cnt,
-            COALESCE(SUM(confessions.likes_count), 0)::BIGINT as likes
+            author_id,
+            COUNT(*)::BIGINT                       AS cnt,
+            COALESCE(SUM(likes_count), 0)::BIGINT  AS likes
         FROM public.confessions
-        WHERE confessions.approved = TRUE
-        GROUP BY confessions.author_id
+        WHERE approved = TRUE
+        GROUP BY author_id
     ),
     c_stats AS (
-        SELECT
-            comments.author_id,
-            COUNT(*)::BIGINT as cnt
+        SELECT author_id, COUNT(*)::BIGINT AS cnt
         FROM public.comments
-        GROUP BY comments.author_id
+        GROUP BY author_id
     ),
     r_stats AS (
-        SELECT
-            ur.author_id,
-            COALESCE(ur.spent_points, 0)::BIGINT as spent
-        FROM public.user_reputation ur
+        SELECT author_id, COALESCE(spent_points, 0)::BIGINT AS spent
+        FROM public.user_reputation
     )
     SELECT
         bu.author_id,
-        COALESCE(p.cnt, 0),
-        COALESCE(c.cnt, 0),
-        COALESCE(p.likes, 0),
+        COALESCE(p.cnt,   0)     AS post_count,
+        COALESCE(c.cnt,   0)     AS comment_count,
+        COALESCE(p.likes, 0)     AS likes_received,
         (
-            (COALESCE(p.cnt, 0) * 10) +
-            (COALESCE(c.cnt, 0) * 5) +
-            (COALESCE(p.likes, 0) * 2)
-        ),
-        COALESCE(r.spent, 0),
-        (
-            (COALESCE(p.cnt, 0) * 10) +
-            (COALESCE(c.cnt, 0) * 5) +
-            (COALESCE(p.likes, 0) * 2) -
-            COALESCE(r.spent, 0)
-        )
+            COALESCE(p.cnt,   0) * 10 +
+            COALESCE(c.cnt,   0) * 5  +
+            COALESCE(p.likes, 0) * 2
+        )                        AS total_earned,
+        COALESCE(r.spent, 0)     AS total_spent,
+        GREATEST(
+            0,
+            (
+                COALESCE(p.cnt,   0) * 10 +
+                COALESCE(c.cnt,   0) * 5  +
+                COALESCE(p.likes, 0) * 2
+            ) - COALESCE(r.spent, 0)
+        )                        AS current_balance
     FROM base_users bu
     LEFT JOIN p_stats p ON bu.author_id = p.author_id
     LEFT JOIN c_stats c ON bu.author_id = c.author_id
@@ -1403,53 +1419,84 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION process_daily_checkin(p_anon_id TEXT)
-RETURNS json AS $$
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
-    v_profile record;
-    v_today date := current_date;
-    v_points_awarded int := 10;
+    v_profile         record;
+    v_today           date    := (NOW() AT TIME ZONE 'Asia/Kuala_Lumpur')::date;
+    v_points_awarded  int     := 10;
+    v_streak_bonus    boolean := false;
 BEGIN
     SELECT * INTO v_profile FROM user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
-    
+
     IF NOT FOUND THEN
         INSERT INTO user_profiles (anon_id, karma_points, current_streak, highest_streak, last_login_date)
         VALUES (p_anon_id, v_points_awarded, 1, 1, v_today)
         RETURNING * INTO v_profile;
-    ELSE
-        IF v_profile.last_login_date = v_today THEN
-            RETURN json_build_object('success', false, 'message', 'Already checked in today', 'profile', row_to_json(v_profile));
-        END IF;
 
-        IF v_profile.last_login_date = v_today - interval '1 day' THEN
-            v_profile.current_streak := v_profile.current_streak + 1;
-            IF v_profile.current_streak % 7 = 0 THEN
-                v_points_awarded := 50;
-            END IF;
-        ELSE
-            v_profile.current_streak := 1;
-        END IF;
+        INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
+        VALUES (p_anon_id, 'daily_checkin', v_points_awarded, 'First check-in! Streak: 1', v_points_awarded);
 
-        IF v_profile.current_streak > v_profile.highest_streak THEN
-            v_profile.highest_streak := v_profile.current_streak;
-        END IF;
-
-        v_profile.karma_points := v_profile.karma_points + v_points_awarded;
-        v_profile.last_login_date := v_today;
-
-        UPDATE user_profiles
-        SET karma_points = v_profile.karma_points,
-            current_streak = v_profile.current_streak,
-            highest_streak = v_profile.highest_streak,
-            last_login_date = v_profile.last_login_date
-        WHERE anon_id = p_anon_id;
+        RETURN json_build_object(
+            'success',        true,
+            'points_awarded', v_points_awarded,
+            'streak_bonus',   false,
+            'profile',        row_to_json(v_profile)
+        );
     END IF;
 
-    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
-    VALUES (p_anon_id, 'daily_checkin', v_points_awarded, 'Daily check-in streak: ' || v_profile.current_streak, v_profile.karma_points);
+    IF v_profile.last_login_date = v_today THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Already checked in today',
+            'profile', row_to_json(v_profile)
+        );
+    END IF;
 
-    RETURN json_build_object('success', true, 'points_awarded', v_points_awarded, 'profile', row_to_json(v_profile));
+    IF v_profile.last_login_date = v_today - INTERVAL '1 day' THEN
+        v_profile.current_streak := v_profile.current_streak + 1;
+        IF v_profile.current_streak % 7 = 0 THEN
+            v_points_awarded := 50;
+            v_streak_bonus   := true;
+        END IF;
+    ELSE
+        v_profile.current_streak := 1;
+    END IF;
+
+    IF v_profile.current_streak > v_profile.highest_streak THEN
+        v_profile.highest_streak := v_profile.current_streak;
+    END IF;
+
+    v_profile.karma_points    := v_profile.karma_points + v_points_awarded;
+    v_profile.last_login_date := v_today;
+
+    UPDATE user_profiles
+    SET
+        karma_points    = v_profile.karma_points,
+        current_streak  = v_profile.current_streak,
+        highest_streak  = v_profile.highest_streak,
+        last_login_date = v_profile.last_login_date
+    WHERE anon_id = p_anon_id;
+
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
+    VALUES (
+        p_anon_id,
+        'daily_checkin',
+        v_points_awarded,
+        'Daily check-in. Streak: ' || v_profile.current_streak,
+        v_profile.karma_points
+    );
+
+    RETURN json_build_object(
+        'success',        true,
+        'points_awarded', v_points_awarded,
+        'streak_bonus',   v_streak_bonus,
+        'profile',        row_to_json(v_profile)
+    );
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION process_gacha_pull(p_anon_id TEXT)
 RETURNS jsonb
@@ -1457,42 +1504,47 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_cost INTEGER := 50;
-    v_balance INTEGER;
-    v_random_val FLOAT;
-    v_dropped_item jsonb;
-    v_item_id TEXT;
-    v_is_ticket BOOLEAN;
-    v_quantity_to_add INTEGER := 1;
+    v_cost             INTEGER := 50;
+    v_balance          INTEGER;
+    v_random_val       FLOAT;
+    v_dropped_item     jsonb;
+    v_item_id          TEXT;
+    v_quantity_to_add  INTEGER := 1;
+    v_is_new           BOOLEAN;
     v_pool jsonb := '[
-        {"id": "border_neon", "type": "border", "name": "Neon Lights Border", "rarity": "rare", "weight": 25},
-        {"id": "border_gold", "type": "border", "name": "Golden Champion Border", "rarity": "epic", "weight": 10},
-        {"id": "border_diamond", "type": "border", "name": "Diamond VIP Border", "rarity": "legendary", "weight": 2},
-        {"id": "theme_sunset", "type": "theme", "name": "Sunset Post Theme", "rarity": "epic", "weight": 8},
-        {"id": "theme_galaxy", "type": "theme", "name": "Galaxy Post Theme", "rarity": "legendary", "weight": 5},
-        {"id": "ticket_pin_1", "type": "ticket", "name": "1x Pin Ticket", "rarity": "common", "weight": 40},
-        {"id": "ticket_pin_3", "type": "ticket", "name": "3x Pin Ticket", "rarity": "rare", "weight": 10}
+        {"id": "border_neon",    "type": "border", "name": "Neon Lights Border",      "rarity": "rare",      "weight": 25},
+        {"id": "border_gold",    "type": "border", "name": "Golden Champion Border",  "rarity": "epic",      "weight": 10},
+        {"id": "border_diamond", "type": "border", "name": "Diamond VIP Border",      "rarity": "legendary", "weight": 2},
+        {"id": "theme_sunset",   "type": "theme",  "name": "Sunset Post Theme",       "rarity": "epic",      "weight": 8},
+        {"id": "theme_galaxy",   "type": "theme",  "name": "Galaxy Post Theme",       "rarity": "legendary", "weight": 5},
+        {"id": "ticket_pin_1",   "type": "ticket", "name": "1× Pin Ticket",           "rarity": "common",    "weight": 40},
+        {"id": "ticket_pin_3",   "type": "ticket", "name": "3× Pin Tickets",          "rarity": "rare",      "weight": 10}
     ]';
-    v_total_weight FLOAT := 100;
-    v_cumulative_weight FLOAT := 0;
-    v_item jsonb;
+    v_total_weight     FLOAT := 100;
+    v_cumulative       FLOAT := 0;
+    v_item             jsonb;
 BEGIN
-    SELECT karma_points INTO v_balance FROM public.user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
-    
-    IF v_balance IS NULL OR v_balance < v_cost THEN
-        RAISE EXCEPTION 'Insufficient Karma points. You need % but have %.', v_cost, COALESCE(v_balance, 0);
+    SELECT karma_points INTO v_balance
+    FROM public.user_profiles
+    WHERE anon_id = p_anon_id
+    FOR UPDATE;
+
+    IF v_balance IS NULL THEN
+        RAISE EXCEPTION 'User profile not found for anon_id: %', p_anon_id;
     END IF;
 
-    UPDATE public.user_profiles SET karma_points = karma_points - v_cost WHERE anon_id = p_anon_id;
-    
-    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
-    VALUES (p_anon_id, 'gacha_pull', -v_cost, 'Pulled from Gacha', v_balance - v_cost);
+    IF v_balance < v_cost THEN
+        RAISE EXCEPTION 'Insufficient Karma. Need %, have %.', v_cost, v_balance;
+    END IF;
+
+    UPDATE public.user_profiles
+    SET karma_points = karma_points - v_cost
+    WHERE anon_id = p_anon_id;
 
     v_random_val := random() * v_total_weight;
-    
     FOR v_item IN SELECT * FROM jsonb_array_elements(v_pool) LOOP
-        v_cumulative_weight := v_cumulative_weight + (v_item->>'weight')::FLOAT;
-        IF v_random_val <= v_cumulative_weight THEN
+        v_cumulative := v_cumulative + (v_item->>'weight')::FLOAT;
+        IF v_random_val <= v_cumulative THEN
             v_dropped_item := v_item;
             EXIT;
         END IF;
@@ -1502,20 +1554,38 @@ BEGIN
         v_dropped_item := v_pool->0;
     END IF;
 
-    v_is_ticket := (v_dropped_item->>'type') = 'ticket';
-    IF v_is_ticket THEN
-        v_item_id := 'ticket_pin';
+    IF (v_dropped_item->>'type') = 'ticket' THEN
+        v_item_id         := 'ticket_pin';
         v_quantity_to_add := CAST(split_part(v_dropped_item->>'id', '_', 3) AS INTEGER);
     ELSE
         v_item_id := v_dropped_item->>'id';
     END IF;
 
-    INSERT INTO public.user_inventory (anon_id, item_id, item_type, item_name, rarity, quantity)
+    SELECT NOT EXISTS (
+        SELECT 1 FROM public.user_inventory
+        WHERE user_id = p_anon_id AND item_id = v_item_id
+    ) INTO v_is_new;
+
+    INSERT INTO public.user_inventory (user_id, item_id, item_type, item_name, rarity, quantity)
     VALUES (p_anon_id, v_item_id, v_dropped_item->>'type', v_dropped_item->>'name', v_dropped_item->>'rarity', v_quantity_to_add)
-    ON CONFLICT (anon_id, item_id)
+    ON CONFLICT (user_id, item_id)
     DO UPDATE SET quantity = public.user_inventory.quantity + v_quantity_to_add;
 
-    RETURN v_dropped_item;
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, related_item_id, balance_after)
+    VALUES (
+        p_anon_id,
+        'gacha_pull',
+        -v_cost,
+        'Pulled: ' || (v_dropped_item->>'name'),
+        v_item_id,
+        v_balance - v_cost
+    );
+
+    RETURN v_dropped_item || jsonb_build_object(
+        'isNew',      v_is_new,
+        'quantity',   v_quantity_to_add,
+        'balanceAfter', v_balance - v_cost
+    );
 END;
 $$;
 
@@ -1576,6 +1646,12 @@ CREATE INDEX IF NOT EXISTS idx_comment_user_reactions_user_id ON public.comment_
 CREATE INDEX IF NOT EXISTS idx_confessions_reply_to_id ON public.confessions(reply_to_id);
 CREATE INDEX IF NOT EXISTS idx_comments_debate_side ON public.comments(debate_side);
 CREATE INDEX IF NOT EXISTS idx_adult_confessions_expires_at ON public.adult_confessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_anon_id ON public.user_profiles(anon_id);
+CREATE INDEX IF NOT EXISTS idx_user_inventory_user_id ON public.user_inventory(user_id);
+CREATE INDEX IF NOT EXISTS idx_karma_log_user_id ON public.karma_activity_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_confessions_author_approved ON public.confessions(author_id, approved);
+CREATE INDEX IF NOT EXISTS idx_comments_author_id ON public.comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_user_reputation_author_id ON public.user_reputation(author_id);
 
 DO $$
 DECLARE pol RECORD;
@@ -1723,6 +1799,8 @@ GRANT EXECUTE ON FUNCTION clear_marketplace_reports(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_karma_ledger() TO authenticated;
 GRANT EXECUTE ON FUNCTION process_daily_checkin(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION process_daily_checkin(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION process_gacha_pull(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.use_pin_ticket(BIGINT, TEXT) TO anon, authenticated;
 
 GRANT ALL ON storage.buckets TO anon, authenticated;
 GRANT ALL ON storage.objects TO anon, authenticated;
