@@ -443,8 +443,11 @@ ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whisper_messages ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_inventory DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_inventory ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.karma_activity_log
+DROP CONSTRAINT IF EXISTS karma_activity_log_activity_type_check;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
