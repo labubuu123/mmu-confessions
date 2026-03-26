@@ -1408,7 +1408,6 @@ DECLARE
     v_profile record;
     v_today date := current_date;
     v_points_awarded int := 10;
-    v_is_new_streak boolean := false;
 BEGIN
     SELECT * INTO v_profile FROM user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
     
@@ -1416,7 +1415,6 @@ BEGIN
         INSERT INTO user_profiles (anon_id, karma_points, current_streak, highest_streak, last_login_date)
         VALUES (p_anon_id, v_points_awarded, 1, 1, v_today)
         RETURNING * INTO v_profile;
-        v_is_new_streak := true;
     ELSE
         IF v_profile.last_login_date = v_today THEN
             RETURN json_build_object('success', false, 'message', 'Already checked in today', 'profile', row_to_json(v_profile));
@@ -1444,16 +1442,82 @@ BEGIN
             highest_streak = v_profile.highest_streak,
             last_login_date = v_profile.last_login_date
         WHERE anon_id = p_anon_id;
-        v_is_new_streak := true;
     END IF;
 
-    RETURN json_build_object(
-        'success', true,
-        'points_awarded', v_points_awarded,
-        'profile', row_to_json(v_profile)
-    );
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
+    VALUES (p_anon_id, 'daily_checkin', v_points_awarded, 'Daily check-in streak: ' || v_profile.current_streak, v_profile.karma_points);
+
+    RETURN json_build_object('success', true, 'points_awarded', v_points_awarded, 'profile', row_to_json(v_profile));
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION process_gacha_pull(p_anon_id TEXT)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_cost INTEGER := 50;
+    v_balance INTEGER;
+    v_random_val FLOAT;
+    v_dropped_item jsonb;
+    v_item_id TEXT;
+    v_is_ticket BOOLEAN;
+    v_quantity_to_add INTEGER := 1;
+    v_pool jsonb := '[
+        {"id": "border_neon", "type": "border", "name": "Neon Lights Border", "rarity": "rare", "weight": 25},
+        {"id": "border_gold", "type": "border", "name": "Golden Champion Border", "rarity": "epic", "weight": 10},
+        {"id": "border_diamond", "type": "border", "name": "Diamond VIP Border", "rarity": "legendary", "weight": 2},
+        {"id": "theme_sunset", "type": "theme", "name": "Sunset Post Theme", "rarity": "epic", "weight": 8},
+        {"id": "theme_galaxy", "type": "theme", "name": "Galaxy Post Theme", "rarity": "legendary", "weight": 5},
+        {"id": "ticket_pin_1", "type": "ticket", "name": "1x Pin Ticket", "rarity": "common", "weight": 40},
+        {"id": "ticket_pin_3", "type": "ticket", "name": "3x Pin Ticket", "rarity": "rare", "weight": 10}
+    ]';
+    v_total_weight FLOAT := 100;
+    v_cumulative_weight FLOAT := 0;
+    v_item jsonb;
+BEGIN
+    SELECT karma_points INTO v_balance FROM public.user_profiles WHERE anon_id = p_anon_id FOR UPDATE;
+    
+    IF v_balance IS NULL OR v_balance < v_cost THEN
+        RAISE EXCEPTION 'Insufficient Karma points. You need % but have %.', v_cost, COALESCE(v_balance, 0);
+    END IF;
+
+    UPDATE public.user_profiles SET karma_points = karma_points - v_cost WHERE anon_id = p_anon_id;
+    
+    INSERT INTO public.karma_activity_log (user_id, activity_type, amount, description, balance_after)
+    VALUES (p_anon_id, 'gacha_pull', -v_cost, 'Pulled from Gacha', v_balance - v_cost);
+
+    v_random_val := random() * v_total_weight;
+    
+    FOR v_item IN SELECT * FROM jsonb_array_elements(v_pool) LOOP
+        v_cumulative_weight := v_cumulative_weight + (v_item->>'weight')::FLOAT;
+        IF v_random_val <= v_cumulative_weight THEN
+            v_dropped_item := v_item;
+            EXIT;
+        END IF;
+    END LOOP;
+
+    IF v_dropped_item IS NULL THEN
+        v_dropped_item := v_pool->0;
+    END IF;
+
+    v_is_ticket := (v_dropped_item->>'type') = 'ticket';
+    IF v_is_ticket THEN
+        v_item_id := 'ticket_pin';
+        v_quantity_to_add := CAST(split_part(v_dropped_item->>'id', '_', 3) AS INTEGER);
+    ELSE
+        v_item_id := v_dropped_item->>'id';
+    END IF;
+
+    INSERT INTO public.user_inventory (anon_id, item_id, item_type, item_name, rarity, quantity)
+    VALUES (p_anon_id, v_item_id, v_dropped_item->>'type', v_dropped_item->>'name', v_dropped_item->>'rarity', v_quantity_to_add)
+    ON CONFLICT (anon_id, item_id)
+    DO UPDATE SET quantity = public.user_inventory.quantity + v_quantity_to_add;
+
+    RETURN v_dropped_item;
+END;
+$$;
 
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();

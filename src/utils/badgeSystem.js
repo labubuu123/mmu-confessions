@@ -4,54 +4,39 @@ export const BADGES = [
         label: 'Early Bird',
         icon: '🌅',
         description: 'Posted between 6 AM - 9 AM',
-        criteria: (posts, events) => {
-            return posts.some(post => {
-                const hour = new Date(post.created_at).getHours();
-                return hour >= 6 && hour < 9;
-            });
-        }
+        criteria: (posts) => posts.some(post => new Date(post.created_at).getHours() >= 6 && new Date(post.created_at).getHours() < 9)
     },
     {
         id: 'night_owl',
         label: 'Night Owl',
         icon: '🦉',
         description: 'Posted between 2 AM - 5 AM',
-        criteria: (posts, events) => {
-            return posts.some(post => {
-                const hour = new Date(post.created_at).getHours();
-                return hour >= 2 && hour < 5;
-            });
-        }
+        criteria: (posts) => posts.some(post => new Date(post.created_at).getHours() >= 2 && new Date(post.created_at).getHours() < 5)
     },
     {
         id: 'influencer',
         label: 'Influencer',
         icon: '💎',
         description: 'Has a post with over 100 likes',
-        criteria: (posts, events) => {
-            return posts.some(post => (post.likes_count || 0) > 100);
-        }
+        criteria: (posts) => posts.some(post => (post.likes_count || 0) > 100)
+    },
+
+    {
+        id: 'karma_millionaire',
+        label: 'High Roller',
+        icon: '🤑',
+        description: 'Earned over 1,000 Karma Points',
+        criteria: (posts, events, profile) => (profile?.karma_points || 0) >= 1000
     },
     {
-        id: 'town_crier',
-        label: 'Town Crier',
-        icon: '📢',
-        description: 'Posted 5+ events',
-        criteria: (posts, events) => {
-            return events.length >= 5;
-        }
-    },
-    {
-        id: 'conversation_starter',
-        label: 'Chatterbox',
-        icon: '💭',
-        description: 'Has a post with over 50 comments',
-        criteria: (posts, events) => {
-            return posts.some(post => (post.comments_count || 0) > 50);
-        }
+        id: 'dedication_streak',
+        label: 'Dedicated',
+        icon: '🔥',
+        description: 'Achieved a 7-day login streak',
+        criteria: (posts, events, profile) => (profile?.highest_streak || 0) >= 7
     }
 ];
 
-export function calculateBadges(posts = [], events = []) {
-    return BADGES.filter(badge => badge.criteria(posts, events));
+export function calculateBadges(posts = [], events = [], profile = null) {
+    return BADGES.filter(badge => badge.criteria(posts, events, profile));
 }
