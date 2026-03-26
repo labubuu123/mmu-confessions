@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import {
-    Search, Loader2, Coins, ShoppingBag, Activity,
-    Trophy, Users, RefreshCw, ArrowDown, ArrowUp, X,
+    Search, Loader2, Coins, Activity,
+    Trophy, Users, RefreshCw, ArrowDown, ArrowUp, X, Star
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -13,15 +13,17 @@ const fmt = (n) => Number(n ?? 0).toLocaleString();
 
 function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }) {
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between h-full">
             <div className="flex items-center gap-3 mb-2">
                 <div className={`p-2 ${iconBg} ${iconColor} rounded-lg`}>
                     <Icon className="w-5 h-5" />
                 </div>
                 <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm">{label}</h3>
             </div>
-            <p className="text-3xl font-black text-gray-900 dark:text-white tabular-nums">{value}</p>
-            {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+            <div>
+                <p className="text-3xl font-black text-gray-900 dark:text-white tabular-nums">{value}</p>
+                {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+            </div>
         </div>
     );
 }
@@ -48,24 +50,12 @@ function SortableHeader({ sortConfig, columnKey, onSort, children, className = '
     );
 }
 
-function BalanceBadge({ balance }) {
-    const color =
-        balance >= 500 ? 'text-yellow-600 dark:text-yellow-400' :
-        balance >= 200 ? 'text-indigo-600 dark:text-indigo-400' :
-                        'text-gray-600 dark:text-gray-300';
-    return (
-        <span className={`font-black text-lg tabular-nums ${color}`}>
-            {fmt(balance)}
-        </span>
-    );
-}
-
 export default function KarmaMonitor() {
-    const [users, setUsers]             = useState([]);
-    const [loading, setLoading]         = useState(true);
-    const [error, setError]             = useState(null);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [filterQuery, setFilterQuery] = useState('');
-    const [sortConfig, setSortConfig]   = useState({ key: 'current_balance', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'total_earned', direction: 'desc' });
     const filterRef = useRef(null);
 
     const fetchAllUsers = useCallback(async () => {
@@ -97,13 +87,12 @@ export default function KarmaMonitor() {
     }, []);
 
     const stats = useMemo(() => {
-        let totalKarma = 0, totalSpent = 0, topBalance = 0;
+        let totalKarma = 0, topBalance = 0;
         users.forEach((u) => {
-            totalKarma  += (u.current_balance ?? 0);
-            totalSpent  += (u.total_spent ?? 0);
-            if ((u.current_balance ?? 0) > topBalance) topBalance = u.current_balance;
+            totalKarma += (u.total_earned ?? 0);
+            if ((u.total_earned ?? 0) > topBalance) topBalance = u.total_earned;
         });
-        return { totalUsers: users.length, totalKarma, totalSpent, topBalance };
+        return { totalUsers: users.length, totalKarma, topBalance };
     }, [users]);
 
     const processedUsers = useMemo(() => {
@@ -132,12 +121,12 @@ export default function KarmaMonitor() {
     }, []);
 
     const handleCopy = useCallback((text) => {
-        navigator.clipboard.writeText(text).catch(() => {});
+        navigator.clipboard.writeText(text).catch(() => { });
     }, []);
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatCard
                     icon={Users}
                     iconBg="bg-indigo-100 dark:bg-indigo-900/30"
@@ -146,20 +135,12 @@ export default function KarmaMonitor() {
                     value={fmt(stats.totalUsers)}
                 />
                 <StatCard
-                    icon={Coins}
+                    icon={Star}
                     iconBg="bg-green-100 dark:bg-green-900/30"
                     iconColor="text-green-600"
-                    label="Total Karma in Circulation"
+                    label="Total Points Awarded"
                     value={fmt(stats.totalKarma)}
-                    sub={`Top balance: ${fmt(stats.topBalance)}`}
-                />
-                <StatCard
-                    icon={ShoppingBag}
-                    iconBg="bg-red-100 dark:bg-red-900/30"
-                    iconColor="text-red-600"
-                    label="Total Points Spent"
-                    value={fmt(stats.totalSpent)}
-                    sub={`Avg spend: ${stats.totalUsers ? fmt(Math.round(stats.totalSpent / stats.totalUsers)) : 0}`}
+                    sub={`Top user holds: ${fmt(stats.topBalance)} pts`}
                 />
             </div>
 
@@ -174,7 +155,7 @@ export default function KarmaMonitor() {
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row gap-3 justify-between items-center bg-gray-50 dark:bg-gray-900/50 rounded-t-xl">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 shrink-0">
                         <Activity className="w-5 h-5 text-indigo-600" />
-                        Karma Ledger
+                        Reputation Ledger
                     </h2>
 
                     <div className="flex items-center gap-2 w-full md:w-auto">
@@ -214,23 +195,21 @@ export default function KarmaMonitor() {
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 font-bold uppercase text-xs sticky top-0 z-10 shadow-sm">
                             <tr>
-                                <SortableHeader sortConfig={sortConfig} columnKey="user_id"         onSort={handleSort}>User ID</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="post_count"      onSort={handleSort} className="text-center justify-center">Posts</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="comment_count"   onSort={handleSort} className="text-center justify-center">Comments</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="likes_received"  onSort={handleSort} className="text-center justify-center">Likes</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="total_earned"    onSort={handleSort} className="text-right justify-end text-green-600 dark:text-green-400">Earned</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="total_spent"     onSort={handleSort} className="text-right justify-end text-red-600 dark:text-red-400">Spent</SortableHeader>
-                                <SortableHeader sortConfig={sortConfig} columnKey="current_balance" onSort={handleSort} className="text-right justify-end">Balance</SortableHeader>
+                                <SortableHeader sortConfig={sortConfig} columnKey="user_id" onSort={handleSort}>User ID</SortableHeader>
+                                <SortableHeader sortConfig={sortConfig} columnKey="post_count" onSort={handleSort} className="text-center justify-center">Posts</SortableHeader>
+                                <SortableHeader sortConfig={sortConfig} columnKey="comment_count" onSort={handleSort} className="text-center justify-center">Comments</SortableHeader>
+                                <SortableHeader sortConfig={sortConfig} columnKey="likes_received" onSort={handleSort} className="text-center justify-center">Likes</SortableHeader>
+                                <SortableHeader sortConfig={sortConfig} columnKey="total_earned" onSort={handleSort} className="text-right justify-end text-green-600 dark:text-green-400">Total Points</SortableHeader>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
                             {loading && users.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-16 text-center text-gray-400">
+                                    <td colSpan="5" className="px-6 py-16 text-center text-gray-400">
                                         <div className="flex flex-col items-center gap-3">
                                             <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                                            <p className="text-sm">Calculating karma points…</p>
+                                            <p className="text-sm">Calculating reputation points…</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -238,7 +217,7 @@ export default function KarmaMonitor() {
 
                             {!loading && processedUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-16 text-center">
+                                    <td colSpan="5" className="px-6 py-16 text-center">
                                         <Trophy className="w-10 h-10 mx-auto text-gray-200 dark:text-gray-700 mb-2" />
                                         <p className="text-gray-400 italic text-sm">
                                             {filterQuery ? `No users matching "${filterQuery}"` : 'No users found.'}
@@ -252,7 +231,7 @@ export default function KarmaMonitor() {
                                 </tr>
                             )}
 
-                            {processedUsers.map((user, idx) => (
+                            {processedUsers.map((user) => (
                                 <tr
                                     key={user.user_id}
                                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition group"
@@ -290,16 +269,8 @@ export default function KarmaMonitor() {
                                         <span className="text-[10px] text-gray-400 ml-0.5">×2</span>
                                     </td>
 
-                                    <td className="px-6 py-4 text-right font-bold text-green-600 dark:text-green-400 tabular-nums">
-                                        +{fmt(user.total_earned)}
-                                    </td>
-
-                                    <td className="px-6 py-4 text-right font-bold text-red-500 dark:text-red-400 tabular-nums">
-                                        {user.total_spent > 0 ? `-${fmt(user.total_spent)}` : <span className="text-gray-400">—</span>}
-                                    </td>
-
-                                    <td className="px-6 py-4 text-right bg-indigo-50/50 dark:bg-indigo-900/10">
-                                        <BalanceBadge balance={user.current_balance} />
+                                    <td className="px-6 py-4 text-right bg-indigo-50/50 dark:bg-indigo-900/10 font-bold text-green-600 dark:text-green-400 tabular-nums">
+                                        {fmt(user.total_earned)} pts
                                     </td>
                                 </tr>
                             ))}
