@@ -3,33 +3,27 @@ import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
 import { Megaphone, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import Feed from "./components/Feed";
+import TopConfessions from "./components/TopConfessions";
 import Header from "./components/Header";
-import FloatingActionMenu from "./components/FloatingActionMenu";
 import PostModal from "./components/PostModal";
+import PolicyPage from "./components/PolicyPage";
+import SearchPage from "./components/SearchPage";
+import UserAnalytics from "./components/UserAnalytics";
+import ToolsPage from "./components/ToolsPage";
+import AboutUs from "./components/AboutUs";
+import FloatingActionMenu from "./components/FloatingActionMenu";
+import Matchmaker from './components/matchmaker/Matchmaker';
+import Marketplace from "./components/Marketplace";
+import AdultSection from "./components/adult/AdultSection";
+import KarmaShop from "./components/KarmaShop";
+import WhisperChat from "./components/WhisperChat";
 import { NotificationProvider } from "./components/NotificationSystem";
 import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
 import ReloadPrompt from "./components/ReloadPrompt";
 
-const Feed = lazy(() => import("./components/Feed"));
-const TopConfessions = lazy(() => import("./components/TopConfessions"));
-const PolicyPage = lazy(() => import("./components/PolicyPage"));
-const SearchPage = lazy(() => import("./components/SearchPage"));
-const UserAnalytics = lazy(() => import("./components/UserAnalytics"));
-const ToolsPage = lazy(() => import("./components/ToolsPage"));
-const AboutUs = lazy(() => import("./components/AboutUs"));
-const Matchmaker = lazy(() => import('./components/matchmaker/Matchmaker'));
-const Marketplace = lazy(() => import("./components/Marketplace"));
-const AdultSection = lazy(() => import("./components/adult/AdultSection"));
-const KarmaShop = lazy(() => import("./components/KarmaShop"));
-const WhisperChat = lazy(() => import("./components/WhisperChat"));
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
-
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-  </div>
-);
 
 const AppContent = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || 'dark');
@@ -128,25 +122,30 @@ const AppContent = () => {
       </header>
 
       <main>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<Feed />} />
-            <Route path="/post/:id" element={<Feed />} />
-            <Route path="/top" element={<TopConfessions />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/policy" element={<PolicyPage />} />
-            <Route path="/analytics" element={<UserAnalytics />} />
-            <Route path="/about" element={<AboutUs />} />
-            <Route path="/tools" element={<ToolsPage />} />
-            <Route path="/post-direct/:id" element={<PostModalWrapper />} />
-            <Route path="/matchmaker/*" element={<Matchmaker />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/adult/*" element={<AdultSection />} />
-            <Route path="/karma-shop" element={<KarmaShop />} />
-            <Route path="/whisper" element={<WhisperChat />} />
-          </Routes>
-        </Suspense>
+        <Routes>
+          <Route path="/" element={<Feed />} />
+          <Route path="/post/:id" element={<Feed />} />
+          <Route path="/top" element={<TopConfessions />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={<div className="p-10 text-center">Loading Admin Panel...</div>}>
+                <AdminPanel />
+              </Suspense>
+            }
+          />
+          <Route path="/policy" element={<PolicyPage />} />
+          <Route path="/analytics" element={<UserAnalytics />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/tools" element={<ToolsPage />} />
+          <Route path="/post-direct/:id" element={<PostModalWrapper />} />
+          <Route path="/matchmaker/*" element={<Matchmaker />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/adult/*" element={<AdultSection />} />
+          <Route path="/karma-shop" element={<KarmaShop />} />
+          <Route path="/whisper" element={<WhisperChat />} />
+        </Routes>
       </main>
 
       <FloatingActionMenu />
