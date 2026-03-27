@@ -105,7 +105,12 @@ export default function WhisperChat() {
                     'postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'whisper_messages', filter: `room_tag=eq.${activeRoom}` },
                     (payload) => {
-                        setMessages((prevMessages) => [...prevMessages, payload.new]);
+                        setMessages((prevMessages) => {
+                            if (prevMessages.some(msg => msg.id === payload.new.id)) {
+                                return prevMessages;
+                            }
+                            return [...prevMessages, payload.new];
+                        });
                         scrollToBottom();
 
                         setRooms(prevRooms => prevRooms.map(r =>
@@ -172,6 +177,8 @@ export default function WhisperChat() {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
+        const tempId = `temp-${Date.now()}`;
+
         const messageData = {
             room_tag: activeRoom,
             content: newMessage.trim(),
@@ -182,12 +189,31 @@ export default function WhisperChat() {
             reply_to_content: replyingTo ? replyingTo.content : null,
         };
 
+        const optimisticMessage = {
+            ...messageData,
+            id: tempId,
+            created_at: new Date().toISOString(),
+            isOptimistic: true
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
         setReplyingTo(null);
+        scrollToBottom();
 
-        const { error } = await supabase.from('whisper_messages').insert([messageData]);
-        if (error) alert('Failed to send message. Please try again.');
-        else scrollToBottom();
+        const { data, error } = await supabase
+            .from('whisper_messages')
+            .insert([messageData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error sending message:', error);
+            setMessages(prev => prev.filter(msg => msg.id !== tempId));
+            alert('Failed to send message. Please try again.');
+        } else {
+            setMessages(prev => prev.map(msg => msg.id === tempId ? data : msg));
+        }
     };
 
     const handleSaveName = () => {
@@ -283,24 +309,41 @@ export default function WhisperChat() {
         <div className="flex flex-row h-[calc(100dvh-2rem)] md:h-[700px] max-w-6xl mx-3 my-4 md:mx-auto md:my-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 relative">
             {showInstructions && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-300 max-h-[90dvh] overflow-y-auto">
                         <div className="text-center">
                             <div className="text-4xl mb-4">🤫</div>
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Whisper!</h3>
-                            <div className="text-gray-600 dark:text-gray-400 space-y-4 mb-8 text-sm md:text-base text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
-                                <p>Whisper is an anonymous campus chat. Share your thoughts, ask questions, or just hang out.</p>
-                                <ul className="list-disc list-inside space-y-2 font-medium">
-                                    <li>Join official rooms or create your own custom spaces.</li>
-                                    <li>Lock private rooms with a password to chat with friends.</li>
-                                    <li>Reply to specific messages to keep conversations organized.</li>
-                                    <li><span className="text-red-500 font-bold">Note:</span> Custom rooms automatically expire and disappear after 24 hours!</li>
-                                </ul>
+
+                            <div className="text-gray-600 dark:text-gray-400 space-y-4 mb-6 text-sm md:text-base text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+                                <div>
+                                    <p className="mb-2">Whisper is an anonymous campus chat. Share your thoughts, ask questions, or just hang out.</p>
+                                    <ul className="list-disc list-inside space-y-1 font-medium text-sm">
+                                        <li>Join official rooms or create your own custom spaces.</li>
+                                        <li>Lock private rooms with a password to chat with friends.</li>
+                                        <li>Reply to specific messages to keep conversations organized.</li>
+                                        <li><span className="text-red-500 font-bold">Note:</span> Custom rooms automatically expire after 24 hours!</li>
+                                    </ul>
+                                </div>
+
+                                <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+
+                                <div>
+                                    <p className="mb-2">Whisper 是一个匿名的校园聊天室。在这里分享你的想法、提出问题，或者随便聊聊。</p>
+                                    <ul className="list-disc list-inside space-y-1 font-medium text-sm">
+                                        <li>加入官方房间或创建你自己的专属空间。</li>
+                                        <li>为私密房间设置密码，与好友专属畅聊。</li>
+                                        <li>回复特定消息，让对话保持井然有序。</li>
+                                        <li><span className="text-red-500 font-bold">注意：</span>自定义房间将在24小时后自动过期并消失！</li>
+                                    </ul>
+                                </div>
                             </div>
+
                             <button
                                 onClick={() => setShowInstructions(false)}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 flex flex-col items-center justify-center leading-tight gap-1"
                             >
-                                Got it, let's chat!
+                                <span>Got it, let's chat!</span>
+                                <span className="text-xs text-blue-200 font-normal">知道了，开始聊天吧！</span>
                             </button>
                         </div>
                     </div>
@@ -493,7 +536,7 @@ export default function WhisperChat() {
                         messages.map((msg, index) => {
                             const isMe = msg.author_name === identity.name;
                             return (
-                                <div key={msg.id || index} className={`group flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'}`}>
+                                <div key={msg.id || index} className={`group flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'} ${msg.isOptimistic ? 'opacity-70' : 'opacity-100'}`}>
                                     <div className={`flex items-baseline gap-2 mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                                         <span className="font-black text-xs md:text-sm tracking-tight" style={{ color: msg.author_color }}>{msg.author_name}</span>
                                         <span className="text-[10px] text-gray-400 font-medium">{formatTime(msg.created_at)}</span>
