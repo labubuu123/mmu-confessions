@@ -1,7 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
-CREATE EXTENSION IF NOT EXISTS pg_cron;
 SELECT cron.schedule(
     'cleanup_whisper_messages',
     '0 * * * *',
@@ -12,6 +11,12 @@ SELECT cron.schedule(
     'cleanup_custom_whisper_rooms',
     '0 * * * *',
     $$ DELETE FROM public.whisper_rooms WHERE is_custom = TRUE AND created_at < NOW() - INTERVAL '24 hours'; $$
+);
+
+SELECT cron.schedule(
+    'cleanup_whisper_dms',
+    '0 * * * *',
+    $$ DELETE FROM public.whisper_dm_threads WHERE created_at < NOW() - INTERVAL '24 hours'; $$
 );
 
 SELECT cron.schedule('daily-cleanup-posts', '0 0 * * *', 'SELECT public.auto_delete_expired_posts()');
@@ -377,6 +382,28 @@ CREATE TABLE IF NOT EXISTS public.whisper_rooms (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.whisper_dm_threads (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user1_id TEXT NOT NULL,
+    user1_name TEXT NOT NULL,
+    user2_id TEXT NOT NULL,
+    user2_name TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.whisper_dm_messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    thread_id UUID REFERENCES public.whisper_dm_threads(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL,
+    sender_name TEXT NOT NULL,
+    sender_color TEXT NOT NULL,
+    content TEXT NOT NULL,
+    reply_to_id UUID,
+    reply_to_author TEXT,
+    reply_to_content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
 ('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
 ('#FIST', false), ('#FCM', false), ('#FOM', false), ('#FOL', false),
@@ -442,6 +469,7 @@ ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN D
 ALTER TABLE public.whisper_rooms ADD COLUMN IF NOT EXISTS is_custom BOOLEAN DEFAULT FALSE;
 
 ALTER TABLE public.whisper_messages
+ADD COLUMN IF NOT EXISTS author_id TEXT,
 ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES public.whisper_messages(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS reply_to_author TEXT,
 ADD COLUMN IF NOT EXISTS reply_to_content TEXT;
@@ -452,6 +480,11 @@ ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whisper_dm_threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whisper_dm_messages ENABLE ROW LEVEL SECURITY;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.whisper_dm_threads;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.whisper_dm_messages;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1585,6 +1618,8 @@ CREATE POLICY "Allow anonymous select" ON whisper_messages FOR SELECT USING (tru
 CREATE POLICY "Allow anonymous insert" ON whisper_messages FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow anonymous read rooms" ON public.whisper_rooms FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous insert rooms" ON public.whisper_rooms FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable all for public on threads" ON public.whisper_dm_threads FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for public on dm messages" ON public.whisper_dm_messages FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Enable read access for all users" ON public.user_profiles FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all logs" ON public.karma_activity_log FOR SELECT USING (true);
