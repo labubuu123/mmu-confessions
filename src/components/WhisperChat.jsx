@@ -12,6 +12,7 @@ export default function WhisperChat() {
     const [newMessage, setNewMessage] = useState('');
     const [identity, setIdentity] = useState({ name: 'Loading...', color: '#fff' });
     const [isLoading, setIsLoading] = useState(true);
+    const [replyingTo, setReplyingTo] = useState(null);
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [customNameInput, setCustomNameInput] = useState('');
@@ -74,7 +75,6 @@ export default function WhisperChat() {
                     return;
                 }
             }
-
             attemptJoinRoom(roomTag);
         }
     };
@@ -85,6 +85,7 @@ export default function WhisperChat() {
 
         const fetchMessagesAndSubscribe = async () => {
             setIsLoading(true);
+            setReplyingTo(null);
 
             const { data, error } = await supabase
                 .from('whisper_messages')
@@ -176,9 +177,14 @@ export default function WhisperChat() {
             content: newMessage.trim(),
             author_name: identity.name,
             author_color: identity.color,
+            reply_to_id: replyingTo ? replyingTo.id : null,
+            reply_to_author: replyingTo ? replyingTo.author_name : null,
+            reply_to_content: replyingTo ? replyingTo.content : null,
         };
 
         setNewMessage('');
+        setReplyingTo(null);
+
         const { error } = await supabase.from('whisper_messages').insert([messageData]);
         if (error) alert('Failed to send message. Please try again.');
         else scrollToBottom();
@@ -204,7 +210,7 @@ export default function WhisperChat() {
     };
 
     const submitPassword = async () => {
-        const { data: isValid, error } = await supabase.rpc('verify_room_password', {
+        const { data: isValid } = await supabase.rpc('verify_room_password', {
             p_tag: passwordModal.roomTag,
             p_password: enteredPassword
         });
@@ -286,6 +292,7 @@ export default function WhisperChat() {
                                 <ul className="list-disc list-inside space-y-2 font-medium">
                                     <li>Join official rooms or create your own custom spaces.</li>
                                     <li>Lock private rooms with a password to chat with friends.</li>
+                                    <li>Reply to specific messages to keep conversations organized.</li>
                                     <li><span className="text-red-500 font-bold">Note:</span> Custom rooms automatically expire and disappear after 24 hours!</li>
                                 </ul>
                             </div>
@@ -486,12 +493,25 @@ export default function WhisperChat() {
                         messages.map((msg, index) => {
                             const isMe = msg.author_name === identity.name;
                             return (
-                                <div key={msg.id || index} className={`flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'}`}>
+                                <div key={msg.id || index} className={`group flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'}`}>
                                     <div className={`flex items-baseline gap-2 mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                                         <span className="font-black text-xs md:text-sm tracking-tight" style={{ color: msg.author_color }}>{msg.author_name}</span>
                                         <span className="text-[10px] text-gray-400 font-medium">{formatTime(msg.created_at)}</span>
+                                        <button
+                                            onClick={() => setReplyingTo(msg)}
+                                            className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'mr-2' : 'ml-2'} text-blue-500 hover:text-blue-600 cursor-pointer`}
+                                        >
+                                            REPLY
+                                        </button>
                                     </div>
-                                    <div className={`p-3 md:p-4 rounded-xl inline-block max-w-[85%] md:max-w-[70%] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'}`}>
+
+                                    <div className={`p-3 md:p-4 rounded-xl inline-flex flex-col max-w-[85%] md:max-w-[70%] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'}`}>
+                                        {msg.reply_to_content && (
+                                            <div className={`mb-2 p-2 rounded border-l-4 text-xs ${isMe ? 'bg-black/10 border-white/30' : 'bg-black/5 dark:bg-white/5 border-gray-300 dark:border-gray-500'}`}>
+                                                <span className="font-bold opacity-70 block mb-0.5">{msg.reply_to_author}</span>
+                                                <p className="opacity-80 line-clamp-2">{msg.reply_to_content}</p>
+                                            </div>
+                                        )}
                                         <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
                                     </div>
                                 </div>
@@ -502,12 +522,25 @@ export default function WhisperChat() {
                 </div>
 
                 <div className="p-3 md:p-4 border-t border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md pb-safe">
-                    <form onSubmit={handleSendMessage} className="flex gap-2 items-center bg-gray-100 dark:bg-gray-900 p-1.5 md:p-2 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 focus-within:ring-2 focus-within:ring-blue-500 transition-all shadow-inner">
-                        <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={`Message ${activeRoom}...`} maxLength={200} className="flex-1 px-4 py-2 bg-transparent border-none focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 text-sm md:text-base w-full" />
-                        <button type="submit" disabled={!newMessage.trim()} className="p-2.5 md:p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl transition-all shadow-md active:scale-95 flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-6 md:h-6 -rotate-45 ml-0.5 mb-0.5"><path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 2.304 2.304 0 00.063.012l17.456-5.682a.75.75 0 000-1.396L3.541 2.392a.75.75 0 00-.063.012zm.112 16.112l1.395-4.518H12a.75.75 0 010-1.5H4.985L3.59 17.518l11.41-3.715a.75.75 0 010 1.5l-11.41 3.715z" /></svg>
-                        </button>
-                    </form>
+                    <div className="bg-gray-100 dark:bg-gray-900 rounded-xl shadow-inner ring-1 ring-gray-200 dark:ring-gray-700 focus-within:ring-2 focus-within:ring-blue-500 transition-all flex flex-col overflow-hidden">
+                        {replyingTo && (
+                            <div className="px-3 pt-2 pb-1 flex justify-between items-start border-b border-gray-200 dark:border-gray-700 bg-black/5 dark:bg-white/5">
+                                <div className="flex flex-col min-w-0 pr-2 border-l-2 border-blue-500 pl-2">
+                                    <span className="text-[10px] font-bold text-blue-500">Replying to {replyingTo.author_name}</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-full">{replyingTo.content}</span>
+                                </div>
+                                <button type="button" onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        )}
+                        <form onSubmit={handleSendMessage} className="flex gap-2 items-center p-1.5 md:p-2">
+                            <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={`Message ${activeRoom}...`} maxLength={200} className="flex-1 px-4 py-2 bg-transparent border-none focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 text-sm md:text-base w-full" />
+                            <button type="submit" disabled={!newMessage.trim()} className="p-2.5 md:p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl transition-all shadow-md active:scale-95 flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-6 md:h-6 -rotate-45 ml-0.5 mb-0.5"><path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 2.304 2.304 0 00.063.012l17.456-5.682a.75.75 0 000-1.396L3.541 2.392a.75.75 0 00-.063.012zm.112 16.112l1.395-4.518H12a.75.75 0 010-1.5H4.985L3.59 17.518l11.41-3.715a.75.75 0 010 1.5l-11.41 3.715z" /></svg>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

@@ -441,6 +441,11 @@ ALTER TABLE public.adult_confessions ADD COLUMN IF NOT EXISTS expires_at TIMESTA
 ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.whisper_rooms ADD COLUMN IF NOT EXISTS is_custom BOOLEAN DEFAULT FALSE;
 
+ALTER TABLE public.whisper_messages
+ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES public.whisper_messages(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS reply_to_author TEXT,
+ADD COLUMN IF NOT EXISTS reply_to_content TEXT;
+
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
