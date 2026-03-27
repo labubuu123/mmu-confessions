@@ -361,7 +361,6 @@ export default function WhisperChat() {
                                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 flex flex-col items-center justify-center leading-tight gap-1"
                             >
                                 <span>Got it, let's chat!</span>
-                                <span className="text-xs text-blue-200 font-normal">知道了，开始聊天吧！</span>
                             </button>
                         </div>
                     </div>
