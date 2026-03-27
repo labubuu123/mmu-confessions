@@ -8,6 +8,12 @@ SELECT cron.schedule(
     $$ DELETE FROM whisper_messages WHERE created_at < NOW() - INTERVAL '24 hours'; $$
 );
 
+SELECT cron.schedule(
+    'cleanup_custom_whisper_rooms',
+    '0 * * * *',
+    $$ DELETE FROM public.whisper_rooms WHERE is_custom = TRUE AND created_at < NOW() - INTERVAL '24 hours'; $$
+);
+
 SELECT cron.schedule('daily-cleanup-posts', '0 0 * * *', 'SELECT public.auto_delete_expired_posts()');
 SELECT cron.schedule('cleanup-adult-whispers', '* * * * *', 'SELECT public.auto_delete_expired_adult_posts()');
 
@@ -354,7 +360,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS whisper_messages (
+CREATE TABLE IF NOT EXISTS public.whisper_messages (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     room_tag TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -363,6 +369,37 @@ CREATE TABLE IF NOT EXISTS whisper_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.whisper_rooms (
+    tag TEXT PRIMARY KEY,
+    is_private BOOLEAN DEFAULT FALSE,
+    password TEXT,
+    message_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO public.whisper_rooms (tag, is_private) VALUES
+('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
+('#FIST', false), ('#FCM', false), ('#FOM', false), ('#FOL', false),
+('#FAC', false), ('#FCA', false), ('#FAIE', false), ('#BadLecturer', false),
+('#CyberjayaLife', false), ('#MelakaCampus', false), ('#Dating', false)
+ON CONFLICT (tag) DO NOTHING;
+
+INSERT INTO public.whisper_rooms (tag, is_private)
+SELECT DISTINCT room_tag, false FROM public.whisper_messages
+ON CONFLICT (tag) DO NOTHING;
+
+UPDATE public.whisper_rooms r
+SET message_count = (
+    SELECT COUNT(*) FROM public.whisper_messages m WHERE m.room_tag = r.tag
+);
+
+UPDATE public.whisper_rooms
+SET is_custom = FALSE
+WHERE tag IN (
+    '#FinalExams', '#FOB', '#FET', '#FCI', '#FIST', '#FCM',
+    '#FOM', '#FOL', '#FAC', '#FCA', '#FAIE', '#BadLecturer',
+    '#CyberjayaLife', '#MelakaCampus', '#Dating'
+);
 
 ALTER TABLE public.matchmaker_profiles ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
 ALTER TABLE public.matchmaker_profiles ADD COLUMN IF NOT EXISTS lat FLOAT;
@@ -402,12 +439,14 @@ ALTER TABLE public.adult_comments ADD CONSTRAINT adult_comments_parent_id_fkey F
 ALTER TABLE public.adult_confessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.whisper_rooms ADD COLUMN IF NOT EXISTS is_custom BOOLEAN DEFAULT FALSE;
 
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.karma_activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reputation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE whisper_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whisper_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whisper_rooms ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1323,6 +1362,28 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION update_whisper_room_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE public.whisper_rooms SET message_count = message_count + 1 WHERE tag = NEW.room_tag;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE public.whisper_rooms SET message_count = GREATEST(0, message_count - 1) WHERE tag = OLD.room_tag;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION verify_room_password(p_tag TEXT, p_password TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_match BOOLEAN;
+BEGIN
+    SELECT (password = p_password) INTO v_match FROM public.whisper_rooms WHERE tag = p_tag;
+    RETURN COALESCE(v_match, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 DROP TRIGGER IF EXISTS enforce_admin_author_confessions ON public.confessions;
 CREATE TRIGGER enforce_admin_author_confessions BEFORE INSERT OR UPDATE ON public.confessions FOR EACH ROW EXECUTE FUNCTION public.force_admin_name();
 
@@ -1358,6 +1419,11 @@ CREATE TRIGGER check_block_poll_votes BEFORE INSERT OR UPDATE ON public.poll_vot
 
 DROP TRIGGER IF EXISTS check_block_marketplace ON public.marketplace_items;
 CREATE TRIGGER check_block_marketplace BEFORE INSERT OR UPDATE ON public.marketplace_items FOR EACH ROW EXECUTE FUNCTION public.enforce_user_block();
+
+DROP TRIGGER IF EXISTS on_whisper_message_change ON public.whisper_messages;
+CREATE TRIGGER on_whisper_message_change
+AFTER INSERT OR DELETE ON public.whisper_messages
+FOR EACH ROW EXECUTE FUNCTION update_whisper_room_count();
 
 CREATE INDEX IF NOT EXISTS idx_confessions_approved ON public.confessions(approved);
 CREATE INDEX IF NOT EXISTS idx_confessions_created_at ON public.confessions(created_at DESC);
@@ -1512,6 +1578,8 @@ CREATE POLICY "Users can view own reputation" ON public.user_reputation FOR SELE
 CREATE POLICY "Admins can view all reputation" ON public.user_reputation FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 CREATE POLICY "Allow anonymous select" ON whisper_messages FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous insert" ON whisper_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anonymous read rooms" ON public.whisper_rooms FOR SELECT USING (true);
+CREATE POLICY "Allow anonymous insert rooms" ON public.whisper_rooms FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Enable read access for all users" ON public.user_profiles FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all logs" ON public.karma_activity_log FOR SELECT USING (true);
