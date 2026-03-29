@@ -14,6 +14,17 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+const isIOS = () => {
+  return (
+    ['iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod'].includes(navigator.platform) ||
+    (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+  );
+};
+
+const isStandalone = () => {
+  return !!window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+};
+
 export const usePushSubscription = () => {
   const [loading, setLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -36,8 +47,17 @@ export const usePushSubscription = () => {
   }, []);
 
   const subscribeToPush = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      alert("Push notifications are not supported on this device.");
+    if (!('serviceWorker' in navigator)) {
+      alert("Service workers are not supported on this browser.");
+      return;
+    }
+
+    if (!('PushManager' in window)) {
+      if (isIOS() && !isStandalone()) {
+        alert("To enable notifications on iPhone/iPad, you must first tap 'Share' (the square with an arrow) and select 'Add to Home Screen'. Then open the app from your home screen to enable notifications.");
+      } else {
+        alert("Push notifications are not supported on this device or browser.");
+      }
       return;
     }
 
