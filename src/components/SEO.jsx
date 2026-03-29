@@ -4,47 +4,68 @@ import { Helmet } from 'react-helmet-async';
 export default function SEO({
     title,
     description,
-    image,
+    keywords,
     url,
+    image,
     type = 'website',
-    publishedTime,
-    author,
-    schema
+    author = 'MMU Confessions'
 }) {
-    const siteTitle = "MMU Confessions";
-    const finalTitle = title ? `${title} | ${siteTitle}` : "MMU Confessions | Anonymous Student Community";
-    const finalDescription = description || "The #1 anonymous confession platform for MMU students. Share secrets, read stories, and connect with your campus community in Melaka and Cyberjaya.";
-    const finalUrl = url || "https://mmuconfessions.fun/";
-    const finalImage = image || "https://mmuconfessions.fun/default-og-image.png";
+    // Base configuration (Replace with your actual live domain)
+    const DOMAIN = 'https://your-domain.com';
+
+    const siteTitle = title ? `${title} | MMU Confessions` : 'MMU Confessions - The Voice of MMU Students';
+    const siteDescription = description || 'Read, share, and discuss the latest anonymous confessions, stories, and experiences from Multimedia University (MMU) students in Cyberjaya and Melaka.';
+    const siteUrl = url ? `${DOMAIN}${url}` : DOMAIN;
+    const siteImage = image || `${DOMAIN}/favicon.svg`; // Fallback image for link sharing
+
+    // JSON-LD Structured Data for Google Rich Results
+    const structuredData = {
+        "@context": "https://schema.org",
+        "@type": type === 'article' ? 'Article' : 'WebSite',
+        "name": siteTitle,
+        "url": siteUrl,
+        "description": siteDescription,
+        "image": siteImage,
+        "author": {
+            "@type": "Organization",
+            "name": author
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "MMU Confessions",
+            "logo": {
+                "@type": "ImageObject",
+                "url": `${DOMAIN}/favicon.svg`
+            }
+        }
+    };
 
     return (
         <Helmet>
-            <title>{finalTitle}</title>
-            <meta name="description" content={finalDescription} />
-            <link rel="canonical" href={finalUrl} />
+            {/* Standard Metadata */}
+            <title>{siteTitle}</title>
+            <meta name="description" content={siteDescription} />
+            {keywords && <meta name="keywords" content={keywords} />}
+            <link rel="canonical" href={siteUrl} />
 
-            <meta property="og:site_name" content={siteTitle} />
+            {/* Open Graph / Facebook / WhatsApp */}
             <meta property="og:type" content={type} />
-            <meta property="og:url" content={finalUrl} />
-            <meta property="og:title" content={finalTitle} />
-            <meta property="og:description" content={finalDescription} />
-            <meta property="og:image" content={finalImage} />
-            <meta property="og:locale" content="en_US" />
+            <meta property="og:url" content={siteUrl} />
+            <meta property="og:title" content={siteTitle} />
+            <meta property="og:description" content={siteDescription} />
+            <meta property="og:image" content={siteImage} />
+            <meta property="og:site_name" content="MMU Confessions" />
 
+            {/* Twitter */}
             <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:url" content={finalUrl} />
-            <meta name="twitter:title" content={finalTitle} />
-            <meta name="twitter:description" content={finalDescription} />
-            <meta name="twitter:image" content={finalImage} />
+            <meta name="twitter:url" content={siteUrl} />
+            <meta name="twitter:title" content={siteTitle} />
+            <meta name="twitter:description" content={siteDescription} />
+            <meta name="twitter:image" content={siteImage} />
 
-            {publishedTime && <meta property="article:published_time" content={publishedTime} />}
-            {author && <meta property="article:author" content={author} />}
-
-            {schema && (
-                <script type="application/ld+json">
-                    {JSON.stringify(schema)}
-                </script>
-            )}
+            <script type="application/ld+json">
+                {JSON.stringify(structuredData)}
+            </script>
         </Helmet>
     );
 }

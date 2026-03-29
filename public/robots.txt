@@ -1,4 +1,8 @@
 User-agent: *
-Disallow:
+Allow: /
 
-Sitemap: https://mmuconfessions.fun/sitemap.xml
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+Sitemap: https://mmuconfessions.fun//sitemap.xml
