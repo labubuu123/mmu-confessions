@@ -5,4 +5,4 @@ Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /api/
 
-Sitemap: https://mmuconfessions.fun//sitemap.xml
+Sitemap: https://mmuconfessions.fun/sitemap.xml
