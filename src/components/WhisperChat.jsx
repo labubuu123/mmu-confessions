@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const ADJECTIVES = ['Sleepy', 'Caffeinated', 'Stressed', 'Chill', 'Panicking', 'Lost', 'Sneaky', 'Bored', 'Hungry', 'Late'];
@@ -19,7 +19,7 @@ export default function WhisperChat() {
 
     const [rooms, setRooms] = useState([]);
     const [dmThreads, setDmThreads] = useState([]);
-    const [activeRoom, setActiveRoom] = useState('#FinalExams');
+    const [activeRoom, setActiveRoom] = useState('#Gossip');
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +40,16 @@ export default function WhisperChat() {
     const [unlockedRooms, setUnlockedRooms] = useState([]);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
     const messagesEndRef = useRef(null);
+
+    const [onlineCount, setOnlineCount] = useState(1);
+    const [typingUsers, setTypingUsers] = useState([]);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    const activeChannelRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
+    const scrollContainerRef = useRef(null);
+    const observerRef = useRef(null);
 
     const isDM = activeRoom.startsWith('dm-');
     const activeThreadId = isDM ? activeRoom.replace('dm-', '') : null;
@@ -111,44 +121,82 @@ export default function WhisperChat() {
         const fetchMessagesAndSubscribe = async () => {
             setIsLoading(true);
             setReplyingTo(null);
+            setHasMore(true);
+            setTypingUsers([]);
+            setOnlineCount(1);
 
             if (isDM) {
                 const { data } = await supabase.from('whisper_dm_messages').select('*').eq('thread_id', activeThreadId).order('created_at', { ascending: false }).limit(50);
-                if (data) setMessages(data.reverse().map(m => normalizeMessage(m, true)));
+                if (data) {
+                    setMessages(data.reverse().map(m => normalizeMessage(m, true)));
+                    if (data.length < 50) setHasMore(false);
+                }
 
-                channelMessages = supabase.channel(`dm:${activeThreadId}`)
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whisper_dm_messages', filter: `thread_id=eq.${activeThreadId}` }, (payload) => {
-                        setMessages((prev) => {
-                            if (prev.some(msg => msg.id === payload.new.id)) return prev;
-                            return [...prev, normalizeMessage(payload.new, true)];
-                        });
-                        scrollToBottom();
-                    }).subscribe();
+                channelMessages = supabase.channel(`dm:${activeThreadId}`);
             } else {
                 const { data } = await supabase.from('whisper_messages').select('*').eq('room_tag', activeRoom).order('created_at', { ascending: false }).limit(50);
-                if (data) setMessages(data.reverse().map(m => normalizeMessage(m, false)));
+                if (data) {
+                    setMessages(data.reverse());
+                    if (data.length < 50) setHasMore(false);
+                    setRooms(prevRooms => prevRooms.map(r => r.tag === activeRoom ? { ...r, message_count: Math.max(r.message_count || 0, data.length) } : r));
+                }
 
-                channelMessages = supabase.channel(`room:${activeRoom}`)
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whisper_messages', filter: `room_tag=eq.${activeRoom}` }, (payload) => {
-                        setMessages((prev) => {
-                            if (prev.some(msg => msg.id === payload.new.id)) return prev;
-                            return [...prev, normalizeMessage(payload.new, false)];
-                        });
-                        scrollToBottom();
-                        setRooms(prevRooms => prevRooms.map(r => r.tag === activeRoom ? { ...r, message_count: (r.message_count || 0) + 1 } : r));
-                    }).subscribe();
+                channelMessages = supabase.channel(`room:${activeRoom}`);
             }
+
+            channelMessages.on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: isDM ? 'whisper_dm_messages' : 'whisper_messages',
+                filter: isDM ? `thread_id=eq.${activeThreadId}` : `room_tag=eq.${activeRoom}`
+            }, (payload) => {
+                setMessages((prev) => {
+                    if (prev.some(msg => msg.id === payload.new.id)) return prev;
+                    return [...prev, isDM ? normalizeMessage(payload.new, true) : payload.new];
+                });
+                scrollToBottom();
+            });
+
+            channelMessages.on('presence', { event: 'sync' }, () => {
+                const presenceState = channelMessages.presenceState();
+                const count = Object.keys(presenceState).length;
+                setOnlineCount(count > 0 ? count : 1);
+            });
+
+            channelMessages.on('broadcast', { event: 'typing' }, (payload) => {
+                const typerName = payload.payload.name;
+                setTypingUsers(prev => {
+                    if (!prev.includes(typerName)) return [...prev, typerName];
+                    return prev;
+                });
+
+                setTimeout(() => {
+                    setTypingUsers(prev => prev.filter(n => n !== typerName));
+                }, 3000);
+            });
+
+            channelMessages.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channelMessages.track({ online_at: new Date().toISOString() });
+                }
+            });
+
+            activeChannelRef.current = channelMessages;
             setIsLoading(false);
+            setTimeout(scrollToBottom, 150);
         };
 
         channelRooms = supabase.channel('public:whisper_rooms')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whisper_rooms' }, (payload) => {
-                setRooms(prev => !prev.find(r => r.tag === payload.new.tag) ? [{ tag: payload.new.tag, is_private: payload.new.is_private, message_count: 0, is_custom: payload.new.is_custom }, ...prev] : prev);
+                setRooms(prev => !prev.find(r => r.tag === payload.new.tag) ? [{ tag: payload.new.tag, is_private: payload.new.is_private, message_count: payload.new.message_count || 0, is_custom: payload.new.is_custom }, ...prev] : prev);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whisper_rooms' }, (payload) => {
+                setRooms(prev => prev.map(r => r.tag === payload.new.tag ? { ...r, message_count: payload.new.message_count } : r));
             })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'whisper_rooms' }, (payload) => {
                 setRooms(prev => prev.filter(r => r.tag !== payload.old.tag));
                 if (activeRoom === payload.old.tag) {
-                    setActiveRoom('#FinalExams');
+                    setActiveRoom('#Gossip');
                     alert("The custom room you were in has expired and been deleted.");
                 }
             }).subscribe();
@@ -162,7 +210,7 @@ export default function WhisperChat() {
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'whisper_dm_threads' }, (payload) => {
                 setDmThreads(prev => prev.filter(t => t.id !== payload.old.id));
                 if (activeRoom === `dm-${payload.old.id}`) {
-                    setActiveRoom('#FinalExams');
+                    setActiveRoom('#Gossip');
                     alert("This private whisper has expired and been deleted.");
                 }
             }).subscribe();
@@ -173,12 +221,73 @@ export default function WhisperChat() {
             if (channelMessages) supabase.removeChannel(channelMessages);
             if (channelRooms) supabase.removeChannel(channelRooms);
             if (channelDmThreads) supabase.removeChannel(channelDmThreads);
+            activeChannelRef.current = null;
         };
     }, [activeRoom]);
 
+    const loadMoreMessages = useCallback(async () => {
+        if (isLoadingMore || !hasMore || messages.length === 0) return;
+        setIsLoadingMore(true);
+
+        const oldestMsg = messages[0];
+        const targetTable = isDM ? 'whisper_dm_messages' : 'whisper_messages';
+
+        let query = supabase.from(targetTable).select('*')
+            .lt('created_at', oldestMsg.created_at)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (isDM) query = query.eq('thread_id', activeThreadId);
+        else query = query.eq('room_tag', activeRoom);
+
+        const { data } = await query;
+
+        if (data && data.length > 0) {
+            const olderMessages = data.reverse().map(m => isDM ? normalizeMessage(m, true) : m);
+
+            const container = scrollContainerRef.current;
+            const oldScrollHeight = container?.scrollHeight;
+
+            setMessages(prev => [...olderMessages, ...prev]);
+
+            setTimeout(() => {
+                if (scrollContainerRef.current) {
+                    const newScrollHeight = scrollContainerRef.current.scrollHeight;
+                    scrollContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight;
+                }
+            }, 0);
+
+            if (data.length < 50) setHasMore(false);
+        } else {
+            setHasMore(false);
+        }
+        setIsLoadingMore(false);
+    }, [isLoadingMore, hasMore, messages, isDM, activeThreadId, activeRoom]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+                    loadMoreMessages();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        if (observerRef.current) observer.observe(observerRef.current);
+
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, loadMoreMessages]);
+
+
     const scrollToBottom = () => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     const formatTime = (isoString) => new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formatCount = (count) => !count ? '0' : (count > 999 ? (count / 1000).toFixed(1) + 'k' : count);
+
+    const formatCount = (count) => {
+        const num = Number(count);
+        if (isNaN(num) || num <= 0) return '0';
+        return num > 999 ? (num / 1000).toFixed(1) + 'k' : num.toString();
+    };
 
     const startDM = async (targetId, targetName) => {
         if (!targetId || targetId === sessionId) return;
@@ -201,6 +310,24 @@ export default function WhisperChat() {
         if (thread) {
             setActiveRoom(`dm-${thread.id}`);
             setIsMobileMenuOpen(false);
+        }
+    };
+
+    const handleTypingChange = (e) => {
+        setNewMessage(e.target.value);
+
+        if (activeChannelRef.current && identity.name !== 'Loading...') {
+            if (!typingTimeoutRef.current) {
+                activeChannelRef.current.send({
+                    type: 'broadcast',
+                    event: 'typing',
+                    payload: { name: identity.name }
+                });
+
+                typingTimeoutRef.current = setTimeout(() => {
+                    typingTimeoutRef.current = null;
+                }, 2000);
+            }
         }
     };
 
@@ -231,18 +358,31 @@ export default function WhisperChat() {
             reply_to_content: replyingTo?.content || null,
         };
 
-        const optimisticMessage = normalizeMessage({ ...payload, id: tempId, created_at: new Date().toISOString(), isOptimistic: true }, isDM);
+        const optimisticMessage = normalizeMessage({
+            ...payload,
+            id: tempId,
+            created_at: new Date().toISOString(),
+            isOptimistic: true
+        }, isDM);
 
         setMessages(prev => [...prev, optimisticMessage]);
         setNewMessage('');
         setReplyingTo(null);
         scrollToBottom();
 
+        if (!isDM) {
+            setRooms(prev => prev.map(r => r.tag === activeRoom ? { ...r, message_count: (r.message_count || 0) + 1 } : r));
+        }
+
         const { data, error } = await supabase.from(targetTable).insert([payload]).select().single();
 
         if (error) {
             console.error('Error:', error);
             setMessages(prev => prev.filter(msg => msg.id !== tempId));
+
+            if (!isDM) {
+                setRooms(prev => prev.map(r => r.tag === activeRoom ? { ...r, message_count: Math.max(0, (r.message_count || 1) - 1) } : r));
+            }
             alert('Failed to send message.');
         } else {
             setMessages(prev => prev.map(msg => msg.id === tempId ? normalizeMessage(data, isDM) : msg));
@@ -322,14 +462,14 @@ export default function WhisperChat() {
     };
 
     return (
-        <div className="flex flex-row h-[calc(100dvh-2rem)] md:h-[700px] max-w-6xl mx-3 my-4 md:mx-auto md:my-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 relative">
+        <div className="flex flex-row h-[100dvh] w-full md:h-[700px] md:max-w-6xl mx-0 my-0 md:mx-auto md:my-6 bg-white dark:bg-gray-800 md:rounded-xl md:shadow-2xl overflow-hidden md:border border-gray-100 dark:border-gray-700 relative">
             {showInstructions && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
                     <div className="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-300 max-h-[90dvh] overflow-y-auto">
                         <div className="text-center">
                             <div className="text-4xl mb-4">🤫</div>
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Whisper!</h3>
-                            
+
                             <div className="text-gray-600 dark:text-gray-400 space-y-4 mb-6 text-sm md:text-base text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
                                 <div>
                                     <p className="mb-2">Whisper is an anonymous campus chat. Share your thoughts, ask questions, or just hang out.</p>
@@ -410,8 +550,8 @@ export default function WhisperChat() {
 
             <div className={`md:hidden absolute inset-0 bg-black/60 z-30 transition-opacity ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)} />
 
-            <div className={`absolute md:relative z-40 w-[75%] max-w-[300px] md:w-1/4 md:max-w-none h-full flex flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                <div className="p-5 md:p-6 pb-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-800 md:border-none">
+            <div className={`absolute md:relative z-40 w-[85%] max-w-[320px] md:w-1/4 md:max-w-none h-full flex flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+                <div className="p-5 md:p-6 pb-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-800 md:border-none flex-shrink-0">
                     <h2 className="text-2xl font-black text-gray-800 dark:text-white flex items-center gap-2"><span className="animate-pulse">🤫</span> Whisper</h2>
                     <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
@@ -426,10 +566,10 @@ export default function WhisperChat() {
                                     const dmId = `dm-${thread.id}`;
                                     return (
                                         <button key={thread.id} onClick={() => { setActiveRoom(dmId); setIsMobileMenuOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-xl font-bold transition-all duration-200 text-sm md:text-base flex items-center justify-between group ${activeRoom === dmId ? 'bg-pink-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
-                                            <div className="flex items-center gap-2 truncate">
-                                                <span className="text-lg opacity-50">👻</span>
+                                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                <span className="text-lg opacity-50 flex-shrink-0">👻</span>
                                                 <span className="truncate">{targetName}</span>
-                                                <span title="Expires in 24h" className="text-[10px]">⏱️</span>
+                                                <span title="Expires in 24h" className="text-[10px] flex-shrink-0">⏱️</span>
                                             </div>
                                         </button>
                                     )
@@ -438,7 +578,7 @@ export default function WhisperChat() {
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center px-4 py-2">
+                    <div className="flex justify-between items-center px-4 py-2 mt-2">
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chat Rooms</p>
                         <button onClick={() => setIsCreateRoomOpen(true)} className="text-[10px] bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded font-bold uppercase flex items-center gap-1 transition-colors"><span>+</span> Custom</button>
                     </div>
@@ -447,13 +587,13 @@ export default function WhisperChat() {
                             const isUnlocked = unlockedRooms.includes(room.tag);
                             return (
                                 <button key={room.tag} onClick={() => attemptJoinRoom(room.tag)} className={`w-full text-left px-3 py-2.5 rounded-xl font-bold transition-all duration-200 text-sm md:text-base flex items-center justify-between group ${activeRoom === room.tag ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
-                                    <div className="flex items-center gap-2 truncate">
-                                        <span className={`text-lg ${activeRoom === room.tag ? 'opacity-100 text-white' : 'opacity-50'}`}>#</span>
+                                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                                        <span className={`text-lg flex-shrink-0 ${activeRoom === room.tag ? 'opacity-100 text-white' : 'opacity-50'}`}>#</span>
                                         <span className="truncate">{room.tag.replace('#', '')}</span>
-                                        {room.is_private && <span title="Private Room"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 ${activeRoom === room.tag ? 'text-blue-200' : (isUnlocked ? 'text-green-500' : 'text-gray-400')}`}>{isUnlocked ? <path fillRule="evenodd" d="M14.5 9a2.5 2.5 0 00-5 0v1h5V9zM7.5 10V9a4.5 4.5 0 119 0v1h1a2 2 0 012 2v5a2 2 0 01-2 2h-13a2 2 0 01-2-2v-5a2 2 0 012-2h1zm4.5 4a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /> : <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />}</svg></span>}
-                                        {room.is_custom && <span title="Expires in 24h" className="text-[10px]">⏱️</span>}
+                                        {room.is_private && <span title="Private Room" className="flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-3.5 h-3.5 ${activeRoom === room.tag ? 'text-blue-200' : (isUnlocked ? 'text-green-500' : 'text-gray-400')}`}>{isUnlocked ? <path fillRule="evenodd" d="M14.5 9a2.5 2.5 0 00-5 0v1h5V9zM7.5 10V9a4.5 4.5 0 119 0v1h1a2 2 0 012 2v5a2 2 0 01-2 2h-13a2 2 0 01-2-2v-5a2 2 0 012-2h1zm4.5 4a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /> : <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />}</svg></span>}
+                                        {room.is_custom && <span title="Expires in 24h" className="text-[10px] flex-shrink-0">⏱️</span>}
                                     </div>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${activeRoom === room.tag ? 'bg-blue-500/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-300 dark:group-hover:bg-gray-600'}`}>{formatCount(room.message_count)}</span>
+                                    <span className={`flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${activeRoom === room.tag ? 'bg-blue-500/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-300 dark:group-hover:bg-gray-600'}`}>{formatCount(room.message_count)}</span>
                                 </button>
                             )
                         })}
@@ -482,32 +622,34 @@ export default function WhisperChat() {
             </div>
 
             <div className="flex-1 flex flex-col min-w-0 h-full bg-white dark:bg-gray-800">
-                <div className="px-3 md:px-6 py-3 md:py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md sticky top-0 z-10">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></button>
-                        <div>
-                            <h3 className="font-black text-gray-800 dark:text-white text-lg md:text-xl tracking-tight flex items-center gap-2">
+                <div className="px-3 md:px-6 py-3 md:py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></button>
+                        <div className="min-w-0">
+                            <h3 className="font-black text-gray-800 dark:text-white text-lg md:text-xl tracking-tight flex items-center gap-2 min-w-0">
                                 {isDM ? (
                                     <>
-                                        <span className="opacity-60 text-pink-500">👻 Whispering with</span> {dmTargetName}
+                                        <span className="opacity-60 text-pink-500 flex-shrink-0 hidden sm:inline">👻 Whispering with</span>
+                                        <span className="opacity-60 text-pink-500 flex-shrink-0 sm:hidden">👻</span>
+                                        <span className="truncate">{dmTargetName}</span>
                                     </>
                                 ) : (
                                     <>
-                                        {activeRoom}
-                                        <button onClick={shareRoom} title="Share Link" className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-blue-500">
+                                        <span className="truncate">{activeRoom}</span>
+                                        <button onClick={shareRoom} title="Share Link" className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-blue-500 flex-shrink-0">
                                             {copiedShareLink ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 text-green-500"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>}
                                         </button>
                                     </>
                                 )}
                             </h3>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="relative flex h-2 w-2"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDM ? 'bg-pink-400' : 'bg-green-400'}`}></span><span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-pink-500' : 'bg-green-500'}`}></span></span>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{isDM ? 'Private' : 'Live'}</span>
+                                <span className="relative flex h-2 w-2 flex-shrink-0"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDM ? 'bg-pink-400' : 'bg-green-400'}`}></span><span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-pink-500' : 'bg-green-500'}`}></span></span>
+                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{isDM ? 'Private' : 'Live'} • 👁️ {onlineCount} {onlineCount === 1 ? 'user' : 'users'}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-shrink-0">
                         <div className="hidden md:flex items-center gap-2 bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700">
                             <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: identity.color }} />
                             <span className="text-xs font-bold text-gray-600 dark:text-gray-300 max-w-[150px] truncate block">{identity.name}</span>
@@ -528,8 +670,15 @@ export default function WhisperChat() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-                    {isLoading ? (
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col">
+
+                    {messages.length > 0 && hasMore && (
+                        <div ref={observerRef} className="h-6 flex items-center justify-center my-2 flex-shrink-0">
+                            {isLoadingMore && <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isDM ? 'border-pink-500' : 'border-blue-500'}`}></div>}
+                        </div>
+                    )}
+
+                    {isLoading && !isLoadingMore ? (
                         <div className="flex justify-center items-center h-full"><div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${isDM ? 'border-pink-500' : 'border-blue-500'}`}></div></div>
                     ) : messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 opacity-60">
@@ -537,42 +686,56 @@ export default function WhisperChat() {
                             <p className="text-sm font-medium">It's quiet in here... be the first!</p>
                         </div>
                     ) : (
-                        messages.map((msg, index) => {
-                            const isMe = msg.author_id === sessionId || (!msg.author_id && msg.author_name === identity.name);
-                            const canDM = !isDM && msg.author_id && msg.author_id !== sessionId;
+                        <div className="space-y-5">
+                            {messages.map((msg, index) => {
+                                const isMe = msg.author_id === sessionId || (!msg.author_id && msg.author_name === identity.name);
+                                const canDM = !isDM && msg.author_id && msg.author_id !== sessionId;
 
-                            return (
-                                <div key={msg.id || index} className={`group flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'} ${msg.isOptimistic ? 'opacity-70' : 'opacity-100'}`}>
-                                    <div className={`flex items-baseline gap-2 mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        <span
-                                            onClick={() => canDM ? startDM(msg.author_id, msg.author_name) : null}
-                                            className={`font-black text-xs md:text-sm tracking-tight ${canDM ? 'cursor-pointer hover:underline' : ''}`}
-                                            style={{ color: msg.author_color }}
-                                            title={canDM ? `Click to send a Private Whisper to ${msg.author_name}` : ''}
-                                        >
-                                            {msg.author_name} {canDM && <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">💬</span>}
-                                        </span>
-                                        <span className="text-[10px] text-gray-400 font-medium">{formatTime(msg.created_at)}</span>
-                                        <button onClick={() => setReplyingTo(msg)} className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'mr-2' : 'ml-2'} ${isDM ? 'text-pink-500 hover:text-pink-600' : 'text-blue-500 hover:text-blue-600'} cursor-pointer`}>REPLY</button>
-                                    </div>
+                                return (
+                                    <div key={msg.id || index} className={`group flex flex-col animate-in fade-in duration-300 ${isMe ? 'items-end' : 'items-start'} ${msg.isOptimistic ? 'opacity-70' : 'opacity-100'}`}>
+                                        <div className={`flex items-baseline gap-2 mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <span
+                                                onClick={() => canDM ? startDM(msg.author_id, msg.author_name) : null}
+                                                className={`font-black text-xs md:text-sm tracking-tight ${canDM ? 'cursor-pointer hover:underline' : ''}`}
+                                                style={{ color: msg.author_color }}
+                                                title={canDM ? `Click to send a Private Whisper to ${msg.author_name}` : ''}
+                                            >
+                                                {msg.author_name} {canDM && <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">💬</span>}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 font-medium">{formatTime(msg.created_at)}</span>
+                                            <button onClick={() => setReplyingTo(msg)} className={`text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'mr-2' : 'ml-2'} ${isDM ? 'text-pink-500 hover:text-pink-600' : 'text-blue-500 hover:text-blue-600'} cursor-pointer`}>REPLY</button>
+                                        </div>
 
-                                    <div className={`p-3 md:p-4 rounded-xl inline-flex flex-col max-w-[85%] md:max-w-[70%] shadow-sm ${isMe ? (isDM ? 'bg-pink-600' : 'bg-blue-600') + ' text-white rounded-tr-none' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'}`}>
-                                        {msg.reply_to_content && (
-                                            <div className={`mb-2 p-2 rounded border-l-4 text-xs ${isMe ? 'bg-black/10 border-white/30' : 'bg-black/5 dark:bg-white/5 border-gray-300 dark:border-gray-500'}`}>
-                                                <span className="font-bold opacity-70 block mb-0.5">{msg.reply_to_author}</span>
-                                                <p className="opacity-80 line-clamp-2">{msg.reply_to_content}</p>
-                                            </div>
-                                        )}
-                                        <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
+                                        <div className={`p-3 md:p-4 rounded-xl inline-flex flex-col max-w-[85%] md:max-w-[70%] shadow-sm ${isMe ? (isDM ? 'bg-pink-600' : 'bg-blue-600') + ' text-white rounded-tr-none' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'}`}>
+                                            {msg.reply_to_content && (
+                                                <div className={`mb-2 p-2 rounded border-l-4 text-xs ${isMe ? 'bg-black/10 border-white/30' : 'bg-black/5 dark:bg-white/5 border-gray-300 dark:border-gray-500'}`}>
+                                                    <span className="font-bold opacity-70 block mb-0.5">{msg.reply_to_author}</span>
+                                                    <p className="opacity-80 line-clamp-2">{msg.reply_to_content}</p>
+                                                </div>
+                                            )}
+                                            <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })
+                                );
+                            })}
+                        </div>
                     )}
-                    <div ref={messagesEndRef} className="h-1" />
+
+                    {typingUsers.length > 0 && (
+                        <div className="flex items-center gap-2 mt-4 text-gray-400 text-xs italic animate-in slide-in-from-bottom-2 fade-in duration-300">
+                            <span className="flex gap-1">
+                                <span className="animate-bounce inline-block w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                <span className="animate-bounce inline-block w-1.5 h-1.5 bg-gray-400 rounded-full" style={{ animationDelay: '0.2s' }}></span>
+                                <span className="animate-bounce inline-block w-1.5 h-1.5 bg-gray-400 rounded-full" style={{ animationDelay: '0.4s' }}></span>
+                            </span>
+                            {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+                        </div>
+                    )}
+
+                    <div ref={messagesEndRef} className="h-1 flex-shrink-0" />
                 </div>
 
-                <div className="p-3 md:p-4 border-t border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md pb-safe">
+                <div className="p-3 md:p-4 border-t border-gray-100 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md pb-5 md:pb-4 flex-shrink-0">
                     <div className="bg-gray-100 dark:bg-gray-900 rounded-xl shadow-inner ring-1 ring-gray-200 dark:ring-gray-700 focus-within:ring-2 focus-within:ring-blue-500 transition-all flex flex-col overflow-hidden">
                         {replyingTo && (
                             <div className="px-3 pt-2 pb-1 flex justify-between items-start border-b border-gray-200 dark:border-gray-700 bg-black/5 dark:bg-white/5">
@@ -586,7 +749,14 @@ export default function WhisperChat() {
                             </div>
                         )}
                         <form onSubmit={handleSendMessage} className="flex gap-2 items-center p-1.5 md:p-2">
-                            <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={isDM ? `Whisper to ${dmTargetName}...` : `Message ${activeRoom}...`} maxLength={200} className="flex-1 px-4 py-2 bg-transparent border-none focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 text-sm md:text-base w-full" />
+                            <input
+                                type="text"
+                                value={newMessage}
+                                onChange={handleTypingChange}
+                                placeholder={isDM ? `Whisper to ${dmTargetName}...` : `Message ${activeRoom}...`}
+                                maxLength={200}
+                                className="flex-1 px-4 py-2 bg-transparent border-none focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 text-sm md:text-base w-full min-w-0"
+                            />
                             <button type="submit" disabled={!newMessage.trim()} className={`p-2.5 md:p-3 text-white rounded-xl transition-all shadow-md active:scale-95 flex-shrink-0 disabled:bg-gray-300 dark:disabled:bg-gray-700 ${isDM ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-6 md:h-6 -rotate-45 ml-0.5 mb-0.5"><path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 2.304 2.304 0 00.063.012l17.456-5.682a.75.75 0 000-1.396L3.541 2.392a.75.75 0 00-.063.012zm.112 16.112l1.395-4.518H12a.75.75 0 010-1.5H4.985L3.59 17.518l11.41-3.715a.75.75 0 010 1.5l-11.41 3.715z" /></svg>
                             </button>

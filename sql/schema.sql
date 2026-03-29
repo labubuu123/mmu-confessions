@@ -405,7 +405,7 @@ CREATE TABLE IF NOT EXISTS public.whisper_dm_messages (
 );
 
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
-('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
+('#Gossip', false), ('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
 ('#FIST', false), ('#FCM', false), ('#FOM', false), ('#FOL', false),
 ('#FAC', false), ('#FCA', false), ('#FAIE', false), ('#BadLecturer', false),
 ('#CyberjayaLife', false), ('#MelakaCampus', false), ('#Dating', false)
@@ -482,9 +482,6 @@ ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_messages ENABLE ROW LEVEL SECURITY;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whisper_dm_threads;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whisper_dm_messages;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
