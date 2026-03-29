@@ -183,7 +183,6 @@ export default function WhisperChat() {
 
             activeChannelRef.current = channelMessages;
             setIsLoading(false);
-            setTimeout(scrollToBottom, 150);
         };
 
         channelRooms = supabase.channel('public:whisper_rooms')
@@ -751,7 +750,6 @@ export default function WhisperChat() {
                         <form onSubmit={handleSendMessage} className="flex gap-2 items-center p-1.5 md:p-2">
                             <input
                                 type="text"
-                                autoFocus={false}
                                 value={newMessage}
                                 onChange={handleTypingChange}
                                 placeholder={isDM ? `Whisper to ${dmTargetName}...` : `Message ${activeRoom}...`}
