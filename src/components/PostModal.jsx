@@ -25,8 +25,17 @@ const THEME_STYLES = {
     forest: 'bg-gradient-to-br from-emerald-600 to-teal-900 text-emerald-50 shadow-inner',
     galaxy: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-800 text-white shadow-inner',
     fire: 'bg-gradient-to-br from-red-600 via-orange-600 to-yellow-500 text-white shadow-inner',
-    arctic: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-inner',
-    coffee: 'bg-gradient-to-br from-amber-900 to-stone-900 text-amber-50 shadow-inner border border-amber-900'
+    arctic: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-inner'
+};
+
+const getContrastColor = (hexcolor) => {
+    if (!hexcolor) return '#ffffff';
+    const hex = hexcolor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#1f2937' : '#ffffff';
 };
 
 export default function PostModal({ post, postId, onClose, onNavigate }) {
@@ -50,11 +59,17 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
     }, [internalPost?.mood]);
 
     const themeStyle = useMemo(() => {
-        if (moodData?.text_theme && moodData.text_theme !== 'default') {
+        if (moodData?.text_theme && moodData.text_theme !== 'default' && moodData.text_theme !== 'custom') {
             return THEME_STYLES[moodData.text_theme] || null;
         }
         return null;
     }, [moodData]);
+
+    const isCustomTheme = moodData?.text_theme === 'custom';
+    const customThemeStyle = isCustomTheme ? {
+        backgroundColor: moodData.custom_color || '#6366f1',
+        color: getContrastColor(moodData.custom_color || '#6366f1')
+    } : {};
 
     useEffect(() => {
         function onKey(e) {
@@ -378,8 +393,11 @@ export default function PostModal({ post, postId, onClose, onNavigate }) {
                                 </div>
                             )}
 
-                            {themeStyle ? (
-                                <div className={`w-full p-6 sm:p-8 rounded-xl flex items-center justify-center text-center min-h-[200px] sm:min-h-[240px] mb-3 shadow-sm ${themeStyle}`}>
+                            {themeStyle || isCustomTheme ? (
+                                <div
+                                    className={`w-full p-6 sm:p-8 rounded-xl flex items-center justify-center text-center min-h-[200px] sm:min-h-[240px] mb-3 shadow-sm ${themeStyle || ''}`}
+                                    style={customThemeStyle}
+                                >
                                     <p className="text-lg sm:text-xl md:text-2xl font-bold whitespace-pre-wrap break-words leading-snug">
                                         {renderTextWithHashtags(internalPost.text)}
                                     </p>

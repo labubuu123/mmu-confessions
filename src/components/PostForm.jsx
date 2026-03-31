@@ -44,8 +44,18 @@ const TEXT_THEMES = [
     { id: 'galaxy', name: 'Galaxy', css: 'bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-800 text-white placeholder-white/70' },
     { id: 'fire', name: 'Fire', css: 'bg-gradient-to-br from-red-600 via-orange-600 to-yellow-500 text-white placeholder-white/70' },
     { id: 'arctic', name: 'Arctic', css: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white placeholder-white/70' },
-    { id: 'coffee', name: 'Coffee', css: 'bg-gradient-to-br from-amber-900 to-stone-900 text-amber-50 placeholder-amber-200/70' }
+    { id: 'custom', name: 'Custom Color', isCustom: true }
 ];
+
+const getContrastColor = (hexcolor) => {
+    if (!hexcolor) return '#ffffff';
+    const hex = hexcolor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#1f2937' : '#ffffff';
+};
 
 function getAnonId() {
     let anonId = localStorage.getItem('anonId');
@@ -154,6 +164,7 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
     const [showBirthdayCreator, setShowBirthdayCreator] = useState(false);
     const [birthdayData, setBirthdayData] = useState(null);
     const [selectedTheme, setSelectedTheme] = useState(TEXT_THEMES[0]);
+    const [customColor, setCustomColor] = useState('#6366f1');
 
     useEffect(() => {
         const handleResize = () => {
@@ -699,7 +710,8 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                     toxicity_flag: aiAnalysis.toxic,
                     birthday: birthdayData,
                     survey_link: surveyLink ? surveyLink.trim() : null,
-                    text_theme: selectedTheme.id
+                    text_theme: selectedTheme.id,
+                    custom_color: selectedTheme.id === 'custom' ? customColor : null
                 };
             }
 
@@ -1204,17 +1216,36 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                             <div className="mb-2">
                                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                                     {TEXT_THEMES.map((theme) => (
-                                        <button
-                                            key={theme.id}
-                                            type="button"
-                                            onClick={() => handleThemeChange(theme)}
-                                            className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all flex-shrink-0 ${theme.css.includes('gradient') ? theme.css : 'bg-gray-100 dark:bg-gray-800'
-                                                } ${selectedTheme.id === theme.id
-                                                    ? 'border-indigo-600 scale-110 ring-2 ring-indigo-200 dark:ring-indigo-900'
-                                                    : 'border-transparent hover:scale-105'
-                                                }`}
-                                            title={theme.name}
-                                        />
+                                        <div key={theme.id} className="relative flex items-center justify-center shrink-0">
+                                            {theme.id === 'custom' ? (
+                                                <>
+                                                    <input
+                                                        type="color"
+                                                        value={customColor}
+                                                        onChange={(e) => {
+                                                            setCustomColor(e.target.value);
+                                                            handleThemeChange(theme);
+                                                        }}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                        title="Pick Custom Color"
+                                                    />
+                                                    <div
+                                                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all flex items-center justify-center
+                                ${selectedTheme.id === 'custom' ? 'border-indigo-600 scale-110 ring-2 ring-indigo-200 dark:ring-indigo-900' : 'border-transparent hover:scale-105'}`}
+                                                        style={{ backgroundColor: customColor }}
+                                                    >
+                                                        <Palette className="w-3 h-3 text-white mix-blend-difference opacity-70 pointer-events-none" />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleThemeChange(theme)}
+                                                    className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all flex-shrink-0 ${theme.css.includes('gradient') ? theme.css : 'bg-gray-100 dark:bg-gray-800'} ${selectedTheme.id === theme.id ? 'border-indigo-600 scale-110 ring-2 ring-indigo-200 dark:ring-indigo-900' : 'border-transparent hover:scale-105'}`}
+                                                    title={theme.name}
+                                                />
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -1224,9 +1255,12 @@ export default function PostForm({ onPosted, replyingTo, onCancelReply }) {
                                 value={text}
                                 onChange={e => setText(e.target.value)}
                                 placeholder={isDebate ? "State your hot take! (e.g., 'Pineapple belongs on pizza')" : (replyingTo ? "Share your thoughts on this..." : "What's on your mind? Share anonymously... (Use #hashtags to categorize)")}
+                                style={selectedTheme.id === 'custom' ? { backgroundColor: customColor, color: getContrastColor(customColor) } : {}}
                                 className={selectedTheme.id === 'default'
                                     ? `w-full p-3 sm:p-4 border-0 rounded-lg sm:rounded-xl resize-none bg-gray-50 dark:bg-gray-900 outline-none transition-all text-sm sm:text-base text-gray-900 dark:text-gray-100 ${isDebate ? 'ring-2 ring-orange-500/50' : 'focus:ring-2 focus:ring-indigo-500'}`
-                                    : `w-full p-6 sm:p-8 border-0 rounded-lg sm:rounded-xl resize-none outline-none transition-all text-center font-bold text-xl sm:text-2xl min-h-[200px] flex items-center justify-center shadow-inner ${selectedTheme.css}`
+                                    : selectedTheme.id === 'custom'
+                                        ? `w-full p-6 sm:p-8 border-0 rounded-lg sm:rounded-xl resize-none outline-none transition-all text-center font-bold text-xl sm:text-2xl min-h-[200px] flex items-center justify-center shadow-inner placeholder-opacity-70`
+                                        : `w-full p-6 sm:p-8 border-0 rounded-lg sm:rounded-xl resize-none outline-none transition-all text-center font-bold text-xl sm:text-2xl min-h-[200px] flex items-center justify-center shadow-inner ${selectedTheme.css}`
                                 }
                                 rows="4"
                                 maxLength={MAX_TEXT_LENGTH}
