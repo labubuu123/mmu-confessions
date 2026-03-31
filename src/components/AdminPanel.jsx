@@ -39,7 +39,7 @@ export default function AdminPanel() {
     const [hasMore, setHasMore] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
-    const [activeTab, setActiveTab] = useState('moderation')
+    const [activeTab, setActiveTab] = useState('analytics')
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [actionLoading, setActionLoading] = useState({})
     const [selectedPosts, setSelectedPosts] = useState(new Set())
@@ -112,7 +112,7 @@ export default function AdminPanel() {
         const timer = setTimeout(() => {
             if (searchQuery !== debouncedSearch) {
                 setDebouncedSearch(searchQuery);
-                if (activeTab === 'moderation') {
+                if (activeTab === 'analytics') {
                     setPage(0);
                     fetchPosts(true, searchQuery);
                 }
