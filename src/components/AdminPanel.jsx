@@ -8,7 +8,7 @@ import {
     Image as ImageIcon, Link as LinkIcon, Palette, Star, ArrowUp, ShoppingBag, Tag, Quote,
     Activity, MapPin, ClipboardList, Check, Search as SearchIcon, FileText,
     Flame, XCircle, CornerDownRight, ShieldAlert, UserCheck, Ban, Loader2, Flag,
-    User, Hash, KeyRound, Coins
+    User, Hash, KeyRound, Coins, TrendingUp, TrendingDown, Clock
 } from 'lucide-react'
 import AnonAvatar from './AnonAvatar'
 import dayjs from 'dayjs'
@@ -502,24 +502,27 @@ export default function AdminPanel() {
     async function fetchAnalyticsData() {
         setAnalyticsLoading(true);
         try {
-            const sevenDaysAgo = dayjs().subtract(7, 'days').toISOString();
+            const sevenDaysAgo = dayjs().subtract(7, 'days').startOf('day').toISOString();
 
-            const { data: postsData } = await supabase
-                .from('confessions')
-                .select('id, created_at, author_id')
-                .gte('created_at', sevenDaysAgo);
+            const [postsRes, commentsRes, adultRes, whisperRes, marketRes, profilesRes] = await Promise.all([
+                supabase.from('confessions').select('created_at, author_id').gte('created_at', sevenDaysAgo),
+                supabase.from('comments').select('created_at, author_id').gte('created_at', sevenDaysAgo),
+                supabase.from('adult_confessions').select('created_at, author_id').gte('created_at', sevenDaysAgo),
+                supabase.from('whisper_messages').select('created_at, author_id').gte('created_at', sevenDaysAgo),
+                supabase.from('marketplace_items').select('created_at, seller_id').gte('created_at', sevenDaysAgo),
+                supabase.from('matchmaker_profiles').select('*', { count: 'exact', head: true })
+            ]);
 
-            const { data: commentsData } = await supabase
-                .from('comments')
-                .select('id, created_at, author_id')
-                .gte('created_at', sevenDaysAgo);
-
-            const { count: totalProfiles } = await supabase
-                .from('matchmaker_profiles')
-                .select('*', { count: 'exact', head: true });
+            const [pendingPosts, reportedPosts, reportedMarket, pendingProfiles] = await Promise.all([
+                supabase.from('confessions').select('*', { count: 'exact', head: true }).eq('approved', false),
+                supabase.from('confessions').select('*', { count: 'exact', head: true }).eq('reported', true),
+                supabase.from('marketplace_items').select('*', { count: 'exact', head: true }).gt('report_count', 0),
+                supabase.from('matchmaker_profiles').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+            ]);
 
             const dailyStats = {};
             const todayKey = dayjs().format('YYYY-MM-DD');
+            const yesterdayKey = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
             for (let i = 0; i < 7; i++) {
                 const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
@@ -527,37 +530,57 @@ export default function AdminPanel() {
                     date: d,
                     activeUsers: new Set(),
                     posts: 0,
-                    comments: 0
+                    comments: 0,
+                    adult: 0,
+                    whispers: 0,
+                    market: 0
                 };
             }
 
-            postsData?.forEach(p => {
-                const date = dayjs(p.created_at).format('YYYY-MM-DD');
-                if (dailyStats[date]) {
-                    dailyStats[date].posts++;
-                    if (p.author_id) dailyStats[date].activeUsers.add(p.author_id);
-                }
-            });
+            const processData = (data, type, authorField = 'author_id') => {
+                data?.forEach(item => {
+                    const date = dayjs(item.created_at).format('YYYY-MM-DD');
+                    if (dailyStats[date]) {
+                        dailyStats[date][type]++;
+                        if (item[authorField]) dailyStats[date].activeUsers.add(item[authorField]);
+                    }
+                });
+            };
 
-            commentsData?.forEach(c => {
-                const date = dayjs(c.created_at).format('YYYY-MM-DD');
-                if (dailyStats[date]) {
-                    dailyStats[date].comments++;
-                    if (c.author_id) dailyStats[date].activeUsers.add(c.author_id);
-                }
-            });
+            processData(postsRes.data, 'posts');
+            processData(commentsRes.data, 'comments');
+            processData(adultRes.data, 'adult');
+            processData(whisperRes.data, 'whispers');
+            processData(marketRes.data, 'market', 'seller_id');
 
             const statsArray = Object.values(dailyStats).sort((a, b) => new Date(a.date) - new Date(b.date));
-            const todayStats = dailyStats[todayKey] || { activeUsers: new Set(), posts: 0, comments: 0 };
+            const todayStats = dailyStats[todayKey] || { activeUsers: new Set(), posts: 0, comments: 0, whispers: 0, adult: 0 };
+            const yesterdayStats = dailyStats[yesterdayKey] || { activeUsers: new Set(), posts: 0, comments: 0, whispers: 0, adult: 0 };
+
+            const calculateTrend = (today, yesterday) => {
+                if (yesterday === 0) return today > 0 ? 100 : 0;
+                return Math.round(((today - yesterday) / yesterday) * 100);
+            };
+
+            const totalTodayInteractions = todayStats.posts + todayStats.comments + todayStats.whispers + todayStats.adult;
+            const totalYesterdayInteractions = yesterdayStats.posts + yesterdayStats.comments + yesterdayStats.whispers + yesterdayStats.adult;
 
             setAnalyticsData({
+                snapshot: {
+                    pendingPosts: pendingPosts.count || 0,
+                    reportedPosts: reportedPosts.count || 0,
+                    reportedMarket: reportedMarket.count || 0,
+                    pendingProfiles: pendingProfiles.count || 0,
+                },
                 todayActive: todayStats.activeUsers.size,
-                todayPosts: todayStats.posts,
-                todayComments: todayStats.comments,
-                totalProfiles: totalProfiles || 0,
+                activeTrend: calculateTrend(todayStats.activeUsers.size, yesterdayStats.activeUsers.size),
+                todayInteractions: totalTodayInteractions,
+                interactionTrend: calculateTrend(totalTodayInteractions, totalYesterdayInteractions),
+                totalProfiles: profilesRes.count || 0,
                 weeklyData: statsArray.map(s => ({
                     ...s,
-                    activeCount: s.activeUsers.size
+                    activeCount: s.activeUsers.size,
+                    totalContent: s.posts + s.comments + s.whispers + s.adult + s.market
                 }))
             });
 
@@ -709,48 +732,83 @@ export default function AdminPanel() {
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Platform Activity</h2>
-                                <span className="text-xs text-gray-500">Last 7 days</span>
+                                <span className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> Last 7 Days Overview</span>
                             </div>
 
                             {analyticsLoading && !analyticsData ? (
                                 <div className="text-center py-20">
                                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                                    <p className="text-gray-500 mt-4 text-sm font-medium animate-pulse">Gathering platform data...</p>
                                 </div>
                             ) : analyticsData ? (
                                 <>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-yellow-100 transition" onClick={() => setActiveTab('moderation')}>
+                                            <div>
+                                                <p className="text-yellow-800 dark:text-yellow-400 font-bold text-2xl">{analyticsData.snapshot.pendingPosts}</p>
+                                                <p className="text-yellow-600 dark:text-yellow-500 text-xs font-semibold uppercase">Pending Posts</p>
+                                            </div>
+                                            <Clock className="w-8 h-8 text-yellow-400 opacity-50" />
+                                        </div>
+                                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-red-100 transition" onClick={() => setActiveTab('moderation')}>
+                                            <div>
+                                                <p className="text-red-800 dark:text-red-400 font-bold text-2xl">{analyticsData.snapshot.reportedPosts}</p>
+                                                <p className="text-red-600 dark:text-red-500 text-xs font-semibold uppercase">Reported Posts</p>
+                                            </div>
+                                            <AlertTriangle className="w-8 h-8 text-red-400 opacity-50" />
+                                        </div>
+                                        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-100 transition" onClick={() => setActiveTab('marketplace')}>
+                                            <div>
+                                                <p className="text-orange-800 dark:text-orange-400 font-bold text-2xl">{analyticsData.snapshot.reportedMarket}</p>
+                                                <p className="text-orange-600 dark:text-orange-500 text-xs font-semibold uppercase">Market Reports</p>
+                                            </div>
+                                            <Flag className="w-8 h-8 text-orange-400 opacity-50" />
+                                        </div>
+                                        <div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-pink-100 transition" onClick={() => setActiveTab('matchmaker')}>
+                                            <div>
+                                                <p className="text-pink-800 dark:text-pink-400 font-bold text-2xl">{analyticsData.snapshot.pendingProfiles}</p>
+                                                <p className="text-pink-600 dark:text-pink-500 text-xs font-semibold uppercase">Pending Profiles</p>
+                                            </div>
+                                            <UserCheck className="w-8 h-8 text-pink-400 opacity-50" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400">
                                                     <Activity className="w-6 h-6" />
                                                 </div>
-                                                <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">Live</span>
+                                                {analyticsData.activeTrend !== 0 && (
+                                                    <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${analyticsData.activeTrend > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                        {analyticsData.activeTrend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                                        {Math.abs(analyticsData.activeTrend)}%
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.todayActive}</p>
-                                            <p className="text-sm text-gray-500 mt-1">Daily Active Devices (Interactions)</p>
+                                            <p className="text-sm text-gray-500 mt-1">Unique Active Creators Today</p>
+                                            <div className="absolute bottom-0 right-0 p-4 opacity-5"><Users className="w-24 h-24" /></div>
                                         </div>
 
-                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
                                                     <MessageSquare className="w-6 h-6" />
                                                 </div>
+                                                {analyticsData.interactionTrend !== 0 && (
+                                                    <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${analyticsData.interactionTrend > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                        {analyticsData.interactionTrend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                                        {Math.abs(analyticsData.interactionTrend)}%
+                                                    </span>
+                                                )}
                                             </div>
-                                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.todayPosts}</p>
-                                            <p className="text-sm text-gray-500 mt-1">Posts Created Today</p>
+                                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.todayInteractions}</p>
+                                            <p className="text-sm text-gray-500 mt-1">Total Content Interactions Today</p>
+                                            <div className="absolute bottom-0 right-0 p-4 opacity-5"><BarChart3 className="w-24 h-24" /></div>
                                         </div>
 
-                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl text-purple-600 dark:text-purple-400">
-                                                    <MessageCircle className="w-6 h-6" />
-                                                </div>
-                                            </div>
-                                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.todayComments}</p>
-                                            <p className="text-sm text-gray-500 mt-1">Comments Posted Today</p>
-                                        </div>
-
-                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl text-pink-600 dark:text-pink-400">
                                                     <Heart className="w-6 h-6" />
@@ -758,29 +816,42 @@ export default function AdminPanel() {
                                             </div>
                                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.totalProfiles}</p>
                                             <p className="text-sm text-gray-500 mt-1">Total Matchmaker Profiles</p>
+                                            <div className="absolute bottom-0 right-0 p-4 opacity-5"><Heart className="w-24 h-24" /></div>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                                            <h3 className="font-bold text-gray-900 dark:text-white mb-6">User Activity Trends (7 Days)</h3>
+                                            <div className="flex items-center justify-between mb-6">
+                                                <h3 className="font-bold text-gray-900 dark:text-white">Content Creation Volume (7 Days)</h3>
+                                                <div className="flex gap-3 text-[10px] font-bold text-gray-500 uppercase">
+                                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> Main</span>
+                                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400"></span> Whispers</span>
+                                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400"></span> Adult</span>
+                                                </div>
+                                            </div>
+
                                             <div className="h-64 flex items-end gap-2 sm:gap-4">
                                                 {analyticsData.weeklyData.map((day, idx) => {
-                                                    const max = Math.max(...analyticsData.weeklyData.map(d => d.activeCount), 1);
-                                                    const height = Math.max((day.activeCount / max) * 100, 5);
+                                                    const maxContent = Math.max(...analyticsData.weeklyData.map(d => d.totalContent), 1);
+                                                    const mainHeight = ((day.posts + day.comments) / maxContent) * 100;
+                                                    const whisperHeight = (day.whispers / maxContent) * 100;
+                                                    const adultHeight = (day.adult / maxContent) * 100;
+
                                                     return (
                                                         <div key={idx} className="flex-1 flex flex-col items-center gap-2 group relative">
-                                                            <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10">
-                                                                {day.activeCount} Users
+                                                            <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs py-2 px-3 rounded shadow-xl pointer-events-none whitespace-nowrap z-10 flex flex-col gap-1">
+                                                                <span className="font-bold border-b border-gray-700 pb-1 mb-1">{dayjs(day.date).format('MMM D, YYYY')}</span>
+                                                                <span>{day.posts + day.comments} Main Posts/Comms</span>
+                                                                <span>{day.whispers} Whisper Msgs</span>
+                                                                <span>{day.adult} Adult Posts</span>
+                                                                <span className="text-gray-400 mt-1 pt-1 border-t border-gray-700">{day.activeCount} Unique Creators</span>
                                                             </div>
-                                                            <div
-                                                                className="w-full bg-indigo-100 dark:bg-indigo-900/30 rounded-t-lg relative overflow-hidden transition-all group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50"
-                                                                style={{ height: `${height}%` }}
-                                                            >
-                                                                <div
-                                                                    className="absolute bottom-0 left-0 right-0 bg-indigo-500 opacity-20"
-                                                                    style={{ height: `${(day.posts + day.comments) / (max * 2) * 100}%` }}
-                                                                />
+
+                                                            <div className="w-full h-full flex flex-col justify-end relative rounded-t-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                                                                <div className="w-full bg-red-400 transition-all group-hover:brightness-110" style={{ height: `${adultHeight}%` }} />
+                                                                <div className="w-full bg-blue-400 transition-all group-hover:brightness-110" style={{ height: `${whisperHeight}%` }} />
+                                                                <div className="w-full bg-indigo-500 transition-all group-hover:brightness-110" style={{ height: `${mainHeight}%` }} />
                                                             </div>
                                                             <span className="text-[10px] sm:text-xs text-gray-400 font-mono rotate-0 truncate w-full text-center">
                                                                 {dayjs(day.date).format('ddd D')}
@@ -792,25 +863,25 @@ export default function AdminPanel() {
                                         </div>
 
                                         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                                            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Daily Device Stats</h3>
-                                            <div className="flex-1 overflow-y-auto">
+                                            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Daily Engagement Log</h3>
+                                            <div className="flex-1 overflow-y-auto pr-2">
                                                 <div className="space-y-3">
                                                     {[...analyticsData.weeklyData].reverse().map((day, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+                                                        <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                                                             <div>
                                                                 <p className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                                                                    {dayjs(day.date).format('MMM D, YYYY')}
+                                                                    {dayjs(day.date).format('MMM D')}
                                                                 </p>
-                                                                <p className="text-xs text-gray-500">
-                                                                    {day.posts} posts · {day.comments} comments
+                                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                                    {day.totalContent} total items
                                                                 </p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                                <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md inline-block">
                                                                     {day.activeCount}
                                                                 </p>
-                                                                <p className="text-[10px] text-gray-400 uppercase tracking-wide">
-                                                                    Online
+                                                                <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-1">
+                                                                    Creators
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1345,7 +1416,7 @@ export default function AdminPanel() {
                                             <input
                                                 type="text"
                                                 value={newAnnouncement.title}
-                                                onChange={e => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                                                onChange={e => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
                                                 required
                                                 className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                             />
@@ -1354,7 +1425,7 @@ export default function AdminPanel() {
                                             <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
                                             <select
                                                 value={newAnnouncement.type}
-                                                onChange={e => setNewAnnouncement({...newAnnouncement, type: e.target.value})}
+                                                onChange={e => setNewAnnouncement({ ...newAnnouncement, type: e.target.value })}
                                                 className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                             >
                                                 <option value="info">Info</option>
@@ -1368,7 +1439,7 @@ export default function AdminPanel() {
                                         <label className="text-xs font-bold text-gray-500 uppercase">Content</label>
                                         <textarea
                                             value={newAnnouncement.content}
-                                            onChange={e => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
+                                            onChange={e => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
                                             required
                                             className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none"
                                         />
@@ -1378,7 +1449,7 @@ export default function AdminPanel() {
                                     </button>
                                 </form>
                             </div>
-                
+
                             <div className="space-y-4">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Announcements</h3>
                                 {announcements.length === 0 ? (
@@ -1388,12 +1459,11 @@ export default function AdminPanel() {
                                         <div key={a.id} className={`bg-white dark:bg-gray-800 p-4 rounded-xl border ${a.is_active ? 'border-indigo-500 shadow-sm' : 'border-gray-200 dark:border-gray-700 opacity-75'}`}>
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
-                                                        a.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-                                                        a.type === 'error' ? 'bg-red-100 text-red-700' :
-                                                        a.type === 'success' ? 'bg-green-100 text-green-700' :
-                                                        'bg-blue-100 text-blue-700'
-                                                    }`}>
+                                                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${a.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
+                                                            a.type === 'error' ? 'bg-red-100 text-red-700' :
+                                                                a.type === 'success' ? 'bg-green-100 text-green-700' :
+                                                                    'bg-blue-100 text-blue-700'
+                                                        }`}>
                                                         {a.type}
                                                     </span>
                                                     <h4 className="font-bold text-gray-900 dark:text-white">{a.title}</h4>
