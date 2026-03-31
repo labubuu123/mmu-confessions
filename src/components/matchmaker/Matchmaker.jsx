@@ -20,6 +20,8 @@ export default function Matchmaker() {
 
     const totalConnectionsCount = connectionCounts.received + connectionCounts.sent + connectionCounts.matches + connectionCounts.rejected;
 
+    const isMatchmakerUser = user?.email && (user.email.endsWith('@example.com'));
+
     const matchmakerSEO = (
         <Helmet>
             <title>MMU Matchmaker - Find Your Connection</title>
@@ -32,7 +34,7 @@ export default function Matchmaker() {
     }, [user]);
 
     useEffect(() => {
-        if (!user?.id) return;
+        if (!user?.id || !isMatchmakerUser) return;
 
         const fetchAllCounts = async () => {
             try {
@@ -80,7 +82,7 @@ export default function Matchmaker() {
             supabase.removeChannel(profileChannel);
             supabase.removeChannel(lovesChannel);
         };
-    }, [user?.id]);
+    }, [user?.id, isMatchmakerUser]);
 
     useEffect(() => {
         if (profile && user) {
@@ -101,12 +103,14 @@ export default function Matchmaker() {
         localStorage.setItem(storageKey, profile.warning_count.toString());
         setShowWarning(false);
     };
+
     const handleLogout = async () => {
         if (window.confirm("Are you sure you want to log out?")) {
             await supabase.auth.signOut();
             window.location.reload();
         }
     };
+
     const handleResetIdentity = async () => {
         if (confirm("This will PERMANENTLY DELETE your profile/identity. Use 'Log Out' if you just want to switch accounts. Are you sure you want to DELETE?")) {
             const { error } = await supabase.from('matchmaker_profiles').delete().eq('author_id', user.id);
@@ -130,7 +134,7 @@ export default function Matchmaker() {
         );
     }
 
-    if (!session || !user) {
+    if (!session || !user || !isMatchmakerUser) {
         return (
             <>
                 {matchmakerSEO}
