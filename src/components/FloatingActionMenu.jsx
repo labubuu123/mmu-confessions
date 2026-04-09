@@ -78,6 +78,26 @@ export default function FloatingActionMenu() {
     const navigate = useNavigate();
     const chatEndRef = useRef(null);
 
+    const getOrInitializeGuestId = () => {
+        const possibleKeys = ['deviceId', 'anon_id', 'anonymous_id', 'user_id', 'guest_id', 'zyora_guest_id'];
+
+        for (const key of possibleKeys) {
+            const existingId = localStorage.getItem(key);
+            if (existingId) {
+                if (key !== 'zyora_guest_id') {
+                    localStorage.setItem('zyora_guest_id', existingId);
+                }
+                return existingId;
+            }
+        }
+
+        const newId = crypto.randomUUID();
+        localStorage.setItem('zyora_guest_id', newId);
+        localStorage.setItem('deviceId', newId);
+        localStorage.setItem('anon_id', newId);
+        return newId;
+    };
+
     useEffect(() => {
         const initialize = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -85,12 +105,8 @@ export default function FloatingActionMenu() {
                 setIdentityId(session.user.id);
                 setIsGuest(false);
             } else {
-                let guestId = localStorage.getItem('zyora_guest_id');
-                if (!guestId) {
-                    guestId = crypto.randomUUID();
-                    localStorage.setItem('zyora_guest_id', guestId);
-                }
-                setIdentityId(guestId);
+                const actualGuestId = getOrInitializeGuestId();
+                setIdentityId(actualGuestId);
                 setIsGuest(true);
             }
 
@@ -107,8 +123,8 @@ export default function FloatingActionMenu() {
                 setIdentityId(session.user.id);
                 setIsGuest(false);
             } else {
-                const guestId = localStorage.getItem('zyora_guest_id') || crypto.randomUUID();
-                setIdentityId(guestId);
+                const actualGuestId = getOrInitializeGuestId();
+                setIdentityId(actualGuestId);
                 setIsGuest(true);
             }
         });
