@@ -9,9 +9,7 @@ import {
     Activity,
     Wrench,
     ShoppingBag,
-    Lightbulb,
-    Copy,
-    Check
+    Lightbulb
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +67,6 @@ export default function FloatingActionMenu() {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [showTips, setShowTips] = useState(false);
-    const [copied, setCopied] = useState(false);
 
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
@@ -78,26 +75,6 @@ export default function FloatingActionMenu() {
     const navigate = useNavigate();
     const chatEndRef = useRef(null);
 
-    const getOrInitializeGuestId = () => {
-        const possibleKeys = ['deviceId', 'anon_id', 'anonymous_id', 'user_id', 'guest_id', 'zyora_guest_id'];
-
-        for (const key of possibleKeys) {
-            const existingId = localStorage.getItem(key);
-            if (existingId) {
-                if (key !== 'zyora_guest_id') {
-                    localStorage.setItem('zyora_guest_id', existingId);
-                }
-                return existingId;
-            }
-        }
-
-        const newId = crypto.randomUUID();
-        localStorage.setItem('zyora_guest_id', newId);
-        localStorage.setItem('deviceId', newId);
-        localStorage.setItem('anon_id', newId);
-        return newId;
-    };
-
     useEffect(() => {
         const initialize = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -105,8 +82,12 @@ export default function FloatingActionMenu() {
                 setIdentityId(session.user.id);
                 setIsGuest(false);
             } else {
-                const actualGuestId = getOrInitializeGuestId();
-                setIdentityId(actualGuestId);
+                let guestId = localStorage.getItem('zyora_guest_id');
+                if (!guestId) {
+                    guestId = crypto.randomUUID();
+                    localStorage.setItem('zyora_guest_id', guestId);
+                }
+                setIdentityId(guestId);
                 setIsGuest(true);
             }
 
@@ -123,8 +104,8 @@ export default function FloatingActionMenu() {
                 setIdentityId(session.user.id);
                 setIsGuest(false);
             } else {
-                const actualGuestId = getOrInitializeGuestId();
-                setIdentityId(actualGuestId);
+                const guestId = localStorage.getItem('zyora_guest_id') || crypto.randomUUID();
+                setIdentityId(guestId);
                 setIsGuest(true);
             }
         });
@@ -210,14 +191,6 @@ export default function FloatingActionMenu() {
             if (error) throw error;
         } catch (err) {
             console.error("Error sending:", err);
-        }
-    };
-
-    const handleCopyId = () => {
-        if (identityId) {
-            navigator.clipboard.writeText(identityId);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
         }
     };
 
@@ -369,27 +342,6 @@ export default function FloatingActionMenu() {
                                 <MessageSquare className="w-4 h-4" />
                                 <span>Contact Admin Support</span>
                             </button>
-
-                            {identityId && (
-                                <div className="mt-3 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-700/50">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col overflow-hidden mr-2">
-                                            <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Your User ID</span>
-                                            <span className="text-xs font-mono text-gray-600 dark:text-slate-300 truncate">
-                                                {identityId}
-                                            </span>
-                                        </div>
-                                        <button
-                                            onClick={handleCopyId}
-                                            className="p-2 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex-shrink-0"
-                                            title="Copy User ID"
-                                        >
-                                            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
                         </div>
                     </motion.div>
                 )}
