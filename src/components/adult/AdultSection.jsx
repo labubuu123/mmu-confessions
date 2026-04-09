@@ -128,9 +128,9 @@ export default function AdultSection() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-300 font-sans pb-24 selection:bg-rose-900 selection:text-white">
-            <header className="z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 mb-6 transition-all shadow-lg shadow-black/20">
-                <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="min-h-screen bg-slate-950 text-slate-300 font-sans pb-16 sm:pb-24 selection:bg-rose-900 selection:text-white">
+            <header className="z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 mb-4 sm:mb-6 transition-all shadow-lg shadow-black/20">
+                <div className="max-w-2xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.location.href = '/adult'}>
                         <div className="relative">
                             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-900 to-black flex items-center justify-center border border-slate-800 group-hover:border-rose-900 transition-all shadow-[0_0_15px_rgba(0,0,0,0.5)]">
@@ -150,17 +150,17 @@ export default function AdultSection() {
                 </div>
             </header>
 
-            <main className="max-w-2xl mx-auto px-4">
+            <main className="max-w-2xl mx-auto px-3 sm:px-4">
 
                 {!id && filter !== 'Saved' && <AdultPostForm onSuccess={() => fetchPosts(true)} />}
 
-                <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     <Filter className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
                     {FILTERS.map(f => (
                         <button
                             key={f}
                             onClick={() => { setFilter(f); setPage(0); }}
-                            className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider whitespace-nowrap border transition-all ${filter === f
+                            className={`px-4 py-2 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] uppercase font-bold tracking-wider whitespace-nowrap border transition-all ${filter === f
                                 ? 'bg-rose-600 text-white border-rose-500 shadow-[0_0_15px_rgba(225,29,72,0.3)]'
                                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
                                 }`}
@@ -171,40 +171,40 @@ export default function AdultSection() {
                 </div>
 
                 {loading ? (
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl h-48 animate-pulse p-6"></div>
+                            <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl h-40 sm:h-48 animate-pulse p-4 sm:p-6"></div>
                         ))}
                     </div>
                 ) : (
                     <>
                         {filteredPosts.length === 0 ? (
-                            <div className="text-center py-24 border border-slate-800 border-dashed rounded-xl bg-slate-900/50">
+                            <div className="text-center py-16 sm:py-24 border border-slate-800 border-dashed rounded-xl bg-slate-900/50 mx-1 sm:mx-0">
                                 <Info className="w-6 h-6 text-slate-700 mx-auto mb-4" />
-                                <h3 className="text-slate-400 font-serif text-lg mb-1">
+                                <h3 className="text-slate-400 font-serif text-base sm:text-lg mb-1 px-4">
                                     {id ? "Confession not found or removed" : filter === 'Saved' ? "No saved secrets yet" : "The Room is Quiet"}
                                 </h3>
                                 {(id || filter === 'Saved') && (
                                     <button
                                         onClick={() => { setFilter('All'); window.location.href = '/adult'; }}
-                                        className="mt-4 text-xs text-rose-500 hover:underline"
+                                        className="mt-4 text-xs text-rose-500 hover:underline p-2"
                                     >
                                         Return to Feed
                                     </button>
                                 )}
                             </div>
                         ) : (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4 sm:space-y-6">
                                 {filteredPosts.map(post => <AdultPostCard key={post.id} post={post} />)}
                             </div>
                         )}
 
                         {!id && hasMore && posts.length > 0 && (
-                            <div className="pt-4 pb-8 flex justify-center">
+                            <div className="pt-6 pb-8 flex justify-center">
                                 <button
                                     onClick={() => fetchPosts(false)}
                                     disabled={loadingMore}
-                                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-all font-medium text-sm disabled:opacity-50"
+                                    className="w-full sm:w-auto flex justify-center items-center gap-2 px-6 py-3.5 sm:py-3 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl sm:rounded-full text-slate-400 hover:text-slate-200 transition-all font-medium text-sm disabled:opacity-50 active:scale-95"
                                 >
                                     {loadingMore ? (
                                         <RefreshCcw className="w-4 h-4 animate-spin" />
@@ -225,7 +225,7 @@ export default function AdultSection() {
                 )}
             </main>
 
-            <div className="text-center pb-8 pt-8 opacity-30 hover:opacity-100 transition-opacity">
+            <div className="text-center pb-8 pt-4 sm:pt-8 opacity-50 sm:opacity-30 hover:opacity-100 transition-opacity">
                 <p className="text-[10px] text-slate-500 flex items-center justify-center gap-2">
                     <Info className="w-3 h-3" /> Anonymous & AI Moderated • 18+ Only
                 </p>
