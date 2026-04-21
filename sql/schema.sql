@@ -404,6 +404,15 @@ CREATE TABLE IF NOT EXISTS public.whisper_dm_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_locations (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    username TEXT,
+    avatar_url TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
 ('#Gossip', false), ('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
 ('#FIST', false), ('#FCM', false), ('#FOM', false), ('#FOL', false),
@@ -482,6 +491,7 @@ ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_locations ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1635,6 +1645,10 @@ CREATE POLICY "Enable all for public on dm messages" ON public.whisper_dm_messag
 
 CREATE POLICY "Enable read access for all users" ON public.user_profiles FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all logs" ON public.karma_activity_log FOR SELECT USING (true);
+
+CREATE POLICY "Locations viewable by everyone" ON user_locations FOR SELECT USING (true);
+CREATE POLICY "Users insert own location" ON user_locations FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own location" ON user_locations FOR UPDATE USING (auth.uid() = user_id);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

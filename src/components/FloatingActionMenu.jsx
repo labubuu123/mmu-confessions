@@ -9,7 +9,8 @@ import {
     Activity,
     Wrench,
     ShoppingBag,
-    Lightbulb
+    Lightbulb,
+    Globe
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -49,7 +50,7 @@ const MenuOnboardingTips = ({ onDismiss }) => (
             </div>
 
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>MY西斯</b>, and more hidden features!
+                Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>User Map</b>, <b>MY西斯</b>, and more hidden features!
             </p>
 
             <button
@@ -71,24 +72,46 @@ export default function FloatingActionMenu() {
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [identityId, setIdentityId] = useState(null);
-    const [isGuest, setIsGuest] = useState(false);
     const navigate = useNavigate();
     const chatEndRef = useRef(null);
+
+    const updateGlobalLocation = async (userId) => {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('username, avatar_url')
+                .eq('id', userId)
+                .single();
+
+            await supabase.from('user_locations').upsert({
+                user_id: userId,
+                latitude,
+                longitude,
+                username: profile?.username || 'Anonymous',
+                avatar_url: profile?.avatar_url || '',
+                last_updated: new Date().toISOString()
+            });
+        }, (error) => {
+            console.error("Location tracking failed/denied:", error);
+        }, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        });
+    };
 
     useEffect(() => {
         const initialize = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 setIdentityId(session.user.id);
-                setIsGuest(false);
+                updateGlobalLocation(session.user.id);
             } else {
-                let guestId = localStorage.getItem('zyora_guest_id');
-                if (!guestId) {
-                    guestId = crypto.randomUUID();
-                    localStorage.setItem('zyora_guest_id', guestId);
-                }
-                setIdentityId(guestId);
-                setIsGuest(true);
+                setIdentityId(null);
             }
 
             const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
@@ -102,11 +125,9 @@ export default function FloatingActionMenu() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setIdentityId(session.user.id);
-                setIsGuest(false);
+                updateGlobalLocation(session.user.id);
             } else {
-                const guestId = localStorage.getItem('zyora_guest_id') || crypto.randomUUID();
-                setIdentityId(guestId);
-                setIsGuest(true);
+                setIdentityId(null);
             }
         });
 
@@ -209,6 +230,11 @@ export default function FloatingActionMenu() {
         navigate('/adult');
     };
 
+    const handleMapClick = () => {
+        setIsOpen(false);
+        navigate('/map');
+    };
+
     const handleContactAdminClick = () => {
         setIsOpen(false);
         setIsChatOpen(true);
@@ -248,7 +274,7 @@ export default function FloatingActionMenu() {
             <div className={`w-10 h-10 ${bgClass} rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200`}>
                 <Icon className={`w-5 h-5 ${colorClass} ${animateIcon ? 'animate-pulse' : ''}`} />
             </div>
-            <span className="text-xs font-medium text-gray-700 dark:text-slate-300">{label}</span>
+            <span className="text-xs font-medium text-gray-700 dark:text-slate-300 text-center">{label}</span>
         </motion.button>
     );
 
@@ -279,7 +305,7 @@ export default function FloatingActionMenu() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 flex flex-col gap-3"
+                        className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[340px] flex flex-col gap-3"
                     >
                         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 p-4 overflow-hidden border border-white/20 dark:border-white/5">
 
@@ -320,11 +346,11 @@ export default function FloatingActionMenu() {
                                     animateIcon={true}
                                 />
                                 <MenuButton
-                                    icon={Wrench}
-                                    label="Tools"
-                                    onClick={handleToolsClick}
-                                    bgClass="bg-cyan-100 dark:bg-cyan-900/40"
-                                    colorClass="text-cyan-600 dark:text-cyan-400"
+                                    icon={Globe}
+                                    label="Live Map"
+                                    onClick={handleMapClick}
+                                    bgClass="bg-blue-100 dark:bg-blue-900/40"
+                                    colorClass="text-blue-600 dark:text-blue-400"
                                 />
                                 <MenuButton
                                     icon={Activity}
@@ -332,6 +358,13 @@ export default function FloatingActionMenu() {
                                     onClick={handleLiveActivityClick}
                                     bgClass="bg-orange-100 dark:bg-orange-900/40"
                                     colorClass="text-orange-600 dark:text-orange-400"
+                                />
+                                <MenuButton
+                                    icon={Wrench}
+                                    label="Tools"
+                                    onClick={handleToolsClick}
+                                    bgClass="bg-cyan-100 dark:bg-cyan-900/40"
+                                    colorClass="text-cyan-600 dark:text-cyan-400"
                                 />
                             </div>
 
@@ -376,10 +409,8 @@ export default function FloatingActionMenu() {
                                     <div>
                                         <h3 className="font-bold text-sm">Admin Support</h3>
                                         <div className="flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${isGuest ? 'bg-yellow-400' : 'bg-green-400'}`} />
-                                            <p className="text-xs text-indigo-100">
-                                                {isGuest ? 'Guest Mode' : 'User Mode'}
-                                            </p>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                                            <p className="text-xs text-indigo-100">Authenticated User</p>
                                         </div>
                                     </div>
                                 </div>
@@ -387,30 +418,34 @@ export default function FloatingActionMenu() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-950 scroll-smooth">
-                                {chatHistory.length === 0 && (
+                                {!identityId ? (
                                     <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-2">
                                         <MessageSquare className="w-12 h-12 opacity-20" />
-                                        <p className="text-sm">
-                                            {isGuest ? "Anonymous Chat (Saved to browser)" : "How can we help you today?"}
-                                        </p>
+                                        <p className="text-sm">Please log in to contact support.</p>
                                     </div>
-                                )}
-                                {chatHistory.map((msg) => (
-                                    <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user'
-                                            ? 'bg-indigo-600 text-white rounded-br-none'
-                                            : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-bl-none'
-                                            }`}>
-                                            {msg.content}
+                                ) : chatHistory.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-2">
+                                        <MessageSquare className="w-12 h-12 opacity-20" />
+                                        <p className="text-sm">How can we help you today?</p>
+                                    </div>
+                                ) : (
+                                    chatHistory.map((msg) => (
+                                        <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user'
+                                                ? 'bg-indigo-600 text-white rounded-br-none'
+                                                : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-bl-none'
+                                                }`}>
+                                                {msg.content}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                                 <div ref={chatEndRef} />
                             </div>
 
                             <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 flex gap-2 shrink-0 safe-pb">
-                                <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-                                <button type="submit" disabled={!message.trim()} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
+                                <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} disabled={!identityId} placeholder={identityId ? "Type a message..." : "Login required..."} className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50" />
+                                <button type="submit" disabled={!message.trim() || !identityId} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
                                     <Send className="w-4 h-4" />
                                 </button>
                             </form>

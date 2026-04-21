@@ -22,6 +22,7 @@ import { NotificationProvider } from "./components/NotificationSystem";
 import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
 import ReloadPrompt from "./components/ReloadPrompt";
+import UserDistributionMap from './components/UserDistributionMap';
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
@@ -145,6 +146,7 @@ const AppContent = () => {
           <Route path="/adult/*" element={<AdultSection />} />
           <Route path="/karma-shop" element={<KarmaShop />} />
           <Route path="/whisper" element={<WhisperChat />} />
+          <Route path="/map" element={<UserDistributionMap />} />
         </Routes>
       </main>
 
