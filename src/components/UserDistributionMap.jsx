@@ -20,6 +20,23 @@ const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     popupAnchor: [0, -20]
 });
 
+function MapController({ center, zoom }) {
+    const map = useMap();
+    const didFlyRef = useRef(false);
+
+    useEffect(() => {
+        if (!center) return;
+        if (!didFlyRef.current) {
+            map.setView(center, zoom ?? map.getZoom());
+            didFlyRef.current = true;
+        } else {
+            map.flyTo(center, map.getZoom());
+        }
+    }, [center, map, zoom]);
+
+    return null;
+}
+
 export default function UserDistributionMap() {
     const [locations, setLocations] = useState([]);
     const [myLocation, setMyLocation] = useState(null);
