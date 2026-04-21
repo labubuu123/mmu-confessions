@@ -166,6 +166,7 @@ export default function UserDistributionMap() {
             </div>
 
             <MapContainer
+                ref={mapRef}
                 center={DEFAULT_CENTER}
                 zoom={DEFAULT_ZOOM}
                 className="w-full h-full z-0"
