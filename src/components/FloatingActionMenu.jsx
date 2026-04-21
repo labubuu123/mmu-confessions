@@ -75,41 +75,41 @@ export default function FloatingActionMenu() {
     const navigate = useNavigate();
     const chatEndRef = useRef(null);
 
-    const updateGlobalLocation = async (userId) => {
-        if (!navigator.geolocation) return;
-
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('username, avatar_url')
-                .eq('id', userId)
-                .single();
-
-            await supabase.from('user_locations').upsert({
-                user_id: userId,
-                latitude,
-                longitude,
-                username: profile?.username || 'Anonymous',
-                avatar_url: profile?.avatar_url || '',
-                last_updated: new Date().toISOString()
-            });
-        }, (error) => {
-            console.error("Location tracking failed/denied:", error);
-        }, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        });
-    };
-
     useEffect(() => {
-        const initialize = async () => {
+        let watchId;
+
+        const initializeTracking = async () => {
             const { data: { session } } = await supabase.auth.getSession();
+
             if (session?.user) {
                 setIdentityId(session.user.id);
-                updateGlobalLocation(session.user.id);
+
+                if (navigator.geolocation) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('username, avatar_url')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    watchId = navigator.geolocation.watchPosition(async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+
+                        await supabase.from('user_locations').upsert({
+                            user_id: session.user.id,
+                            latitude,
+                            longitude,
+                            username: profile?.username || 'Anonymous',
+                            avatar_url: profile?.avatar_url || '',
+                            last_updated: new Date().toISOString()
+                        });
+                    }, (error) => {
+                        console.warn("Location tracking failed/denied:", error.message);
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 0
+                    });
+                }
             } else {
                 setIdentityId(null);
             }
@@ -120,18 +120,21 @@ export default function FloatingActionMenu() {
             }
         };
 
-        initialize();
+        initializeTracking();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setIdentityId(session.user.id);
-                updateGlobalLocation(session.user.id);
             } else {
                 setIdentityId(null);
+                if (watchId) navigator.geolocation.clearWatch(watchId);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        };
     }, []);
 
     useEffect(() => {
