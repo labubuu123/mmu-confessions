@@ -29,7 +29,7 @@ export default function UserDistributionMap() {
 
     const mapRef = useRef(null);
 
-    const DEFAULT_CENTER = [4.0, 114.5];
+    const DEFAULT_CENTER = [4.2105, 101.9758];
     const DEFAULT_ZOOM = 6;
 
     useEffect(() => {
