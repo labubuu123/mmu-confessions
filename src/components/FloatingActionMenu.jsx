@@ -10,12 +10,199 @@ import {
     Wrench,
     ShoppingBag,
     Lightbulb,
-    Globe
+    Globe,
+    MapPin,
+    Navigation,
+    Lock,
+    RefreshCw,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
 import { motion, AnimatePresence } from 'framer-motion';
+
+function GpsPermissionModal({ onAllow, onDismiss }) {
+    const [state, setState] = useState('prompt');
+
+    const handleAllow = async () => {
+        setState('requesting');
+        try {
+            const pos = await new Promise((resolve, reject) =>
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                })
+            );
+            onAllow(pos);
+        } catch {
+            setState('denied');
+        }
+    };
+
+    return (
+        <>
+            <motion.div
+                key="gps-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
+                onClick={state === 'requesting' ? undefined : onDismiss}
+            />
+
+            <motion.div
+                key="gps-card"
+                initial={{ opacity: 0, y: 60, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 30, scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                className="fixed z-[90] left-0 right-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center pointer-events-none"
+            >
+                <div className="pointer-events-auto w-full sm:w-[390px] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+
+                    <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-blue-400 to-cyan-400" />
+
+                    <div className="flex justify-center pt-3 sm:hidden">
+                        <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    </div>
+
+                    <div className="px-6 pt-4 pb-7">
+                        <div className="flex justify-center mb-5">
+                            <div className="relative">
+                                {state === 'prompt' && (
+                                    <>
+                                        <span className="absolute inset-0 rounded-full bg-indigo-400/25 animate-ping" />
+                                        <span className="absolute -inset-3 rounded-full bg-indigo-400/10 animate-ping [animation-delay:350ms]" />
+                                    </>
+                                )}
+                                <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-colors duration-300
+                                    ${state === 'denied'
+                                        ? 'bg-red-100 dark:bg-red-900/30'
+                                        : state === 'requesting'
+                                            ? 'bg-blue-100 dark:bg-blue-900/30'
+                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                    }`}
+                                >
+                                    {state === 'denied' ? (
+                                        <Lock className="w-7 h-7 text-red-500" />
+                                    ) : state === 'requesting' ? (
+                                        <Navigation className="w-7 h-7 text-blue-500 animate-pulse" />
+                                    ) : (
+                                        <MapPin className="w-7 h-7 text-indigo-500" />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {state === 'denied' ? (
+                            <>
+                                <h2 className="text-center text-lg font-bold text-slate-800 dark:text-white mb-2">
+                                    Location Access Blocked
+                                </h2>
+                                <p className="text-center text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Your browser has blocked location access. To appear on the Live Map, re-enable it:
+                                </p>
+                                <div className="mt-4 space-y-2">
+                                    {[
+                                        { step: '1', text: 'Tap the lock / info icon in your browser\'s address bar' },
+                                        { step: '2', text: 'Find "Location" and set it to Allow' },
+                                        { step: '3', text: 'Reload the page and try again' },
+                                    ].map(({ step, text }) => (
+                                        <div key={step} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                            <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0 mt-0.5">
+                                                {step}
+                                            </span>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300">{text}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : state === 'requesting' ? (
+                            <>
+                                <h2 className="text-center text-lg font-bold text-slate-800 dark:text-white mb-2">
+                                    Getting your location…
+                                </h2>
+                                <p className="text-center text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    A browser prompt may appear. Please tap <strong className="text-slate-700 dark:text-white">Allow</strong> to continue.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-center text-lg font-bold text-slate-800 dark:text-white mb-1">
+                                    Enable Location Access
+                                </h2>
+                                <p className="text-center text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                                    Share your location to appear as a live marker on the{' '}
+                                    <span className="text-indigo-500 font-semibold">Live User Map</span>.
+                                </p>
+
+                                <div className="space-y-2">
+                                    {[
+                                        { icon: '🗺️', title: 'Show up on the map', desc: 'Others nearby can see your live marker.' },
+                                        { icon: '🔒', title: 'Privacy first', desc: 'Location is only stored while you\'re active.' },
+                                        { icon: '👥', title: 'See others', desc: 'Discover users around you in real time.' },
+                                    ].map(({ icon, title, desc }) => (
+                                        <div key={title} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                            <span className="text-xl leading-none shrink-0 mt-0.5">{icon}</span>
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{title}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">{desc}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        <div className="mt-5 flex flex-col gap-2">
+                            {state === 'denied' ? (
+                                <>
+                                    <button
+                                        onClick={() => setState('prompt')}
+                                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        Try Again
+                                    </button>
+                                    <button
+                                        onClick={onDismiss}
+                                        className="w-full py-3 text-slate-400 dark:text-slate-500 text-sm font-medium rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        Skip for now
+                                    </button>
+                                </>
+                            ) : state === 'requesting' ? (
+                                <div className="flex items-center justify-center gap-2.5 py-3.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 text-sm font-semibold rounded-xl">
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                                    </svg>
+                                    Waiting for browser permission…
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={handleAllow}
+                                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                                    >
+                                        <MapPin className="w-4 h-4" />
+                                        Allow Location Access
+                                    </button>
+                                    <button
+                                        onClick={onDismiss}
+                                        className="w-full py-3 text-slate-400 dark:text-slate-500 text-sm font-medium rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        Not now
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+        </>
+    );
+}
 
 const EighteenPlusIcon = ({ className }) => (
     <div className={`${className} flex items-center justify-center`}>
@@ -28,11 +215,10 @@ const MenuOnboardingTips = ({ onDismiss }) => (
         initial={{ opacity: 0, y: 20, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         className="fixed bottom-24 right-4 sm:right-6 z-50 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-indigo-100 dark:border-slate-700 p-4"
     >
-        <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white dark:bg-slate-800 border-b border-r border-indigo-100 dark:border-slate-700 transform rotate-45"></div>
-
+        <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white dark:bg-slate-800 border-b border-r border-indigo-100 dark:border-slate-700 transform rotate-45" />
         <div className="relative flex flex-col gap-3">
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
@@ -41,237 +227,228 @@ const MenuOnboardingTips = ({ onDismiss }) => (
                     </div>
                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Discover More!</h4>
                 </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                >
+                <button onClick={(e) => { e.stopPropagation(); onDismiss(); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                     <X size={16} />
                 </button>
             </div>
-
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
                 Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>User Map</b>, <b>MY西斯</b>, and more hidden features!
             </p>
-
-            <button
-                onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200 dark:shadow-none"
-            >
+            <button onClick={(e) => { e.stopPropagation(); onDismiss(); }} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200 dark:shadow-none">
                 Got it
             </button>
         </div>
     </motion.div>
 );
 
+async function upsertUserLocation(userId, latitude, longitude, profile) {
+    const { error } = await supabase.from('user_locations').upsert(
+        {
+            user_id: userId,
+            latitude,
+            longitude,
+            username: profile?.username || 'Anonymous',
+            avatar_url: profile?.avatar_url || '',
+            last_updated: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+    );
+    if (error) console.error('upsertUserLocation error:', error.message);
+}
+
 export default function FloatingActionMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [showTips, setShowTips] = useState(false);
+    const [showGpsModal, setShowGpsModal] = useState(false);
 
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [identityId, setIdentityId] = useState(null);
+
     const navigate = useNavigate();
     const chatEndRef = useRef(null);
+    const watchIdRef = useRef(null);
+    const profileRef = useRef(null);
+    const userIdRef = useRef(null);
+
+    const startWatching = (userId, profile) => {
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+        }
+        watchIdRef.current = navigator.geolocation.watchPosition(
+            async (pos) => {
+                await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+            },
+            (err) => console.warn('watchPosition error:', err.message),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    };
+
+    const handleGpsAllowed = async (pos) => {
+        setShowGpsModal(false);
+        localStorage.setItem('gps_permission_granted', 'true');
+        const userId = userIdRef.current;
+        const profile = profileRef.current;
+        await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+        startWatching(userId, profile);
+    };
 
     useEffect(() => {
-        let watchId;
-
         const initializeTracking = async () => {
             const { data: { session } } = await supabase.auth.getSession();
 
-            if (session?.user) {
-                setIdentityId(session.user.id);
+            if (!session?.user) { setIdentityId(null); return; }
 
-                if (navigator.geolocation) {
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('username, avatar_url')
-                        .eq('id', session.user.id)
-                        .single();
+            const userId = session.user.id;
+            setIdentityId(userId);
+            userIdRef.current = userId;
 
-                    watchId = navigator.geolocation.watchPosition(async (pos) => {
-                        const { latitude, longitude } = pos.coords;
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('username, avatar_url')
+                .eq('id', userId)
+                .single();
+            profileRef.current = profile;
 
-                        await supabase.from('user_locations').upsert({
-                            user_id: session.user.id,
-                            latitude,
-                            longitude,
-                            username: profile?.username || 'Anonymous',
-                            avatar_url: profile?.avatar_url || '',
-                            last_updated: new Date().toISOString()
-                        });
-                    }, (error) => {
-                        console.warn("Location tracking failed/denied:", error.message);
-                    }, {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 0
-                    });
+            if (!navigator.geolocation) return;
+
+            if (navigator.permissions) {
+                try {
+                    const perm = await navigator.permissions.query({ name: 'geolocation' });
+
+                    if (perm.state === 'granted') {
+                        navigator.geolocation.getCurrentPosition(
+                            async (pos) => {
+                                await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+                                startWatching(userId, profile);
+                            },
+                            (err) => console.warn(err.message),
+                            { enableHighAccuracy: true, timeout: 15000 }
+                        );
+                        return;
+                    }
+
+                    if (perm.state === 'denied') {
+                        return;
+                    }
+
+                    setShowGpsModal(true);
+
+                    perm.onchange = () => {
+                        if (perm.state === 'granted') {
+                            setShowGpsModal(false);
+                            navigator.geolocation.getCurrentPosition(
+                                async (pos) => {
+                                    await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+                                    startWatching(userId, profile);
+                                },
+                                (err) => console.warn(err.message),
+                                { enableHighAccuracy: true, timeout: 15000 }
+                            );
+                        }
+                    };
+                    return;
+                } catch {
                 }
-            } else {
-                setIdentityId(null);
             }
 
-            const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
-            if (!hasSeenTips) {
-                setTimeout(() => setShowTips(true), 1500);
+            const alreadyGranted = localStorage.getItem('gps_permission_granted');
+            if (alreadyGranted) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+                        startWatching(userId, profile);
+                    },
+                    () => {
+                        localStorage.removeItem('gps_permission_granted');
+                        setShowGpsModal(true);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000 }
+                );
+            } else {
+                setShowGpsModal(true);
             }
         };
 
         initializeTracking();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
+        if (!hasSeenTips) setTimeout(() => setShowTips(true), 3000);
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
             if (session?.user) {
                 setIdentityId(session.user.id);
             } else {
                 setIdentityId(null);
-                if (watchId) navigator.geolocation.clearWatch(watchId);
+                if (watchIdRef.current !== null) {
+                    navigator.geolocation.clearWatch(watchIdRef.current);
+                    watchIdRef.current = null;
+                }
             }
         });
 
         return () => {
             subscription.unsubscribe();
-            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
         };
     }, []);
 
     useEffect(() => {
-        if (isChatOpen && identityId) {
-            fetchMessages();
-
-            const channel = supabase
-                .channel('public:support_messages')
-                .on('postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'support_messages',
-                        filter: `user_id=eq.${identityId}`
-                    },
-                    (payload) => {
-                        if (payload.new.sender_role === 'admin') {
-                            setChatHistory(prev => {
-                                if (prev.some(msg => msg.id === payload.new.id)) return prev;
-                                return [...prev, payload.new];
-                            });
-                            scrollToBottom();
-                        }
+        if (!isChatOpen || !identityId) return;
+        fetchMessages();
+        const channel = supabase
+            .channel('public:support_messages')
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `user_id=eq.${identityId}` },
+                (payload) => {
+                    if (payload.new.sender_role === 'admin') {
+                        setChatHistory(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
+                        scrollToBottom();
                     }
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
-        }
+                }
+            )
+            .subscribe();
+        return () => supabase.removeChannel(channel);
     }, [isChatOpen, identityId]);
 
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-    };
+    const scrollToBottom = () => setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
     const fetchMessages = async () => {
         if (!identityId) return;
         const { data } = await supabase
-            .from('support_messages')
-            .select('*')
-            .eq('user_id', identityId)
-            .order('created_at', { ascending: true });
-
-        if (data) {
-            setChatHistory(data);
-            scrollToBottom();
-        }
+            .from('support_messages').select('*')
+            .eq('user_id', identityId).order('created_at', { ascending: true });
+        if (data) { setChatHistory(data); scrollToBottom(); }
     };
 
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!message.trim() || !identityId) return;
-
         const text = message.trim();
         setMessage('');
-
-        const optimisticMessage = {
-            id: Date.now(),
-            user_id: identityId,
-            sender_role: 'user',
-            content: text,
-            created_at: new Date().toISOString()
-        };
-
-        setChatHistory(prev => [...prev, optimisticMessage]);
+        setChatHistory(prev => [...prev, { id: Date.now(), user_id: identityId, sender_role: 'user', content: text, created_at: new Date().toISOString() }]);
         scrollToBottom();
-
         try {
-            const { error } = await supabase.from('support_messages').insert({
-                user_id: identityId,
-                sender_role: 'user',
-                content: text
-            });
+            const { error } = await supabase.from('support_messages').insert({ user_id: identityId, sender_role: 'user', content: text });
             if (error) throw error;
-        } catch (err) {
-            console.error("Error sending:", err);
-        }
+        } catch (err) { console.error('Error sending:', err); }
     };
 
-    const handleMarketplaceClick = () => {
-        setIsOpen(false);
-        navigate('/marketplace');
-    };
-
-    const handleMatchmakerClick = () => {
-        setIsOpen(false);
-        navigate('/matchmaker');
-    };
-
-    const handleNightsClick = () => {
-        setIsOpen(false);
-        navigate('/adult');
-    };
-
-    const handleMapClick = () => {
-        setIsOpen(false);
-        navigate('/map');
-    };
-
-    const handleContactAdminClick = () => {
-        setIsOpen(false);
-        setIsChatOpen(true);
-        setIsActivityOpen(false);
-    };
-
-    const handleLiveActivityClick = () => {
-        setIsOpen(false);
-        setIsActivityOpen(true);
-        setIsChatOpen(false);
-    };
-
-    const handleToolsClick = () => {
-        setIsOpen(false);
-        navigate('/tools');
-    };
-
-    const handleDismissTips = () => {
-        setShowTips(false);
-        localStorage.setItem('has_seen_menu_tips_v1', 'true');
-    };
-
-    const handleMainToggle = () => {
-        if (showTips) {
-            handleDismissTips();
-        }
-        setIsOpen(!isOpen);
-    };
+    const handleMarketplaceClick = () => { setIsOpen(false); navigate('/marketplace'); };
+    const handleMatchmakerClick = () => { setIsOpen(false); navigate('/matchmaker'); };
+    const handleNightsClick = () => { setIsOpen(false); navigate('/adult'); };
+    const handleMapClick = () => { setIsOpen(false); navigate('/map'); };
+    const handleToolsClick = () => { setIsOpen(false); navigate('/tools'); };
+    const handleContactAdminClick = () => { setIsOpen(false); setIsChatOpen(true); setIsActivityOpen(false); };
+    const handleLiveActivityClick = () => { setIsOpen(false); setIsActivityOpen(true); setIsChatOpen(false); };
+    const handleDismissTips = () => { setShowTips(false); localStorage.setItem('has_seen_menu_tips_v1', 'true'); };
+    const handleMainToggle = () => { if (showTips) handleDismissTips(); setIsOpen(!isOpen); };
 
     const MenuButton = ({ icon: Icon, label, onClick, colorClass, bgClass, animateIcon }) => (
         <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClick}
             className="flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50/50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent hover:border-gray-200 dark:hover:border-slate-600 transition-all group backdrop-blur-sm"
         >
             <div className={`w-10 h-10 ${bgClass} rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200`}>
@@ -284,11 +461,18 @@ export default function FloatingActionMenu() {
     return (
         <>
             <AnimatePresence>
+                {showGpsModal && (
+                    <GpsPermissionModal
+                        onAllow={handleGpsAllowed}
+                        onDismiss={() => setShowGpsModal(false)}
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
                         onClick={() => setIsOpen(false)}
                     />
@@ -296,7 +480,7 @@ export default function FloatingActionMenu() {
             </AnimatePresence>
 
             <AnimatePresence>
-                {showTips && !isOpen && (
+                {showTips && !isOpen && !showGpsModal && (
                     <MenuOnboardingTips onDismiss={handleDismissTips} />
                 )}
             </AnimatePresence>
@@ -307,70 +491,34 @@ export default function FloatingActionMenu() {
                         initial={{ opacity: 0, y: 50, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                         className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[340px] flex flex-col gap-3"
                     >
                         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 p-4 overflow-hidden border border-white/20 dark:border-white/5">
-
                             <div className="flex items-center justify-between mb-4 px-1">
                                 <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Quick Menu</h3>
                             </div>
-
                             <div className="grid grid-cols-2 gap-3">
                                 <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                                     onClick={handleNightsClick}
                                     className="col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 hover:border-rose-900/50 relative overflow-hidden group shadow-lg"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                    <div className="w-10 h-10 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 group-hover:text-white transition-colors">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                    <div className="w-10 h-10 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 transition-colors">
                                         <EighteenPlusIcon className="text-rose-500 group-hover:text-white transition-colors" />
                                     </div>
-
                                     <div className="flex flex-col items-start">
                                         <span className="text-sm font-black text-slate-200 group-hover:text-rose-400 transition-colors uppercase tracking-tight">MY西斯 · NSFW</span>
                                     </div>
                                 </motion.button>
 
-                                <MenuButton
-                                    icon={ShoppingBag}
-                                    label="Marketplace"
-                                    onClick={handleMarketplaceClick}
-                                    bgClass="bg-emerald-100 dark:bg-emerald-900/40"
-                                    colorClass="text-emerald-600 dark:text-emerald-400"
-                                />
-                                <MenuButton
-                                    icon={Heart}
-                                    label="Matchmaker"
-                                    onClick={handleMatchmakerClick}
-                                    bgClass="bg-pink-100 dark:bg-pink-900/40"
-                                    colorClass="text-pink-600 dark:text-pink-400"
-                                    animateIcon={true}
-                                />
-                                <MenuButton
-                                    icon={Globe}
-                                    label="Live Map"
-                                    onClick={handleMapClick}
-                                    bgClass="bg-blue-100 dark:bg-blue-900/40"
-                                    colorClass="text-blue-600 dark:text-blue-400"
-                                />
-                                <MenuButton
-                                    icon={Activity}
-                                    label="Live Comments"
-                                    onClick={handleLiveActivityClick}
-                                    bgClass="bg-orange-100 dark:bg-orange-900/40"
-                                    colorClass="text-orange-600 dark:text-orange-400"
-                                />
-                                <MenuButton
-                                    icon={Wrench}
-                                    label="Tools"
-                                    onClick={handleToolsClick}
-                                    bgClass="bg-cyan-100 dark:bg-cyan-900/40"
-                                    colorClass="text-cyan-600 dark:text-cyan-400"
-                                />
+                                <MenuButton icon={ShoppingBag} label="Marketplace" onClick={handleMarketplaceClick} bgClass="bg-emerald-100 dark:bg-emerald-900/40" colorClass="text-emerald-600 dark:text-emerald-400" />
+                                <MenuButton icon={Heart} label="Matchmaker" onClick={handleMatchmakerClick} bgClass="bg-pink-100 dark:bg-pink-900/40" colorClass="text-pink-600 dark:text-pink-400" animateIcon />
+                                <MenuButton icon={Globe} label="Live Map" onClick={handleMapClick} bgClass="bg-blue-100 dark:bg-blue-900/40" colorClass="text-blue-600 dark:text-blue-400" />
+                                <MenuButton icon={Activity} label="Live Comments" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
+                                <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
                             </div>
-
                             <button
                                 onClick={handleContactAdminClick}
                                 className="w-full mt-3 flex items-center justify-center gap-2 py-3 px-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl transition-colors text-sm font-medium"
@@ -392,18 +540,16 @@ export default function FloatingActionMenu() {
                 {isOpen ? <X className="w-7 h-7" /> : <LayoutGrid className="w-7 h-7" />}
             </motion.button>
 
-            {isActivityOpen && (
-                <LiveActivityPanel onClose={() => setIsActivityOpen(false)} />
-            )}
+            {isActivityOpen && <LiveActivityPanel onClose={() => setIsActivityOpen(false)} />}
 
             <AnimatePresence>
                 {isChatOpen && (
                     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 pointer-events-none">
                         <motion.div
-                            initial={{ y: "100%", opacity: 0 }}
+                            initial={{ y: '100%', opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: "100%", opacity: 0 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            exit={{ y: '100%', opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className="pointer-events-auto w-full sm:w-96 h-[85vh] sm:h-[600px] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-slate-700 overflow-hidden"
                         >
                             <div className="p-4 bg-indigo-600 flex items-center justify-between shrink-0">
@@ -431,23 +577,22 @@ export default function FloatingActionMenu() {
                                         <MessageSquare className="w-12 h-12 opacity-20" />
                                         <p className="text-sm">How can we help you today?</p>
                                     </div>
-                                ) : (
-                                    chatHistory.map((msg) => (
-                                        <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user'
-                                                ? 'bg-indigo-600 text-white rounded-br-none'
-                                                : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-bl-none'
-                                                }`}>
-                                                {msg.content}
-                                            </div>
+                                ) : chatHistory.map((msg) => (
+                                    <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.sender_role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-bl-none'}`}>
+                                            {msg.content}
                                         </div>
-                                    ))
-                                )}
+                                    </div>
+                                ))}
                                 <div ref={chatEndRef} />
                             </div>
 
                             <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 flex gap-2 shrink-0 safe-pb">
-                                <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} disabled={!identityId} placeholder={identityId ? "Type a message..." : "Login required..."} className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50" />
+                                <input
+                                    type="text" value={message} onChange={(e) => setMessage(e.target.value)}
+                                    disabled={!identityId} placeholder={identityId ? 'Type a message...' : 'Login required...'}
+                                    className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                                />
                                 <button type="submit" disabled={!message.trim() || !identityId} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
                                     <Send className="w-4 h-4" />
                                 </button>

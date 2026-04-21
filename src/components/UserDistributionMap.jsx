@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Loader2 } from 'lucide-react';
 
 const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     className: 'custom-leaflet-icon',
@@ -20,81 +20,142 @@ const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     popupAnchor: [0, -20]
 });
 
-function MapController({ center }) {
+// Flies to a new center whenever it changes
+function MapController({ center, zoom }) {
     const map = useMap();
+    const didFlyRef = useRef(false);
+
     useEffect(() => {
-        if (center) map.flyTo(center, map.getZoom());
-    }, [center, map]);
+        if (!center) return;
+        // First time: use setView for instant positioning; subsequent: flyTo
+        if (!didFlyRef.current) {
+            map.setView(center, zoom ?? map.getZoom());
+            didFlyRef.current = true;
+        } else {
+            map.flyTo(center, map.getZoom());
+        }
+    }, [center, map, zoom]);
+
     return null;
 }
 
 export default function UserDistributionMap() {
-    const [locations, setLocations] = useState([]);
-    const [myLocation, setMyLocation] = useState(null);
+    const [locations, setLocations]     = useState([]);
+    const [myLocation, setMyLocation]   = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading]         = useState(true);
 
-    const defaultCenter = [4.2105, 101.9758];
+    // FIX: Use a stable default center – the map will re-center via MapController
+    //      once myLocation resolves, without needing to remount MapContainer.
+    const DEFAULT_CENTER = [4.2105, 101.9758];
+    const DEFAULT_ZOOM   = 6;
 
     useEffect(() => {
         const initMap = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                setCurrentUser(session.user);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
 
-                const { data: myLoc } = await supabase
-                    .from('user_locations')
-                    .select('latitude, longitude')
-                    .eq('user_id', session.user.id)
-                    .single();
+                if (session?.user) {
+                    setCurrentUser(session.user);
 
-                if (myLoc) {
-                    setMyLocation([myLoc.latitude, myLoc.longitude]);
+                    // FIX: Fetch the user's stored location from the DB to center the map
+                    const { data: myLoc } = await supabase
+                        .from('user_locations')
+                        .select('latitude, longitude')
+                        .eq('user_id', session.user.id)
+                        .maybeSingle();          // FIX: use maybeSingle() – avoids error when row is missing
+
+                    if (myLoc) {
+                        setMyLocation([myLoc.latitude, myLoc.longitude]);
+                    }
                 }
+            } catch (err) {
+                console.error('initMap error:', err);
+            } finally {
+                // FIX: fetch all locations AFTER auth check so currentUser is set
+                await fetchLocations();
+                setLoading(false);
             }
-            fetchLocations();
         };
+
         initMap();
 
+        // Real-time subscription – update markers whenever any row changes
         const channel = supabase
             .channel('public:user_locations')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, fetchLocations)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'user_locations' },
+                () => fetchLocations()           // re-fetch on any change
+            )
             .subscribe();
 
         return () => supabase.removeChannel(channel);
     }, []);
 
     const fetchLocations = async () => {
-        const { data, error } = await supabase.from('user_locations').select('*');
+        const { data, error } = await supabase
+            .from('user_locations')
+            .select('user_id, latitude, longitude, username, avatar_url, last_updated');
+
         if (!error && data) {
             setLocations(data);
+        } else if (error) {
+            console.error('fetchLocations error:', error.message);
         }
     };
 
+    const handleRecenter = () => {
+        if (myLocation) {
+            // Trigger MapController by updating the same value (spread creates a new ref)
+            setMyLocation(prev => prev ? [...prev] : prev);
+        }
+    };
+
+    const onlineCount = locations.filter(
+        (loc) => new Date() - new Date(loc.last_updated) < 3_600_000
+    ).length;
+
     return (
         <div className="relative w-full h-screen bg-slate-100 dark:bg-slate-900 pt-16">
+
+            {/* ── Header bar ── */}
             <div className="absolute top-20 left-4 right-4 z-[400] flex justify-between items-center pointer-events-none">
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 pointer-events-auto flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-indigo-500" />
                     <span className="font-bold text-slate-800 dark:text-white">Live User Map</span>
-                    <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full ml-2">
-                        {locations.length} Total
-                    </span>
+
+                    {loading ? (
+                        <Loader2 className="w-4 h-4 text-indigo-400 animate-spin ml-2" />
+                    ) : (
+                        <>
+                            <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full ml-1">
+                                {locations.length} Total
+                            </span>
+                            <span className="bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 text-xs px-2 py-0.5 rounded-full">
+                                {onlineCount} Online
+                            </span>
+                        </>
+                    )}
                 </div>
 
-                <div className="flex gap-2 pointer-events-auto">
-                    <button
-                        onClick={() => myLocation && setMyLocation([...myLocation])}
-                        title="Find My Location"
-                        className="bg-white/90 dark:bg-slate-800/90 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-gray-50 transition-colors"
-                    >
-                        <Navigation className="w-5 h-5 text-blue-500" />
-                    </button>
-                </div>
+                <button
+                    onClick={handleRecenter}
+                    disabled={!myLocation}
+                    title="Find My Location"
+                    className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                >
+                    <Navigation className="w-5 h-5 text-blue-500" />
+                </button>
             </div>
 
+            {/* ── Map ── */}
+            {/* FIX: Always render MapContainer with the stable DEFAULT_CENTER.
+                     MapController handles re-centering once myLocation is ready.
+                     This avoids the MapContainer ignoring a late-arriving center prop. */}
             <MapContainer
-                center={myLocation || defaultCenter}
-                zoom={myLocation ? 14 : 6}
+                center={DEFAULT_CENTER}
+                zoom={DEFAULT_ZOOM}
                 className="w-full h-full z-0"
                 zoomControl={false}
             >
@@ -103,10 +164,13 @@ export default function UserDistributionMap() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 />
 
-                <MapController center={myLocation} />
+                {/* FIX: Pass zoom so MapController uses 14 when flying to user location */}
+                <MapController center={myLocation} zoom={14} />
 
                 {locations.map((loc) => {
-                    const isOnline = new Date() - new Date(loc.last_updated) < 3600000;
+                    if (!loc.latitude || !loc.longitude) return null; // guard bad rows
+
+                    const isOnline      = new Date() - new Date(loc.last_updated) < 3_600_000;
                     const isCurrentUser = currentUser?.id === loc.user_id;
 
                     return (
@@ -117,8 +181,17 @@ export default function UserDistributionMap() {
                         >
                             <Popup className="custom-popup">
                                 <div className="text-center p-2 min-w-[120px]">
-                                    <img src={loc.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="avatar" className="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-indigo-100 shadow-sm object-cover" />
-                                    <h3 className="font-bold text-gray-900 dark:text-white mb-0">{loc.username || 'Anonymous'}</h3>
+                                    <img
+                                        src={loc.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
+                                        alt="avatar"
+                                        className="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-indigo-100 shadow-sm object-cover"
+                                    />
+                                    <h3 className="font-bold text-gray-900 dark:text-white mb-0">
+                                        {loc.username || 'Anonymous'}
+                                        {isCurrentUser && (
+                                            <span className="ml-1 text-xs text-indigo-400">(you)</span>
+                                        )}
+                                    </h3>
                                     <p className="text-xs text-gray-500 mt-1">
                                         {isOnline ? '🟢 Active recently' : '⚪ Last seen offline'}
                                     </p>
@@ -128,6 +201,17 @@ export default function UserDistributionMap() {
                     );
                 })}
             </MapContainer>
+
+            {/* ── Empty state overlay ── */}
+            {!loading && locations.length === 0 && (
+                <div className="absolute inset-0 z-[300] flex items-center justify-center pointer-events-none">
+                    <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 text-center shadow-xl border border-slate-200 dark:border-slate-700">
+                        <MapPin className="w-10 h-10 text-indigo-300 mx-auto mb-2" />
+                        <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">No users on the map yet.</p>
+                        <p className="text-slate-400 text-xs mt-1">Allow location access to appear here.</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
