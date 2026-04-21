@@ -1,19 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+const getOrCreateGuestId = () => {
+    let guestId = localStorage.getItem('guest_user_id');
+    if (!guestId) {
+        guestId = crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        localStorage.setItem('guest_user_id', guestId);
+    }
+    return guestId;
+};
+
 export const upsertUserLocation = async (userId, latitude, longitude, profile) => {
+    if (!userId) return;
+    
     const { error } = await supabase.from('user_locations').upsert(
         {
             user_id: userId,
             latitude,
             longitude,
-            username: profile?.username || 'Anonymous',
-            avatar_url: profile?.avatar_url || '',
+            username: profile?.username || 'Guest Map User',
+            avatar_url: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
             last_updated: new Date().toISOString(),
         },
         { onConflict: 'user_id' }
     );
-    if (error) console.error('upsertUserLocation error:', error.message);
+    
+    if (error) {
+        console.error('upsertUserLocation error (Did you remove the Foreign Key constraint?):', error.message);
+    } else {
+        console.log('📍 Location saved to database:', latitude, longitude);
+    }
 };
 
 export function useLocationTracking() {
@@ -22,39 +40,64 @@ export function useLocationTracking() {
     
     const watchIdRef = useRef(null);
     const userIdRef = useRef(null);
-    const profileRef = useRef(null);
+    const profileRef = useRef({ username: 'Guest Map User', avatar_url: '' });
 
     useEffect(() => {
         let subscription;
         
         const initializeTracking = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) return;
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session?.user) {
+                    userIdRef.current = session.user.id;
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('username, avatar_url')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+                    
+                    if (error) console.warn('Profile fetch error:', error.message);
+                    if (profile) profileRef.current = profile;
+                } else {
+                    const guestId = getOrCreateGuestId();
+                    userIdRef.current = guestId;
+                    profileRef.current = {
+                        username: 'Guest User',
+                        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestId}` 
+                    };
+                }
 
-            userIdRef.current = session.user.id;
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('username, avatar_url')
-                .eq('id', session.user.id)
-                .single();
-            
-            profileRef.current = profile;
-
-            const alreadyGranted = localStorage.getItem('gps_permission_granted');
-            if (alreadyGranted === 'true') {
-                startWatching(session.user.id, profile);
+                const alreadyGranted = localStorage.getItem('gps_permission_granted');
+                if (alreadyGranted === 'true' && userIdRef.current) {
+                    startWatching(userIdRef.current, profileRef.current);
+                }
+            } catch (err) {
+                console.error("Init tracking error:", err);
             }
         };
 
         initializeTracking();
 
-        const authSub = supabase.auth.onAuthStateChange((_, session) => {
+        const authSub = supabase.auth.onAuthStateChange(async (_, session) => {
+            const wasTracking = isTracking || localStorage.getItem('gps_permission_granted') === 'true';
+            
+            if (userIdRef.current && wasTracking) {
+                await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
+            }
+
             if (session?.user) {
                 userIdRef.current = session.user.id;
+                const { data: profile } = await supabase.from('profiles').select('username, avatar_url').eq('id', session.user.id).maybeSingle();
+                if (profile) profileRef.current = profile;
             } else {
-                userIdRef.current = null;
-                stopWatching();
+                const guestId = getOrCreateGuestId();
+                userIdRef.current = guestId;
+                profileRef.current = { username: 'Guest User', avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestId}` };
+            }
+
+            if (wasTracking) {
+                startWatching(userIdRef.current, profileRef.current);
             }
         });
         
@@ -67,13 +110,18 @@ export function useLocationTracking() {
     }, []);
 
     const startWatching = (userId, profile) => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            console.warn("Geolocation is not supported by this browser.");
+            return;
+        }
         
         if (watchIdRef.current !== null) {
             navigator.geolocation.clearWatch(watchIdRef.current);
         }
         
         setIsTracking(true);
+        console.log('📡 Starting GPS tracking...');
+        
         watchIdRef.current = navigator.geolocation.watchPosition(
             async (pos) => {
                 await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
@@ -95,6 +143,7 @@ export function useLocationTracking() {
         }
         setIsTracking(false);
         localStorage.removeItem('gps_permission_granted');
+        console.log('🛑 Stopped GPS tracking.');
 
         if (userIdRef.current) {
             await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
@@ -112,7 +161,8 @@ export function useLocationTracking() {
     const handleGpsAllowed = async (pos) => {
         setShowGpsModal(false);
         localStorage.setItem('gps_permission_granted', 'true');
-        if (userIdRef.current && profileRef.current) {
+        
+        if (userIdRef.current) {
             await upsertUserLocation(userIdRef.current, pos.coords.latitude, pos.coords.longitude, profileRef.current);
             startWatching(userIdRef.current, profileRef.current);
         }

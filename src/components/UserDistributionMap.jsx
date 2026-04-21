@@ -20,14 +20,12 @@ const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     popupAnchor: [0, -20]
 });
 
-// Flies to a new center whenever it changes
 function MapController({ center, zoom }) {
     const map = useMap();
     const didFlyRef = useRef(false);
 
     useEffect(() => {
         if (!center) return;
-        // First time: use setView for instant positioning; subsequent: flyTo
         if (!didFlyRef.current) {
             map.setView(center, zoom ?? map.getZoom());
             didFlyRef.current = true;
@@ -40,30 +38,33 @@ function MapController({ center, zoom }) {
 }
 
 export default function UserDistributionMap() {
-    const [locations, setLocations]     = useState([]);
-    const [myLocation, setMyLocation]   = useState(null);
+    const [locations, setLocations] = useState([]);
+    const [myLocation, setMyLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading]         = useState(true);
+    const [loading, setLoading] = useState(true);
 
-    // FIX: Use a stable default center – the map will re-center via MapController
-    //      once myLocation resolves, without needing to remount MapContainer.
     const DEFAULT_CENTER = [4.2105, 101.9758];
-    const DEFAULT_ZOOM   = 6;
+    const DEFAULT_ZOOM = 6;
 
     useEffect(() => {
         const initMap = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
+                let activeId = session?.user?.id;
 
                 if (session?.user) {
                     setCurrentUser(session.user);
+                } else {
+                    activeId = localStorage.getItem('guest_user_id');
+                    if (activeId) setCurrentUser({ id: activeId });
+                }
 
-                    // FIX: Fetch the user's stored location from the DB to center the map
+                if (activeId) {
                     const { data: myLoc } = await supabase
                         .from('user_locations')
                         .select('latitude, longitude')
-                        .eq('user_id', session.user.id)
-                        .maybeSingle();          // FIX: use maybeSingle() – avoids error when row is missing
+                        .eq('user_id', activeId)
+                        .maybeSingle();
 
                     if (myLoc) {
                         setMyLocation([myLoc.latitude, myLoc.longitude]);
@@ -72,7 +73,6 @@ export default function UserDistributionMap() {
             } catch (err) {
                 console.error('initMap error:', err);
             } finally {
-                // FIX: fetch all locations AFTER auth check so currentUser is set
                 await fetchLocations();
                 setLoading(false);
             }
@@ -80,13 +80,15 @@ export default function UserDistributionMap() {
 
         initMap();
 
-        // Real-time subscription – update markers whenever any row changes
         const channel = supabase
             .channel('public:user_locations')
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'user_locations' },
-                () => fetchLocations()           // re-fetch on any change
+                () => {
+                    console.log('🔄 Database change detected, refreshing map...');
+                    fetchLocations();
+                }
             )
             .subscribe();
 
@@ -99,6 +101,7 @@ export default function UserDistributionMap() {
             .select('user_id, latitude, longitude, username, avatar_url, last_updated');
 
         if (!error && data) {
+            console.log(`🗺️ Map updated: ${data.length} users found.`);
             setLocations(data);
         } else if (error) {
             console.error('fetchLocations error:', error.message);
@@ -107,7 +110,6 @@ export default function UserDistributionMap() {
 
     const handleRecenter = () => {
         if (myLocation) {
-            // Trigger MapController by updating the same value (spread creates a new ref)
             setMyLocation(prev => prev ? [...prev] : prev);
         }
     };
@@ -118,8 +120,6 @@ export default function UserDistributionMap() {
 
     return (
         <div className="relative w-full h-screen bg-slate-100 dark:bg-slate-900 pt-16">
-
-            {/* ── Header bar ── */}
             <div className="absolute top-20 left-4 right-4 z-[400] flex justify-between items-center pointer-events-none">
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 pointer-events-auto flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-indigo-500" />
@@ -143,16 +143,12 @@ export default function UserDistributionMap() {
                     onClick={handleRecenter}
                     disabled={!myLocation}
                     title="Find My Location"
-                    className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                    className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
                 >
                     <Navigation className="w-5 h-5 text-blue-500" />
                 </button>
             </div>
 
-            {/* ── Map ── */}
-            {/* FIX: Always render MapContainer with the stable DEFAULT_CENTER.
-                     MapController handles re-centering once myLocation is ready.
-                     This avoids the MapContainer ignoring a late-arriving center prop. */}
             <MapContainer
                 center={DEFAULT_CENTER}
                 zoom={DEFAULT_ZOOM}
@@ -161,16 +157,15 @@ export default function UserDistributionMap() {
             >
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
 
-                {/* FIX: Pass zoom so MapController uses 14 when flying to user location */}
                 <MapController center={myLocation} zoom={14} />
 
                 {locations.map((loc) => {
-                    if (!loc.latitude || !loc.longitude) return null; // guard bad rows
+                    if (!loc.latitude || !loc.longitude) return null;
 
-                    const isOnline      = new Date() - new Date(loc.last_updated) < 3_600_000;
+                    const isOnline = new Date() - new Date(loc.last_updated) < 3_600_000;
                     const isCurrentUser = currentUser?.id === loc.user_id;
 
                     return (
@@ -202,13 +197,12 @@ export default function UserDistributionMap() {
                 })}
             </MapContainer>
 
-            {/* ── Empty state overlay ── */}
             {!loading && locations.length === 0 && (
                 <div className="absolute inset-0 z-[300] flex items-center justify-center pointer-events-none">
-                    <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 text-center shadow-xl border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 text-center shadow-xl border border-slate-200 dark:border-slate-700 pointer-events-auto">
                         <MapPin className="w-10 h-10 text-indigo-300 mx-auto mb-2" />
                         <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">No users on the map yet.</p>
-                        <p className="text-slate-400 text-xs mt-1">Allow location access to appear here.</p>
+                        <p className="text-slate-500 text-xs mt-2">Open the menu in the bottom right to share your location!</p>
                     </div>
                 </div>
             )}
