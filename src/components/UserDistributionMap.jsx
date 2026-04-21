@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
@@ -20,6 +20,23 @@ const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     popupAnchor: [0, -20]
 });
 
+function MapController({ center, zoom }) {
+    const map = useMap();
+    const didFlyRef = useRef(false);
+
+    useEffect(() => {
+        if (!center) return;
+        if (!didFlyRef.current) {
+            map.setView(center, zoom ?? map.getZoom());
+            didFlyRef.current = true;
+        } else {
+            map.flyTo(center, map.getZoom());
+        }
+    }, [center, map, zoom]);
+
+    return null;
+}
+
 export default function UserDistributionMap() {
     const [locations, setLocations] = useState([]);
     const [myLocation, setMyLocation] = useState(null);
@@ -27,9 +44,7 @@ export default function UserDistributionMap() {
     const [loading, setLoading] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const mapRef = useRef(null);
-
-    const DEFAULT_CENTER = [4.0, 114.5];
+    const DEFAULT_CENTER = [4.2105, 101.9758];
     const DEFAULT_ZOOM = 6;
 
     useEffect(() => {
@@ -104,8 +119,8 @@ export default function UserDistributionMap() {
     };
 
     const handleRecenter = () => {
-        if (myLocation && mapRef.current) {
-            mapRef.current.flyTo(myLocation, 14);
+        if (myLocation) {
+            setMyLocation(prev => prev ? [...prev] : prev);
         }
     };
 
@@ -138,7 +153,6 @@ export default function UserDistributionMap() {
             </div>
 
             <MapContainer
-                ref={mapRef}
                 center={DEFAULT_CENTER}
                 zoom={DEFAULT_ZOOM}
                 className="w-full h-full z-0"
@@ -148,6 +162,8 @@ export default function UserDistributionMap() {
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
+
+                <MapController center={myLocation} zoom={14} />
 
                 {locations.map((loc) => {
                     if (!loc.latitude || !loc.longitude) return null;
