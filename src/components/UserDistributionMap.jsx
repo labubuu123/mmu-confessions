@@ -149,7 +149,6 @@ export default function UserDistributionMap() {
             </div>
 
             <MapContainer
-                ref={mapRef}
                 center={DEFAULT_CENTER}
                 zoom={DEFAULT_ZOOM}
                 className="w-full h-full z-0"
@@ -159,6 +158,8 @@ export default function UserDistributionMap() {
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
+
+                <MapController center={myLocation} zoom={14} />
 
                 {locations.map((loc) => {
                     if (!loc.latitude || !loc.longitude) return null;
