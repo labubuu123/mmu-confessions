@@ -28,7 +28,7 @@ export const upsertUserLocation = async (userId, latitude, longitude, profile) =
     );
     
     if (error) {
-        console.error('upsertUserLocation error (Did you remove the Foreign Key constraint?):', error.message);
+        console.error('upsertUserLocation error:', error.message);
     } else {
         console.log('📍 Location saved to database:', latitude, longitude);
     }
@@ -51,13 +51,12 @@ export function useLocationTracking() {
                 
                 if (session?.user) {
                     userIdRef.current = session.user.id;
-                    const { data: profile, error } = await supabase
+                    const { data: profile } = await supabase
                         .from('profiles')
                         .select('username, avatar_url')
                         .eq('id', session.user.id)
                         .maybeSingle();
                     
-                    if (error) console.warn('Profile fetch error:', error.message);
                     if (profile) profileRef.current = profile;
                 } else {
                     const guestId = getOrCreateGuestId();
@@ -68,8 +67,7 @@ export function useLocationTracking() {
                     };
                 }
 
-                const alreadyGranted = localStorage.getItem('gps_permission_granted');
-                if (alreadyGranted === 'true' && userIdRef.current) {
+                if (userIdRef.current) {
                     startWatching(userIdRef.current, profileRef.current);
                 }
             } catch (err) {
@@ -80,9 +78,7 @@ export function useLocationTracking() {
         initializeTracking();
 
         const authSub = supabase.auth.onAuthStateChange(async (_, session) => {
-            const wasTracking = isTracking || localStorage.getItem('gps_permission_granted') === 'true';
-            
-            if (userIdRef.current && wasTracking) {
+            if (userIdRef.current) {
                 await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
             }
 
@@ -96,9 +92,7 @@ export function useLocationTracking() {
                 profileRef.current = { username: 'Guest User', avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestId}` };
             }
 
-            if (wasTracking) {
-                startWatching(userIdRef.current, profileRef.current);
-            }
+            startWatching(userIdRef.current, profileRef.current);
         });
         
         subscription = authSub.data.subscription;
@@ -120,16 +114,18 @@ export function useLocationTracking() {
         }
         
         setIsTracking(true);
-        console.log('📡 Starting GPS tracking...');
+        console.log('📡 Starting GPS tracking (Automatic)...');
         
         watchIdRef.current = navigator.geolocation.watchPosition(
             async (pos) => {
+                setShowGpsModal(false);
                 await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
             },
             (err) => {
                 console.warn('watchPosition error:', err.message);
                 if (err.code === 1) {
                     stopWatching();
+                    setShowGpsModal(true);
                 }
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -142,7 +138,6 @@ export function useLocationTracking() {
             watchIdRef.current = null;
         }
         setIsTracking(false);
-        localStorage.removeItem('gps_permission_granted');
         console.log('🛑 Stopped GPS tracking.');
 
         if (userIdRef.current) {
@@ -150,29 +145,8 @@ export function useLocationTracking() {
         }
     };
 
-    const toggleLocation = () => {
-        if (isTracking) {
-            stopWatching();
-        } else {
-            setShowGpsModal(true);
-        }
-    };
-
-    const handleGpsAllowed = async (pos) => {
-        setShowGpsModal(false);
-        localStorage.setItem('gps_permission_granted', 'true');
-        
-        if (userIdRef.current) {
-            await upsertUserLocation(userIdRef.current, pos.coords.latitude, pos.coords.longitude, profileRef.current);
-            startWatching(userIdRef.current, profileRef.current);
-        }
-    };
-
     return {
-        isTracking,
         showGpsModal,
-        setShowGpsModal,
-        toggleLocation,
-        handleGpsAllowed
+        setShowGpsModal
     };
 }

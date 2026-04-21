@@ -73,35 +73,32 @@ export default function FloatingActionMenu() {
     const chatEndRef = useRef(null);
 
     const {
-        isTracking,
         showGpsModal,
-        setShowGpsModal,
-        toggleLocation,
-        handleGpsAllowed
+        setShowGpsModal
     } = useLocationTracking();
 
-    useEffect(() => {
-        const fetchIdentity = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) setIdentityId(session.user.id);
-        };
-        fetchIdentity();
+        useEffect(() => {
+            const fetchIdentity = async () => {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) setIdentityId(session.user.id);
+            };
+            fetchIdentity();
 
-        const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
-        if (!hasSeenTips) setTimeout(() => setShowTips(true), 3000);
+            const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
+            if (!hasSeenTips) setTimeout(() => setShowTips(true), 3000);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-            if (session?.user) {
-                setIdentityId(session.user.id);
-            } else {
-                setIdentityId(null);
-            }
-        });
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+                if (session?.user) {
+                    setIdentityId(session.user.id);
+                } else {
+                    setIdentityId(null);
+                }
+            });
 
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
+            return () => {
+                subscription.unsubscribe();
+            };
+        }, []);
 
     useEffect(() => {
         if (!isChatOpen || !identityId) return;
@@ -171,7 +168,7 @@ export default function FloatingActionMenu() {
             <AnimatePresence>
                 {showGpsModal && (
                     <GpsPermissionModal
-                        onAllow={handleGpsAllowed}
+                        onAllow={() => setShowGpsModal(false)}
                         onDismiss={() => setShowGpsModal(false)}
                     />
                 )}
@@ -226,18 +223,6 @@ export default function FloatingActionMenu() {
                                 <MenuButton icon={Globe} label="Live Map" onClick={handleMapClick} bgClass="bg-blue-100 dark:bg-blue-900/40" colorClass="text-blue-600 dark:text-blue-400" />
                                 <MenuButton icon={Activity} label="Live Comments" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
                                 <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
-
-                                <MenuButton
-                                    icon={isTracking ? Navigation : MapPin}
-                                    label={isTracking ? "Stop Location" : "Share Location"}
-                                    onClick={() => {
-                                        toggleLocation();
-                                        setIsOpen(false);
-                                    }}
-                                    bgClass={isTracking ? "bg-green-100 dark:bg-green-900/40" : "bg-slate-100 dark:bg-slate-800/40"}
-                                    colorClass={isTracking ? "text-green-600 dark:text-green-400" : "text-slate-600 dark:text-slate-400"}
-                                    animateIcon={isTracking}
-                                />
                             </div>
                             <button
                                 onClick={handleContactAdminClick}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
@@ -20,31 +20,26 @@ const createAvatarIcon = (avatarUrl, isOnline, isCurrentUser) => L.divIcon({
     popupAnchor: [0, -20]
 });
 
-function MapController({ center, zoom }) {
-    const map = useMap();
-    const didFlyRef = useRef(false);
-
-    useEffect(() => {
-        if (!center) return;
-        if (!didFlyRef.current) {
-            map.setView(center, zoom ?? map.getZoom());
-            didFlyRef.current = true;
-        } else {
-            map.flyTo(center, map.getZoom());
-        }
-    }, [center, map, zoom]);
-
-    return null;
-}
-
 export default function UserDistributionMap() {
     const [locations, setLocations] = useState([]);
     const [myLocation, setMyLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const DEFAULT_CENTER = [4.2105, 101.9758];
+    const mapRef = useRef(null);
+
+    const DEFAULT_CENTER = [4.0, 114.5];
     const DEFAULT_ZOOM = 6;
+
+    useEffect(() => {
+        const handleMenuToggle = (e) => {
+            setIsMenuOpen(e.detail);
+        };
+
+        window.addEventListener('floating-menu-toggle', handleMenuToggle);
+        return () => window.removeEventListener('floating-menu-toggle', handleMenuToggle);
+    }, []);
 
     useEffect(() => {
         const initMap = async () => {
@@ -109,8 +104,8 @@ export default function UserDistributionMap() {
     };
 
     const handleRecenter = () => {
-        if (myLocation) {
-            setMyLocation(prev => prev ? [...prev] : prev);
+        if (myLocation && mapRef.current) {
+            mapRef.current.flyTo(myLocation, 14);
         }
     };
 
@@ -120,7 +115,12 @@ export default function UserDistributionMap() {
 
     return (
         <div className="relative w-full h-screen bg-slate-100 dark:bg-slate-900 pt-16">
-            <div className="absolute top-20 left-4 right-4 z-[400] flex justify-between items-center pointer-events-none">
+            <div
+                className={`absolute left-4 right-4 z-[400] flex justify-between items-center pointer-events-none transition-all duration-500 ease-in-out ${isMenuOpen
+                    ? 'bottom-[360px] sm:bottom-24 sm:right-[380px]'
+                    : 'top-20'
+                    }`}
+            >
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 pointer-events-auto flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-indigo-500" />
                     <span className="font-bold text-slate-800 dark:text-white">Live User Map</span>
@@ -132,24 +132,13 @@ export default function UserDistributionMap() {
                             <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full ml-1">
                                 {locations.length} Total
                             </span>
-                            <span className="bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 text-xs px-2 py-0.5 rounded-full">
-                                {onlineCount} Online
-                            </span>
                         </>
                     )}
                 </div>
-
-                <button
-                    onClick={handleRecenter}
-                    disabled={!myLocation}
-                    title="Find My Location"
-                    className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
-                >
-                    <Navigation className="w-5 h-5 text-blue-500" />
-                </button>
             </div>
 
             <MapContainer
+                ref={mapRef}
                 center={DEFAULT_CENTER}
                 zoom={DEFAULT_ZOOM}
                 className="w-full h-full z-0"
@@ -159,8 +148,6 @@ export default function UserDistributionMap() {
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
-
-                <MapController center={myLocation} zoom={14} />
 
                 {locations.map((loc) => {
                     if (!loc.latitude || !loc.longitude) return null;
