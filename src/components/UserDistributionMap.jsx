@@ -129,7 +129,7 @@ export default function UserDistributionMap() {
     ).length;
 
     return (
-        <div className="relative w-full h-screen bg-slate-100 dark:bg-slate-900 pt-16">
+        <div className="relative w-full h-screen bg-slate-100 dark:bg-slate-900 pt-2">
             <div
                 className={`absolute left-4 right-4 z-[400] flex justify-between items-center pointer-events-none transition-all duration-500 ease-in-out ${isMenuOpen
                     ? 'bottom-[360px] sm:bottom-24 sm:right-[380px]'
