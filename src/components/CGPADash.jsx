@@ -12,6 +12,7 @@ const GAMEOVER_TITLES = [
     "SLEPT THROUGH FINALS"
 ];
 
+// Soft Pastel Colors for Anti-Visual Fatigue
 const OBSTACLE_TYPES = [
     { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 40, w: 30 },
     { name: "Finals", emoji: "📚", color: '#fb7185', h: 70, w: 35 },
@@ -24,7 +25,7 @@ export default function CGPADash() {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
 
-    const [gameState, setGameState] = useState('START');
+    const [gameState, setGameState] = useState('START'); // START, PLAYING, GAMEOVER
     const [finalScore, setFinalScore] = useState(0);
     const [gameOverTitle, setGameOverTitle] = useState('');
 
@@ -35,6 +36,7 @@ export default function CGPADash() {
     const [nameError, setNameError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Engine Refs
     const reqRef = useRef(null);
     const frameRef = useRef(0);
     const scoreRef = useRef(0);
@@ -63,6 +65,7 @@ export default function CGPADash() {
         return () => { if (reqRef.current) cancelAnimationFrame(reqRef.current); };
     }, []);
 
+    // Prevent scrolling on mobile while playing
     useEffect(() => {
         const preventScroll = (e) => { if (gameState === 'PLAYING') e.preventDefault(); };
         const container = containerRef.current;
@@ -234,9 +237,11 @@ export default function CGPADash() {
             if (shakeRef.current < 0.5) shakeRef.current = 0;
         }
 
+        // Flat Background
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, 0, width, height);
 
+        // Ground
         ctx.fillStyle = '#334155';
         ctx.fillRect(0, groundY, width, 40);
         ctx.strokeStyle = p.invincibleTimer > 0 ? '#facc15' : '#64748b';
@@ -264,6 +269,7 @@ export default function CGPADash() {
             ctx.fillRect(pos.x, pos.y, p.width, p.height);
         });
 
+        // Player Box
         ctx.fillStyle = p.invincibleTimer > 0 ? '#facc15' : (p.canDoubleJump ? '#c084fc' : '#38bdf8');
         ctx.beginPath();
         ctx.roundRect(p.x, p.y, p.width, p.height, 6);
@@ -277,6 +283,7 @@ export default function CGPADash() {
         else if (!p.isGrounded && p.dy > 0) playerEmoji = "😱";
         ctx.fillText(playerEmoji, p.x + p.width / 2, p.y + p.height / 2 + 2);
 
+        // Spawning
         const spawnRate = Math.max(45, 90 - Math.floor(scoreRef.current / 40));
         if (frameRef.current % spawnRate === 0) {
             if (Math.random() < 0.15) {
@@ -398,142 +405,149 @@ export default function CGPADash() {
     const isPlaying = gameState === 'PLAYING';
 
     return (
-        <div className={`min-h-[calc(100vh-60px)] bg-slate-50 dark:bg-slate-950 flex items-center justify-center font-sans transition-all duration-500
-        ${isPlaying ? 'pt-0 pb-0 px-0 sm:pt-16 sm:pb-8 sm:px-6' : 'pt-8 pb-8 px-4 sm:pt-16 sm:px-6'}`}>
+        <div className={`min-h-[calc(100vh-60px)] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center font-sans transition-all duration-500 py-6 px-4 sm:p-6`}>
 
-            <div className={`w-full mx-auto flex flex-col items-center gap-4 sm:gap-6 lg:gap-8 transition-all duration-700
-            ${isPlaying ? 'max-w-5xl' : 'max-w-6xl lg:flex-row lg:items-stretch'}`}>
+            <div className={`w-full mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 transition-all duration-700
+            ${isPlaying ? 'max-w-5xl justify-center' : 'max-w-6xl items-stretch'}`}>
 
-                <div ref={containerRef} className={`w-full bg-[#1e293b] overflow-hidden shadow-2xl relative border-slate-700 flex flex-col justify-center transition-all duration-500
-                ${isPlaying ? 'rounded-none sm:rounded-[2rem] border-y-2 sm:border-4 min-h-[50vh] sm:min-h-[400px] lg:min-h-[500px]' : 'rounded-3xl sm:rounded-[2rem] border-4 min-h-[400px] sm:min-h-[460px] flex-1'}`}>
+                {/* Game Card Container */}
+                <div className={`w-full bg-slate-900 overflow-hidden shadow-2xl relative border-4 border-slate-700 flex flex-col transition-all duration-500 rounded-3xl sm:rounded-[2rem] 
+                ${isPlaying ? 'min-h-[500px]' : 'min-h-[460px] flex-1'}`}>
 
-                    <div className="absolute top-0 left-0 w-full p-3 sm:p-4 flex justify-between items-center z-20 pointer-events-none">
-                        <button onClick={() => navigate(-1)} className="pointer-events-auto flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors bg-slate-800/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-sm border border-slate-600 shadow-sm">
-                            <Home size={14} className="sm:w-4 sm:h-4" /> <span className="text-xs sm:text-sm font-semibold">Hub</span>
+                    {/* DEDICATED HEADER - NO LONGER ABSOLUTE (Fixes overlap/crash issue) */}
+                    <div className="w-full px-5 py-4 flex justify-between items-center bg-slate-900 border-b border-slate-800 shrink-0">
+                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-xl shadow-md font-bold text-xs sm:text-sm">
+                            <Home size={16} /> <span>Hub</span>
                         </button>
-                        <div className="flex items-center gap-2 text-blue-400 bg-slate-800/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-sm border border-slate-600 shadow-sm">
+                        <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm uppercase">
                             <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                            <span className="text-[10px] sm:text-sm font-black tracking-widest">ARCADE</span>
+                            <span>Arcade</span>
                         </div>
                     </div>
 
-                    <canvas
-                        ref={canvasRef}
-                        width={CANVAS_WIDTH}
-                        height={CANVAS_HEIGHT}
-                        onPointerDown={(e) => { e.preventDefault(); if (gameState === 'PLAYING') jump(); }}
-                        className={`w-full h-auto object-cover sm:object-contain cursor-pointer touch-none block mx-auto ${isPlaying ? 'max-h-screen sm:max-h-[60vh] lg:max-h-[500px]' : 'max-h-[450px]'}`}
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
-                    />
+                    {/* Game Canvas & Overlays Wrapper */}
+                    <div className="relative w-full flex-1 flex flex-col items-center justify-center overflow-hidden bg-[#1e293b]" ref={containerRef}>
+                        <canvas
+                            ref={canvasRef}
+                            width={CANVAS_WIDTH}
+                            height={CANVAS_HEIGHT}
+                            onPointerDown={(e) => { e.preventDefault(); if (gameState === 'PLAYING') jump(); }}
+                            className="w-full h-auto aspect-[2/1] object-contain cursor-pointer touch-none block mx-auto"
+                            style={{ WebkitTapHighlightColor: 'transparent' }}
+                        />
 
-                    {gameState === 'START' && (
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm text-white p-4">
-                            <div className="bg-slate-800 border-2 border-slate-600 p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] shadow-2xl w-[95%] sm:max-w-md text-center">
-                                <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 animate-bounce">🥵</div>
-                                <h2 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-2 tracking-tight">CGPA SURVIVOR</h2>
+                        {/* START SCREEN */}
+                        {gameState === 'START' && (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm text-white p-4">
+                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-[95%] sm:max-w-md text-center flex flex-col items-center">
+                                    <div className="text-5xl sm:text-6xl mb-4 animate-bounce">🥵</div>
+                                    <h2 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-2 tracking-tight">CGPA SURVIVOR</h2>
 
-                                <p className="text-xs sm:text-base text-slate-300 mb-5 sm:mb-6 font-medium">
-                                    Dodge assignments, 8AM classes, and finals. Protect the GPA.
-                                </p>
+                                    <p className="text-sm sm:text-base text-slate-300 mb-6 font-medium">
+                                        Dodge assignments, 8AM classes, and finals. Protect the GPA.
+                                    </p>
 
-                                <div className="flex flex-row justify-center gap-2 sm:gap-3 mb-5">
-                                    <div className="bg-slate-700/50 rounded-xl px-3 py-2 sm:p-3 flex items-center gap-1.5 sm:gap-2">
-                                        <Coffee className="text-yellow-400 w-4 h-4 sm:w-6 sm:h-6" />
-                                        <span className="text-[10px] sm:text-xs text-slate-300 font-bold">INVINCIBLE</span>
+                                    <div className="flex flex-row justify-center gap-3 w-full mb-6">
+                                        <div className="bg-slate-700/50 rounded-xl p-3 flex-1 flex flex-col items-center justify-center gap-2 border border-slate-600">
+                                            <Coffee className="text-yellow-400 w-6 h-6" />
+                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider">Invincible</span>
+                                        </div>
+                                        <div className="bg-slate-700/50 rounded-xl p-3 flex-1 flex flex-col items-center justify-center gap-2 border border-slate-600">
+                                            <BookOpen className="text-blue-400 w-6 h-6" />
+                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider">+50 Pts</span>
+                                        </div>
                                     </div>
-                                    <div className="bg-slate-700/50 rounded-xl px-3 py-2 sm:p-3 flex items-center gap-1.5 sm:gap-2">
-                                        <BookOpen className="text-blue-400 w-4 h-4 sm:w-6 sm:h-6" />
-                                        <span className="text-[10px] sm:text-xs text-slate-300 font-bold">+50 PTS</span>
+
+                                    <div className="flex flex-col gap-3 w-full">
+                                        <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-500 hover:bg-blue-400 text-white text-base sm:text-lg font-black rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-wide">
+                                            <Play size={20} className="sm:w-6 sm:h-6" fill="currentColor" /> Start Semester
+                                        </button>
+
+                                        <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-3.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl transition-colors border border-slate-600 shadow-md">
+                                            <ListOrdered size={16} /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
+                                        </button>
                                     </div>
-                                </div>
 
-                                <div className="flex flex-col gap-3">
-                                    <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-3.5 sm:py-4 bg-blue-500 hover:bg-blue-400 text-white text-base sm:text-lg font-black rounded-xl transition-all shadow-md active:scale-95 uppercase tracking-wide">
-                                        <Play size={20} className="sm:w-6 sm:h-6" fill="currentColor" /> Start Semester
-                                    </button>
-
-                                    <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl transition-colors">
-                                        <ListOrdered size={16} /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
-                                    </button>
-                                </div>
-
-                                <p className="mt-4 text-[11px] text-slate-400 sm:hidden flex items-center justify-center gap-1 opacity-80">
-                                    <Smartphone size={12} /> Rotate device for a larger screen
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {gameState === 'GAMEOVER' && (
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md text-white p-4">
-                            <div className="bg-slate-800 border-2 border-slate-600 p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] shadow-2xl w-[95%] sm:max-w-sm text-center">
-                                <div className="text-4xl sm:text-5xl mb-2">💀</div>
-                                <h2 className="text-xl sm:text-3xl font-black text-rose-400 mb-4 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
-
-                                <div className="bg-slate-900/50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-5 border border-slate-700 shadow-inner flex flex-row justify-center items-center gap-4">
-                                    <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Final CGPA</p>
-                                    <p className="text-4xl sm:text-5xl font-black text-blue-400">
-                                        {(finalScore / 100).toFixed(2)}
+                                    <p className="mt-5 text-[11px] text-slate-400 sm:hidden flex items-center justify-center gap-1.5 opacity-80 font-semibold">
+                                        <Smartphone size={14} /> Rotate device for a larger view
                                     </p>
                                 </div>
-
-                                <form onSubmit={submitScore} className="flex flex-col gap-2.5 sm:gap-3 w-full mb-3 sm:mb-4">
-                                    <input
-                                        type="text" placeholder="Enter student name..." value={playerName}
-                                        onChange={(e) => setPlayerName(e.target.value)} maxLength={12}
-                                        className="w-full px-4 py-3 sm:py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
-                                        required
-                                    />
-                                    {nameError && <p className="text-rose-400 text-[10px] sm:text-xs font-bold animate-pulse">{nameError}</p>}
-
-                                    <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-blue-500 hover:bg-blue-400 text-white font-black rounded-xl disabled:opacity-50 transition-colors shadow-md text-sm sm:text-base uppercase tracking-wide">
-                                        <Trophy size={16} className="sm:w-4 sm:h-4" /> {isSubmitting ? 'Saving...' : 'Save Record'}
-                                    </button>
-                                </form>
-
-                                <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-transparent hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors text-sm sm:text-base">
-                                    <RotateCcw size={14} className="sm:w-4 sm:h-4" /> Retake Semester
-                                </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* GAME OVER SCREEN */}
+                        {gameState === 'GAMEOVER' && (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md text-white p-4">
+                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-[95%] sm:max-w-sm text-center flex flex-col items-center">
+                                    <div className="text-4xl sm:text-5xl mb-3">💀</div>
+                                    <h2 className="text-xl sm:text-2xl font-black text-rose-400 mb-5 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
+
+                                    <div className="bg-slate-900/80 w-full rounded-2xl p-4 mb-5 border border-slate-700 shadow-inner flex flex-col justify-center items-center gap-2">
+                                        <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Final CGPA</p>
+                                        <p className="text-5xl font-black text-blue-400 drop-shadow-md">
+                                            {(finalScore / 100).toFixed(2)}
+                                        </p>
+                                    </div>
+
+                                    <form onSubmit={submitScore} className="flex flex-col gap-3 w-full mb-4">
+                                        <input
+                                            type="text" placeholder="Enter student name..." value={playerName}
+                                            onChange={(e) => setPlayerName(e.target.value)} maxLength={12}
+                                            className="w-full px-4 py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
+                                            required
+                                        />
+                                        {nameError && <p className="text-rose-400 text-[11px] sm:text-xs font-bold animate-pulse px-2">{nameError}</p>}
+
+                                        <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-500 hover:bg-blue-400 text-white font-black rounded-xl disabled:opacity-50 transition-colors shadow-lg text-sm sm:text-base uppercase tracking-wide">
+                                            <Trophy size={16} className="sm:w-5 sm:h-5" /> {isSubmitting ? 'Saving...' : 'Save Record'}
+                                        </button>
+                                    </form>
+
+                                    <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-3 bg-transparent hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors text-sm sm:text-base border border-transparent hover:border-slate-600">
+                                        <RotateCcw size={16} className="sm:w-5 sm:h-5" /> Retake Semester
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
+                {/* LEADERBOARD */}
                 {(!isPlaying) && (
-                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[400px] sm:h-[460px] 
+                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[400px] sm:h-[500px] 
                     ${showLeaderboardOnMobile ? 'flex' : 'hidden lg:flex'}`}>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
-                            <h3 className="font-black text-slate-800 dark:text-white flex items-center gap-2 sm:gap-3 text-base sm:text-lg tracking-tight uppercase">
-                                <Trophy className="text-yellow-500 w-5 h-5 sm:w-6 sm:h-6" /> Dean's List
+                        <div className="bg-slate-50 dark:bg-slate-800/80 p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                            <h3 className="font-black text-slate-800 dark:text-white flex items-center gap-3 text-lg tracking-tight uppercase">
+                                <Trophy className="text-yellow-500 w-6 h-6" /> Dean's List
                             </h3>
-                            <button onClick={fetchLeaderboard} className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors px-3 py-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg uppercase">
+                            <button onClick={fetchLeaderboard} className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors px-3 py-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg uppercase shadow-sm">
                                 Refresh
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-2 scroll-smooth">
+                        <div className="flex-1 overflow-y-auto p-3 scroll-smooth">
                             {leaderboard.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
-                                    <Trophy size={48} className="opacity-20" />
-                                    <p className="text-sm font-bold">No survivors yet.</p>
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
+                                    <Trophy size={56} className="opacity-20" />
+                                    <p className="text-sm font-bold uppercase tracking-wider">No survivors yet.</p>
                                 </div>
                             ) : (
-                                <ul className="flex flex-col gap-2">
+                                <ul className="flex flex-col gap-2.5">
                                     {leaderboard.map((entry, idx) => (
-                                        <li key={entry.id || idx} className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                        <li key={entry.id || idx} className="flex justify-between items-center p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shadow-sm hover:shadow-md">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-xs sm:text-sm
-                                                ${idx === 0 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400' :
-                                                        idx === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
-                                                            idx === 2 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-500' :
-                                                                'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500'}`}>
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shadow-inner
+                                                ${idx === 0 ? 'bg-gradient-to-br from-yellow-200 to-yellow-500 text-yellow-900 border border-yellow-400' :
+                                                        idx === 1 ? 'bg-gradient-to-br from-slate-200 to-slate-400 text-slate-900 border border-slate-300' :
+                                                            idx === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-700 text-white border border-amber-600' :
+                                                                'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}>
                                                     {idx + 1}
                                                 </div>
-                                                <span className="font-bold text-sm sm:text-base text-slate-700 dark:text-slate-200 truncate max-w-[130px] sm:max-w-[160px] group-hover:text-blue-500 transition-colors">
+                                                <span className="font-bold text-base text-slate-700 dark:text-slate-200 truncate max-w-[130px] sm:max-w-[160px] group-hover:text-blue-500 transition-colors">
                                                     {entry.username}
                                                 </span>
                                             </div>
-                                            <span className="font-black text-sm sm:text-lg text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 sm:px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-500/20">
+                                            <span className="font-black text-lg text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-xl border border-blue-100 dark:border-blue-500/20 shadow-sm">
                                                 {(entry.score / 100).toFixed(2)}
                                             </span>
                                         </li>
