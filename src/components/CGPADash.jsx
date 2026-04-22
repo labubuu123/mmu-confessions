@@ -12,7 +12,6 @@ const GAMEOVER_TITLES = [
     "SLEPT THROUGH FINALS"
 ];
 
-// Scaled up obstacle sizes for better visibility
 const OBSTACLE_TYPES = [
     { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 55, w: 40, behavior: 'normal' },
     { name: "Finals", emoji: "📚", color: '#fb7185', h: 95, w: 45, behavior: 'normal' },
@@ -25,7 +24,7 @@ export default function CGPADash() {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
 
-    const [gameState, setGameState] = useState('START'); // START, PLAYING, GAMEOVER
+    const [gameState, setGameState] = useState('START');
     const [finalScore, setFinalScore] = useState(0);
     const [gameOverTitle, setGameOverTitle] = useState('');
 
@@ -36,13 +35,11 @@ export default function CGPADash() {
     const [nameError, setNameError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Engine Refs
     const reqRef = useRef(null);
     const frameRef = useRef(0);
     const scoreRef = useRef(0);
     const shakeRef = useRef(0);
 
-    // Bigger player block (48x48)
     const playerRef = useRef({
         x: 80, y: 200, width: 48, height: 48,
         dy: 0, jumpForce: -15.0, trail: [],
@@ -82,9 +79,11 @@ export default function CGPADash() {
         if (data) setLeaderboard(data);
     };
 
+    // FULLY FIXED SUBMIT LOGIC
     const submitScore = async (e) => {
         e.preventDefault();
-        if (!playerName.trim() || finalScore === 0) return;
+        if (!playerName.trim() || isSubmitting) return; // Prevent double-clicking
+
         setIsSubmitting(true);
         setNameError('');
 
@@ -92,19 +91,26 @@ export default function CGPADash() {
         const localSavedName = localStorage.getItem('cgpa_dash_username');
 
         try {
-            const { data: existingUser } = await supabase
+            // Changed to .limit(1) to completely prevent the "Multiple Rows" crash bug
+            const { data: existingUsers } = await supabase
                 .from('minigame_scores')
                 .select('id, score, username')
                 .ilike('username', trimmedName)
-                .maybeSingle();
+                .limit(1);
+
+            const existingUser = existingUsers?.[0];
 
             if (existingUser) {
                 if (localSavedName && localSavedName.toLowerCase() === trimmedName.toLowerCase()) {
+                    // Update their previous high score if current score is better
                     if (finalScore > existingUser.score) {
-                        await supabase.from('minigame_scores').update({ score: finalScore }).eq('id', existingUser.id);
+                        await supabase
+                            .from('minigame_scores')
+                            .update({ score: finalScore })
+                            .eq('id', existingUser.id);
                     }
                 } else {
-                    setNameError('Name in use! Choose another.');
+                    setNameError('Name in use! Please choose another.');
                     setIsSubmitting(false);
                     return;
                 }
@@ -114,11 +120,13 @@ export default function CGPADash() {
             }
 
             await fetchLeaderboard();
-            setIsSubmitting(false);
             setGameState('START');
             setShowLeaderboardOnMobile(true);
         } catch (err) {
             console.error("Error submitting score:", err);
+            setNameError('Network error. Please try again.');
+        } finally {
+            // ALWAYS executed, guarantees button never gets stuck on "Saving..."
             setIsSubmitting(false);
         }
     };
@@ -242,11 +250,9 @@ export default function CGPADash() {
             if (shakeRef.current < 0.5) shakeRef.current = 0;
         }
 
-        // Background
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, 0, width, height);
 
-        // Ground
         ctx.fillStyle = '#334155';
         ctx.fillRect(0, groundY, width, 40);
         ctx.strokeStyle = p.invincibleTimer > 0 ? '#facc15' : '#64748b';
@@ -274,28 +280,26 @@ export default function CGPADash() {
             ctx.fillRect(pos.x, pos.y, p.width, p.height);
         });
 
-        // Player Box
         ctx.fillStyle = p.invincibleTimer > 0 ? '#facc15' : (p.canDoubleJump ? '#c084fc' : '#38bdf8');
         ctx.beginPath();
         ctx.roundRect(p.x, p.y, p.width, p.height, 8);
         ctx.fill();
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = '32px Arial'; // Bigger player emoji
+        ctx.font = '32px Arial';
         let playerEmoji = "🥵";
         if (p.invincibleTimer > 0) playerEmoji = "😈";
         else if (p.dy < -5) playerEmoji = "🚀";
         else if (!p.isGrounded && p.dy > 0) playerEmoji = "😱";
         ctx.fillText(playerEmoji, p.x + p.width / 2, p.y + p.height / 2 + 2);
 
-        // Spawning 
         const spawnRate = Math.max(30, 80 - Math.floor(scoreRef.current / 30));
         if (frameRef.current % spawnRate === 0) {
             if (Math.random() < 0.12) {
                 const isCoffee = Math.random() < 0.5;
                 entitiesRef.current.powerups.push({
                     x: width, y: groundY - 70 - Math.random() * 60,
-                    w: 40, h: 40, // Bigger powerups
+                    w: 40, h: 40,
                     type: isCoffee ? 'coffee' : 'past_year',
                     emoji: isCoffee ? '☕' : '📄',
                     color: isCoffee ? '#a78bfa' : '#facc15',
@@ -318,7 +322,6 @@ export default function CGPADash() {
 
         const { powerups, obstacles } = entitiesRef.current;
 
-        // POWERUPS
         for (let i = powerups.length - 1; i >= 0; i--) {
             let pup = powerups[i];
             pup.x -= currentSpeed * 0.8;
@@ -326,7 +329,7 @@ export default function CGPADash() {
             const yOffset = Math.sin(frameRef.current * 0.1) * 5;
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath(); ctx.arc(pup.x + pup.w / 2, pup.y + pup.h / 2 + yOffset, 22, 0, Math.PI * 2); ctx.fill();
-            ctx.font = '28px Arial'; // Bigger powerup emoji
+            ctx.font = '28px Arial';
             ctx.fillText(pup.emoji, pup.x + pup.w / 2, pup.y + pup.h / 2 + yOffset);
 
             if (!pup.collected && p.x < pup.x + pup.w && p.x + p.width > pup.x && p.y < pup.y + pup.h && p.y + p.height > pup.y) {
@@ -344,7 +347,6 @@ export default function CGPADash() {
             if (pup.x + pup.w < 0 || pup.collected) powerups.splice(i, 1);
         }
 
-        // OBSTACLES
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
 
@@ -360,10 +362,10 @@ export default function CGPADash() {
             ctx.beginPath(); ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 8); ctx.fill();
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '32px Arial'; // Bigger obstacle emoji
+            ctx.font = '32px Arial';
             ctx.fillText(obs.emoji, obs.x + obs.width / 2, obs.y + obs.height / 2 + 2);
 
-            const margin = 6; // Forgiving hitbox for bigger objects
+            const margin = 6;
             if (p.x + margin < obs.x + obs.width - margin && p.x + p.width - margin > obs.x + margin && p.y + margin < obs.y + obs.height - margin && p.y + p.height - margin > obs.y + margin) {
                 if (p.invincibleTimer > 0) {
                     createParticles(obs.x, obs.y, obs.color, 25, 2, "💥");
@@ -397,7 +399,6 @@ export default function CGPADash() {
 
         drawParticles(ctx);
 
-        // Biger CGPA Overlay UI pushed to the top
         scoreRef.current += 0.08;
         ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
         ctx.beginPath();

@@ -1660,6 +1660,7 @@ CREATE POLICY "Users update own location" ON public.user_locations FOR UPDATE US
 
 CREATE POLICY "Allow public read access" ON public.minigame_scores FOR SELECT USING (true);
 CREATE POLICY "Allow anon insert" ON public.minigame_scores FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anon update" ON public.minigame_scores FOR UPDATE USING (true);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
