@@ -12,12 +12,11 @@ const GAMEOVER_TITLES = [
     "SLEPT THROUGH FINALS"
 ];
 
-// Soft Pastel Colors for Anti-Visual Fatigue
 const OBSTACLE_TYPES = [
-    { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 40, w: 30 }, // Soft Blue
-    { name: "Finals", emoji: "📚", color: '#fb7185', h: 70, w: 35 },   // Soft Rose
-    { name: "MMLS Down", emoji: "🚨", color: '#fbbf24', h: 35, w: 40 },  // Soft Amber
-    { name: "Ghosting", emoji: "👻", color: '#c084fc', h: 50, w: 30 }    // Soft Purple
+    { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 40, w: 30 },
+    { name: "Finals", emoji: "📚", color: '#fb7185', h: 70, w: 35 },
+    { name: "MMLS Down", emoji: "🚨", color: '#fbbf24', h: 35, w: 40 },
+    { name: "Ghosting", emoji: "👻", color: '#c084fc', h: 50, w: 30 }
 ];
 
 export default function CGPADash() {
@@ -25,7 +24,7 @@ export default function CGPADash() {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
 
-    const [gameState, setGameState] = useState('START'); // START, PLAYING, GAMEOVER
+    const [gameState, setGameState] = useState('START');
     const [finalScore, setFinalScore] = useState(0);
     const [gameOverTitle, setGameOverTitle] = useState('');
 
@@ -36,7 +35,6 @@ export default function CGPADash() {
     const [nameError, setNameError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Engine Refs
     const reqRef = useRef(null);
     const frameRef = useRef(0);
     const scoreRef = useRef(0);
@@ -59,14 +57,12 @@ export default function CGPADash() {
 
     useEffect(() => {
         fetchLeaderboard();
-        // Retrieve previously saved name to persist identity
         const savedName = localStorage.getItem('cgpa_dash_username');
         if (savedName) setPlayerName(savedName);
 
         return () => { if (reqRef.current) cancelAnimationFrame(reqRef.current); };
     }, []);
 
-    // Prevent scrolling on mobile while playing
     useEffect(() => {
         const preventScroll = (e) => { if (gameState === 'PLAYING') e.preventDefault(); };
         const container = containerRef.current;
@@ -93,7 +89,6 @@ export default function CGPADash() {
         const localSavedName = localStorage.getItem('cgpa_dash_username');
 
         try {
-            // Check if name already exists in DB
             const { data: existingUser } = await supabase
                 .from('minigame_scores')
                 .select('id, score, username')
@@ -101,20 +96,16 @@ export default function CGPADash() {
                 .maybeSingle();
 
             if (existingUser) {
-                // If name exists, check if it belongs to this device/user session
                 if (localSavedName && localSavedName.toLowerCase() === trimmedName.toLowerCase()) {
-                    // Update their previous high score if current score is better
                     if (finalScore > existingUser.score) {
                         await supabase.from('minigame_scores').update({ score: finalScore }).eq('id', existingUser.id);
                     }
                 } else {
-                    // Name exists but belongs to someone else
                     setNameError('This name is already in use! Please choose another name.');
                     setIsSubmitting(false);
                     return;
                 }
             } else {
-                // New unique name
                 await supabase.from('minigame_scores').insert([{ username: trimmedName, score: finalScore }]);
                 localStorage.setItem('cgpa_dash_username', trimmedName);
             }
@@ -234,7 +225,6 @@ export default function CGPADash() {
         const currentSpeed = GAME_SPEED + (scoreRef.current * 0.003);
         const p = playerRef.current;
 
-        // Screen Shake
         ctx.save();
         if (shakeRef.current > 0) {
             const dx = (Math.random() - 0.5) * shakeRef.current;
@@ -244,20 +234,16 @@ export default function CGPADash() {
             if (shakeRef.current < 0.5) shakeRef.current = 0;
         }
 
-        // CLEAN, FLAT BACKGROUND (No neon grid to prevent visual fatigue)
-        ctx.fillStyle = '#1e293b'; // Soft slate-800
+        ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, 0, width, height);
 
-        // FLAT GROUND
-        ctx.fillStyle = '#334155'; // Soft slate-700
+        ctx.fillStyle = '#334155';
         ctx.fillRect(0, groundY, width, 40);
 
-        // Solid boundary line
         ctx.strokeStyle = p.invincibleTimer > 0 ? '#facc15' : '#64748b';
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(width, groundY); ctx.stroke();
 
-        // Update Player
         p.dy += GRAVITY;
         p.y += p.dy;
         if (p.invincibleTimer > 0) p.invincibleTimer--;
@@ -270,7 +256,6 @@ export default function CGPADash() {
             p.canDoubleJump = false;
         }
 
-        // Trail
         p.trail.push({ x: p.x, y: p.y });
         if (p.trail.length > (p.invincibleTimer > 0 ? 12 : 6)) p.trail.shift();
 
@@ -280,13 +265,11 @@ export default function CGPADash() {
             ctx.fillRect(pos.x, pos.y, p.width, p.height);
         });
 
-        // Player Box (FLAT DESIGN, NO BLUR)
         ctx.fillStyle = p.invincibleTimer > 0 ? '#facc15' : (p.canDoubleJump ? '#c084fc' : '#38bdf8');
         ctx.beginPath();
         ctx.roundRect(p.x, p.y, p.width, p.height, 6);
         ctx.fill();
 
-        // Player Emoji
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.font = '22px Arial';
         let playerEmoji = "🥵";
@@ -296,7 +279,6 @@ export default function CGPADash() {
 
         ctx.fillText(playerEmoji, p.x + p.width / 2, p.y + p.height / 2 + 2);
 
-        // Spawning Logic
         const spawnRate = Math.max(45, 90 - Math.floor(scoreRef.current / 40));
         if (frameRef.current % spawnRate === 0) {
             if (Math.random() < 0.15) {
@@ -321,7 +303,6 @@ export default function CGPADash() {
             }
         }
 
-        // Update Powerups
         const { powerups, obstacles } = entitiesRef.current;
         for (let i = powerups.length - 1; i >= 0; i--) {
             let pup = powerups[i];
@@ -329,15 +310,12 @@ export default function CGPADash() {
 
             const yOffset = Math.sin(frameRef.current * 0.1) * 5;
 
-            // Flat Bubble background
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath(); ctx.arc(pup.x + pup.w / 2, pup.y + pup.h / 2 + yOffset, 18, 0, Math.PI * 2); ctx.fill();
 
-            // Emoji
             ctx.font = '24px Arial';
             ctx.fillText(pup.emoji, pup.x + pup.w / 2, pup.y + pup.h / 2 + yOffset);
 
-            // Collision
             if (!pup.collected && p.x < pup.x + pup.w && p.x + p.width > pup.x && p.y < pup.y + pup.h && p.y + p.height > pup.y) {
                 pup.collected = true;
                 createParticles(pup.x, pup.y, pup.color, 15, 1, pup.emoji);
@@ -353,21 +331,17 @@ export default function CGPADash() {
             if (pup.x + pup.w < 0 || pup.collected) powerups.splice(i, 1);
         }
 
-        // Update Obstacles
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
             obs.x -= currentSpeed;
 
-            // Flat Obstacle Box
             ctx.fillStyle = obs.color;
             ctx.beginPath(); ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 6); ctx.fill();
 
-            // Emoji Only (Text on top removed)
             ctx.fillStyle = '#ffffff';
             ctx.font = '22px Arial';
             ctx.fillText(obs.emoji, obs.x + obs.width / 2, obs.y + obs.height / 2 + 2);
 
-            // Hitbox Detection
             const margin = 4;
             if (p.x + margin < obs.x + obs.width - margin && p.x + p.width - margin > obs.x + margin && p.y + margin < obs.y + obs.height - margin && p.y + p.height - margin > obs.y + margin) {
                 if (p.invincibleTimer > 0) {
@@ -395,7 +369,6 @@ export default function CGPADash() {
 
         drawParticles(ctx);
 
-        // Soft UI Overlay
         scoreRef.current += 0.05;
         ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
         ctx.beginPath(); ctx.roundRect(15, 15, 200, 45, 12); ctx.fill();
@@ -405,7 +378,6 @@ export default function CGPADash() {
         ctx.font = '800 22px "Inter", sans-serif';
         ctx.fillText(`CGPA: ${(scoreRef.current / 100).toFixed(2)}`, 30, 45);
 
-        // Invincibility Bar
         if (p.invincibleTimer > 0) {
             ctx.fillStyle = '#facc15';
             ctx.beginPath(); ctx.roundRect(15, 65, (p.invincibleTimer / 300) * 200, 6, 3); ctx.fill();
@@ -427,7 +399,6 @@ export default function CGPADash() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [gameState]);
 
-    // Dynamic classes for fullscreen gameplay expansion
     const isPlaying = gameState === 'PLAYING';
 
     return (
@@ -435,11 +406,9 @@ export default function CGPADash() {
             <div className={`w-full mx-auto flex flex-col items-center gap-6 lg:gap-8 transition-all duration-700
             ${isPlaying ? 'max-w-5xl' : 'max-w-6xl lg:flex-row lg:items-stretch'}`}>
 
-                {/* Game Canvas Container */}
                 <div ref={containerRef} className={`w-full bg-[#1e293b] rounded-[2rem] overflow-hidden shadow-2xl relative border-4 border-slate-700 flex flex-col justify-center transition-all duration-500
                 ${isPlaying ? 'h-[60vh] min-h-[400px] lg:min-h-[500px]' : 'min-h-[460px] flex-1'}`}>
 
-                    {/* Header Navbar */}
                     <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 pointer-events-none">
                         <button onClick={() => navigate(-1)} className="pointer-events-auto flex items-center gap-2 text-slate-300 hover:text-white transition-colors bg-slate-800/80 px-4 py-2 rounded-full backdrop-blur-sm border border-slate-600 shadow-sm">
                             <Home size={16} /> <span className="text-sm font-semibold hidden sm:inline">MMU Hub</span>
@@ -459,7 +428,6 @@ export default function CGPADash() {
                         style={{ WebkitTapHighlightColor: 'transparent' }}
                     />
 
-                    {/* START SCREEN */}
                     {gameState === 'START' && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm text-white p-4">
                             <div className="bg-slate-800 border-2 border-slate-600 p-6 sm:p-8 rounded-[2rem] shadow-2xl max-w-[90%] sm:max-w-md w-full text-center">
@@ -486,7 +454,6 @@ export default function CGPADash() {
                                         <Play size={24} fill="currentColor" /> Start Semester
                                     </button>
 
-                                    {/* Mobile-only Leaderboard Toggle */}
                                     <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors">
                                         <ListOrdered size={18} /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
                                     </button>
@@ -495,7 +462,6 @@ export default function CGPADash() {
                         </div>
                     )}
 
-                    {/* GAME OVER SCREEN */}
                     {gameState === 'GAMEOVER' && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md text-white p-4">
                             <div className="bg-slate-800 border-2 border-slate-600 p-6 sm:p-8 rounded-[2rem] shadow-2xl max-w-[90%] sm:max-w-sm w-full text-center">
@@ -531,7 +497,6 @@ export default function CGPADash() {
                     )}
                 </div>
 
-                {/* LEADERBOARD (Hidden during gameplay. Stacked on mobile via state, side-by-side on desktop) */}
                 {(!isPlaying) && (
                     <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[400px] sm:h-[460px] 
                     ${showLeaderboardOnMobile ? 'flex' : 'hidden lg:flex'}`}>
