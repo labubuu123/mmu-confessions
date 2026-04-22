@@ -26,12 +26,6 @@ export const upsertUserLocation = async (userId, latitude, longitude, profile) =
         },
         { onConflict: 'user_id' }
     );
-    
-    if (error) {
-        console.error('upsertUserLocation error:', error.message);
-    } else {
-        console.log('📍 Location saved to database:', latitude, longitude);
-    }
 };
 
 export function useLocationTracking() {

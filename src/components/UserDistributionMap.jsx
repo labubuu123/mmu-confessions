@@ -117,16 +117,20 @@ export default function UserDistributionMap() {
             const { data: { session } } = await supabase.auth.getSession();
             let activeId = session?.user?.id || localStorage.getItem('guest_user_id');
 
-            if (activeId) {
-                setCurrentUser({ id: activeId });
-                const { data: myLoc } = await supabase
-                    .from('user_locations')
-                    .select('latitude, longitude')
-                    .eq('user_id', activeId)
-                    .maybeSingle();
-
-                if (myLoc) setMyLocation([myLoc.latitude, myLoc.longitude]);
+            if (!activeId) {
+                activeId = 'guest_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('guest_user_id', activeId);
             }
+
+            setCurrentUser({ id: activeId });
+
+            const { data: myLoc } = await supabase
+                .from('user_locations')
+                .select('latitude, longitude')
+                .eq('user_id', activeId)
+                .maybeSingle();
+
+            if (myLoc) setMyLocation([myLoc.latitude, myLoc.longitude]);
         };
 
         fetchLocations();
@@ -146,7 +150,7 @@ export default function UserDistributionMap() {
 
     const handleRecenter = useCallback(() => {
         if (myLocation && mapRef.current) {
-            mapRef.current.flyTo(myLocation, 14, { duration: 1.5 });
+            mapRef.current.flyTo(myLocation, 15, { duration: 1.5 });
         }
     }, [myLocation]);
 
@@ -173,7 +177,7 @@ export default function UserDistributionMap() {
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="absolute top-4 left-4 right-4 z-[20] pointer-events-none flex justify-center"
+                className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none flex justify-center"
             >
                 <div className="pointer-events-auto bg-white/90 backdrop-blur-xl border border-slate-200 shadow-xl rounded-2xl p-3 flex flex-wrap items-center justify-between gap-4 max-w-md w-full">
                     <div className="flex items-center gap-3">
@@ -203,24 +207,26 @@ export default function UserDistributionMap() {
                 </div>
             </motion.div>
 
-            <motion.button
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-                onClick={handleRecenter}
-                disabled={!myLocation}
-                className={`absolute bottom-8 right-4 md:right-6 md:bottom-10 z-20 p-4 rounded-full shadow-xl backdrop-blur-md transition-all duration-300 ease-in-out group ${myLocation
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    : 'bg-white text-slate-400 border border-slate-200 cursor-not-allowed opacity-90'
-                    }`}
-                title={myLocation ? "Zoom to My Location" : "Location not shared"}
-            >
-                {myLocation ? (
-                    <Crosshair className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
-                ) : (
-                    <Navigation className="w-6 h-6" />
-                )}
-            </motion.button>
+            <div className="absolute bottom-8 left-4 md:left-6 md:bottom-10 z-[1000] flex flex-col items-center gap-3">
+                <motion.button
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                    onClick={handleRecenter}
+                    disabled={!myLocation}
+                    className={`p-4 rounded-full shadow-xl backdrop-blur-md transition-all duration-300 ease-in-out group flex items-center justify-center ${myLocation
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-white text-slate-400 border border-slate-200 cursor-not-allowed opacity-90'
+                        }`}
+                    title={myLocation ? "Zoom to My Location" : "Location not available"}
+                >
+                    {myLocation ? (
+                        <Crosshair className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
+                    ) : (
+                        <Navigation className="w-6 h-6" />
+                    )}
+                </motion.button>
+            </div>
 
             <MapContainer
                 ref={mapRef}
@@ -295,22 +301,19 @@ export default function UserDistributionMap() {
             </MapContainer>
 
             <AnimatePresence>
-                {!loading && locations.length === 0 && (
+                {!loading && locations.length === 0 && !myLocation && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="absolute inset-0 z-[300] flex items-center justify-center pointer-events-none p-4"
+                        className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none p-4"
                     >
                         <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 text-center shadow-2xl border border-slate-100 pointer-events-auto max-w-sm w-full">
                             <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <MapPin className="w-10 h-10 text-indigo-500" />
                             </div>
                             <h3 className="text-lg font-bold text-slate-900 mb-2">Map is Empty</h3>
-                            <p className="text-slate-500 text-sm mb-6">Be the first to share your location with the campus community!</p>
-                            <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-semibold">
-                                <Navigation className="w-4 h-4" /> Open menu to share
-                            </div>
+                            <p className="text-slate-500 text-sm">No campus locations have been shared yet.</p>
                         </div>
                     </motion.div>
                 )}
