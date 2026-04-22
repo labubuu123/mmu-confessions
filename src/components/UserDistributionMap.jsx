@@ -150,7 +150,7 @@ export default function UserDistributionMap() {
 
     const handleRecenter = useCallback(() => {
         if (myLocation && mapRef.current) {
-            mapRef.current.flyTo(myLocation, 15, { duration: 1.5 });
+            mapRef.current.flyTo(myLocation, 18, { duration: 1.5 });
         }
     }, [myLocation]);
 
@@ -177,7 +177,7 @@ export default function UserDistributionMap() {
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none flex justify-center"
+                className="fixed top-20 md:top-24 left-4 right-4 z-[1000] pointer-events-none flex justify-center"
             >
                 <div className="pointer-events-auto bg-white/90 backdrop-blur-xl border border-slate-200 shadow-xl rounded-2xl p-3 flex flex-wrap items-center justify-between gap-4 max-w-md w-full">
                     <div className="flex items-center gap-3">
@@ -207,7 +207,7 @@ export default function UserDistributionMap() {
                 </div>
             </motion.div>
 
-            <div className="absolute bottom-30 left-4 md:left-6 md:bottom-10 z-[1000] flex flex-col items-center gap-3">
+            <div className="fixed bottom-24 left-4 md:left-6 md:bottom-10 z-[1000] flex flex-col items-center gap-3">
                 <motion.button
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -306,7 +306,7 @@ export default function UserDistributionMap() {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none p-4"
+                        className="fixed inset-0 z-[1000] flex items-center justify-center pointer-events-none p-4"
                     >
                         <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 text-center shadow-2xl border border-slate-100 pointer-events-auto max-w-sm w-full">
                             <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
