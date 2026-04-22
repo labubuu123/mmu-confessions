@@ -51,15 +51,20 @@ const AppContent = () => {
     };
 
     fetchAnnouncement();
-    const channel = supabase.channel('public-announcements')
+    const channelName = `public-announcements-${Date.now()}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncement)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
     const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const channel = supabase.channel('online-users', {
+    const channelName = `online-users-${Date.now()}`;
+    const channel = supabase.channel(channelName, {
       config: { presence: { key: userPresenceKey } },
     });
 
@@ -72,7 +77,10 @@ const AppContent = () => {
         await channel.track({ online_at: new Date().toISOString() });
       }
     });
-    return () => { channel.untrack(); supabase.removeChannel(channel); };
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

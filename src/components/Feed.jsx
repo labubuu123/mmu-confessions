@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
@@ -53,8 +53,8 @@ export default function Feed() {
             return lastPage?.length === 10 ? allPages.length : undefined;
         },
         staleTime: 1000 * 60 * 5,
-        retry: 3,
-        retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
+        retry: 1,
+        retryDelay: 1000,
     });
 
     const allPosts = useMemo(() => {
@@ -62,8 +62,9 @@ export default function Feed() {
     }, [data]);
 
     useEffect(() => {
+        const channelName = `global-feed-updates-${Date.now()}`;
         const channel = supabase
-            .channel('global-feed-updates')
+            .channel(channelName)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
@@ -146,6 +147,12 @@ export default function Feed() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    const loadMore = useCallback(() => {
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
     const websiteSchema = {
         "@context": "https://schema.org",
         "@type": "WebSite",
@@ -191,7 +198,7 @@ export default function Feed() {
                         <div className="text-center py-20 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30 mt-4 shadow-sm">
                             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
                             <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-1">Connection Error</h3>
-                            <p className="text-red-600 dark:text-red-500 mb-6 text-sm">{error?.message || 'Failed to load posts.'}</p>
+                            <p className="text-red-600 dark:text-red-500 mb-6 text-sm">{error?.message || 'Failed to load posts. Please try again.'}</p>
                             <button
                                 onClick={() => window.location.reload()}
                                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition shadow-md active:scale-95"
@@ -218,11 +225,7 @@ export default function Feed() {
                             useWindowScroll
                             data={allPosts}
                             computeItemKey={(index, post) => post.id || index}
-                            endReached={() => {
-                                if (hasNextPage && !isFetchingNextPage) {
-                                    fetchNextPage();
-                                }
-                            }}
+                            endReached={loadMore}
                             overscan={500}
                             itemContent={(index, post) => (
                                 <div className="pb-2">
