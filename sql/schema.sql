@@ -413,6 +413,13 @@ CREATE TABLE IF NOT EXISTS user_locations (
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+CREATE TABLE IF NOT EXISTS minigame_scores (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    username TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
 ('#Gossip', false), ('#FinalExams', false), ('#FOB', false), ('#FET', false), ('#FCI', false),
 ('#FIST', false), ('#FCM', false), ('#FOM', false), ('#FOL', false),
@@ -492,6 +499,7 @@ ALTER TABLE public.whisper_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.minigame_scores ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1636,8 +1644,8 @@ CREATE POLICY "Admins can view all logs" ON public.karma_activity_log FOR SELECT
 CREATE POLICY "Users can view own logs" ON public.karma_activity_log FOR SELECT USING (user_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Users can view own reputation" ON public.user_reputation FOR SELECT USING (author_id = current_setting('request.header.x-anon-id', true)::text);
 CREATE POLICY "Admins can view all reputation" ON public.user_reputation FOR SELECT USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Allow anonymous select" ON whisper_messages FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous insert" ON whisper_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anonymous select" ON public.whisper_messages FOR SELECT USING (true);
+CREATE POLICY "Allow anonymous insert" ON public.whisper_messages FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow anonymous read rooms" ON public.whisper_rooms FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous insert rooms" ON public.whisper_rooms FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable all for public on threads" ON public.whisper_dm_threads FOR ALL USING (true) WITH CHECK (true);
@@ -1646,9 +1654,12 @@ CREATE POLICY "Enable all for public on dm messages" ON public.whisper_dm_messag
 CREATE POLICY "Enable read access for all users" ON public.user_profiles FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all logs" ON public.karma_activity_log FOR SELECT USING (true);
 
-CREATE POLICY "Locations viewable by everyone" ON user_locations FOR SELECT USING (true);
-CREATE POLICY "Users insert own location" ON user_locations FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users update own location" ON user_locations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Locations viewable by everyone" ON public.user_locations FOR SELECT USING (true);
+CREATE POLICY "Users insert own location" ON public.user_locations FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own location" ON public.user_locations FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow public read access" ON public.minigame_scores FOR SELECT USING (true);
+CREATE POLICY "Allow anon insert" ON public.minigame_scores FOR INSERT WITH CHECK (true);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

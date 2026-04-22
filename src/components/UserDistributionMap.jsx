@@ -102,6 +102,15 @@ export default function UserDistributionMap() {
     const DEFAULT_ZOOM = 6;
 
     useEffect(() => {
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = originalStyle;
+        };
+    }, []);
+
+    useEffect(() => {
         const fetchLocations = async () => {
             const { data, error } = await supabase
                 .from('user_locations')
@@ -170,7 +179,7 @@ export default function UserDistributionMap() {
     `;
 
     return (
-        <div className="relative w-full h-[calc(100dvh-64px)] bg-slate-100 overflow-hidden font-sans z-0">
+        <div className="relative w-full h-[calc(100dvh-64px)] bg-slate-100 overflow-hidden font-sans z-0 overscroll-none">
             <style>{leafletPopupStyles}</style>
 
             <motion.div

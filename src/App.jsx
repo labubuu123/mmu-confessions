@@ -18,6 +18,7 @@ import Marketplace from "./components/Marketplace";
 import AdultSection from "./components/adult/AdultSection";
 import KarmaShop from "./components/KarmaShop";
 import WhisperChat from "./components/WhisperChat";
+import CGPADash from "./components/CGPADash";
 import { NotificationProvider } from "./components/NotificationSystem";
 import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
@@ -155,6 +156,7 @@ const AppContent = () => {
           <Route path="/karma-shop" element={<KarmaShop />} />
           <Route path="/whisper" element={<WhisperChat />} />
           <Route path="/map" element={<UserDistributionMap />} />
+          <Route path="/cgpa-dash" element={<CGPADash />} />
         </Routes>
       </main>
 

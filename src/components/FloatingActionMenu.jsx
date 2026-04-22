@@ -11,9 +11,7 @@ import {
     ShoppingBag,
     Lightbulb,
     Globe,
-    MapPin,
-    MapPinOff,
-    Navigation
+    Gamepad2
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +48,7 @@ const MenuOnboardingTips = ({ onDismiss }) => (
                 </button>
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>User Map</b>, <b>MY西斯</b>, and more hidden features!
+                Tap the grid button to access the <b>Marketplace</b>, <b>Matchmaker</b>, <b>Mini Game</b>, and more hidden features!
             </p>
             <button onClick={(e) => { e.stopPropagation(); onDismiss(); }} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200 dark:shadow-none">
                 Got it
@@ -77,28 +75,28 @@ export default function FloatingActionMenu() {
         setShowGpsModal
     } = useLocationTracking();
 
-        useEffect(() => {
-            const fetchIdentity = async () => {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user) setIdentityId(session.user.id);
-            };
-            fetchIdentity();
+    useEffect(() => {
+        const fetchIdentity = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) setIdentityId(session.user.id);
+        };
+        fetchIdentity();
 
-            const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
-            if (!hasSeenTips) setTimeout(() => setShowTips(true), 3000);
+        const hasSeenTips = localStorage.getItem('has_seen_menu_tips_v1');
+        if (!hasSeenTips) setTimeout(() => setShowTips(true), 3000);
 
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-                if (session?.user) {
-                    setIdentityId(session.user.id);
-                } else {
-                    setIdentityId(null);
-                }
-            });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+            if (session?.user) {
+                setIdentityId(session.user.id);
+            } else {
+                setIdentityId(null);
+            }
+        });
 
-            return () => {
-                subscription.unsubscribe();
-            };
-        }, []);
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
 
     useEffect(() => {
         if (!isChatOpen || !identityId) return;
@@ -146,6 +144,7 @@ export default function FloatingActionMenu() {
     const handleNightsClick = () => { setIsOpen(false); navigate('/adult'); };
     const handleMapClick = () => { setIsOpen(false); navigate('/map'); };
     const handleToolsClick = () => { setIsOpen(false); navigate('/tools'); };
+    const handleGameClick = () => { setIsOpen(false); navigate('/cgpa-dash'); };
     const handleContactAdminClick = () => { setIsOpen(false); setIsChatOpen(true); setIsActivityOpen(false); };
     const handleLiveActivityClick = () => { setIsOpen(false); setIsActivityOpen(true); setIsChatOpen(false); };
     const handleDismissTips = () => { setShowTips(false); localStorage.setItem('has_seen_menu_tips_v1', 'true'); };
@@ -223,6 +222,7 @@ export default function FloatingActionMenu() {
                                 <MenuButton icon={Globe} label="Live Map" onClick={handleMapClick} bgClass="bg-blue-100 dark:bg-blue-900/40" colorClass="text-blue-600 dark:text-blue-400" />
                                 <MenuButton icon={Activity} label="Live Comments" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
                                 <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
+                                <MenuButton icon={Gamepad2} label="Mini Game" onClick={handleGameClick} bgClass="bg-purple-100 dark:bg-purple-900/40" colorClass="text-purple-600 dark:text-purple-400" />
                             </div>
                             <button
                                 onClick={handleContactAdminClick}
