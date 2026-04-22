@@ -79,10 +79,9 @@ export default function CGPADash() {
         if (data) setLeaderboard(data);
     };
 
-    // FULLY FIXED SUBMIT LOGIC
     const submitScore = async (e) => {
         e.preventDefault();
-        if (!playerName.trim() || isSubmitting) return; // Prevent double-clicking
+        if (!playerName.trim() || isSubmitting) return;
 
         setIsSubmitting(true);
         setNameError('');
@@ -91,7 +90,6 @@ export default function CGPADash() {
         const localSavedName = localStorage.getItem('cgpa_dash_username');
 
         try {
-            // Changed to .limit(1) to completely prevent the "Multiple Rows" crash bug
             const { data: existingUsers } = await supabase
                 .from('minigame_scores')
                 .select('id, score, username')
@@ -102,7 +100,6 @@ export default function CGPADash() {
 
             if (existingUser) {
                 if (localSavedName && localSavedName.toLowerCase() === trimmedName.toLowerCase()) {
-                    // Update their previous high score if current score is better
                     if (finalScore > existingUser.score) {
                         await supabase
                             .from('minigame_scores')
@@ -126,7 +123,6 @@ export default function CGPADash() {
             console.error("Error submitting score:", err);
             setNameError('Network error. Please try again.');
         } finally {
-            // ALWAYS executed, guarantees button never gets stuck on "Saving..."
             setIsSubmitting(false);
         }
     };
