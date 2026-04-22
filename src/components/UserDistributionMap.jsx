@@ -150,7 +150,7 @@ export default function UserDistributionMap() {
 
     const handleRecenter = useCallback(() => {
         if (myLocation && mapRef.current) {
-            mapRef.current.flyTo(myLocation, 15, { duration: 1.5 });
+            mapRef.current.flyTo(myLocation, 18, { duration: 1.5 });
         }
     }, [myLocation]);
 
