@@ -210,7 +210,7 @@ export default function UserDistributionMap() {
             </motion.div>
 
             {/* Restored to absolute so it anchors properly to the bottom left of the map view */}
-            <div className="absolute bottom-6 left-4 md:left-6 md:bottom-8 z-[1000] flex flex-col items-center gap-3">
+            <div className="absolute bottom-20 left-4 md:left-6 md:bottom-12 z-[1000] flex flex-col items-center gap-3">
                 <motion.button
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
