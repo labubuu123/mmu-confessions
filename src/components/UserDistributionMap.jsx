@@ -207,7 +207,7 @@ export default function UserDistributionMap() {
                 </div>
             </motion.div>
 
-            <div className="absolute bottom-20 left-4 md:left-6 md:bottom-10 z-[1000] flex flex-col items-center gap-3">
+            <div className="absolute bottom-30 left-4 md:left-6 md:bottom-10 z-[1000] flex flex-col items-center gap-3">
                 <motion.button
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
