@@ -170,11 +170,9 @@ export default function UserDistributionMap() {
     `;
 
     return (
-        // The container uses 100dvh so it strictly sizes itself to the visible mobile screen
         <div className="relative w-full h-[calc(100dvh-64px)] bg-slate-100 overflow-hidden font-sans z-0">
             <style>{leafletPopupStyles}</style>
 
-            {/* Restored to absolute and top-4 so it stays inside the container boundaries */}
             <motion.div
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -209,12 +207,8 @@ export default function UserDistributionMap() {
                 </div>
             </motion.div>
 
-            {/* Restored to absolute so it anchors properly to the bottom left of the map view */}
             <div className="absolute bottom-20 left-4 md:left-6 md:bottom-12 z-[1000] flex flex-col items-center gap-3">
-                <motion.button
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                <button
                     onClick={handleRecenter}
                     disabled={!myLocation}
                     className={`p-4 rounded-full shadow-xl backdrop-blur-md transition-all duration-300 ease-in-out group flex items-center justify-center ${myLocation
@@ -228,7 +222,7 @@ export default function UserDistributionMap() {
                     ) : (
                         <Navigation className="w-6 h-6" />
                     )}
-                </motion.button>
+                </button>
             </div>
 
             <MapContainer
