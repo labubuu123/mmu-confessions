@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone } from 'lucide-react';
+import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const GAMEOVER_TITLES = [
@@ -14,10 +14,10 @@ const GAMEOVER_TITLES = [
 
 // Soft Pastel Colors for Anti-Visual Fatigue
 const OBSTACLE_TYPES = [
-    { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 40, w: 30 },
-    { name: "Finals", emoji: "📚", color: '#fb7185', h: 70, w: 35 },
-    { name: "MMLS Down", emoji: "🚨", color: '#fbbf24', h: 35, w: 40 },
-    { name: "Ghosting", emoji: "👻", color: '#c084fc', h: 50, w: 30 }
+    { name: "8AM Class", emoji: "😴", color: '#60a5fa', h: 40, w: 30, behavior: 'normal' },
+    { name: "Finals", emoji: "📚", color: '#fb7185', h: 75, w: 35, behavior: 'normal' },
+    { name: "MMLS Down", emoji: "🚨", color: '#fbbf24', h: 35, w: 40, behavior: 'wave' },
+    { name: "Ghosting", emoji: "👻", color: '#c084fc', h: 50, w: 35, behavior: 'fast' }
 ];
 
 export default function CGPADash() {
@@ -43,16 +43,17 @@ export default function CGPADash() {
     const shakeRef = useRef(0);
 
     const playerRef = useRef({
-        x: 80, y: 200, width: 36, height: 36,
-        dy: 0, jumpForce: -12.5, trail: [],
+        x: 80, y: 200, width: 34, height: 34,
+        dy: 0, jumpForce: -14.5, trail: [], // Harder physics: stronger jump, heavier gravity
         canDoubleJump: false, isGrounded: false,
         invincibleTimer: 0
     });
 
     const entitiesRef = useRef({ obstacles: [], powerups: [], popups: [], particles: [] });
 
-    const GRAVITY = 0.6;
-    let GAME_SPEED = 6.0;
+    // HARDER PHYSICS CONSTANTS
+    const GRAVITY = 0.8;
+    let BASE_GAME_SPEED = 7.5;
 
     const CANVAS_WIDTH = 800;
     const CANVAS_HEIGHT = 400;
@@ -65,7 +66,6 @@ export default function CGPADash() {
         return () => { if (reqRef.current) cancelAnimationFrame(reqRef.current); };
     }, []);
 
-    // Prevent scrolling on mobile while playing
     useEffect(() => {
         const preventScroll = (e) => { if (gameState === 'PLAYING') e.preventDefault(); };
         const container = containerRef.current;
@@ -104,7 +104,7 @@ export default function CGPADash() {
                         await supabase.from('minigame_scores').update({ score: finalScore }).eq('id', existingUser.id);
                     }
                 } else {
-                    setNameError('Name in use! Please choose another.');
+                    setNameError('Name in use! Choose another.');
                     setIsSubmitting(false);
                     return;
                 }
@@ -123,8 +123,8 @@ export default function CGPADash() {
         }
     };
 
-    const spawnPopup = (x, y, text, color = '#10b981') => {
-        entitiesRef.current.popups.push({ x, y, text, color, life: 1, dy: -2 });
+    const spawnPopup = (x, y, text, color = '#10b981', size = 20) => {
+        entitiesRef.current.popups.push({ x, y, text, color, life: 1, dy: -2, size });
     };
 
     const createParticles = (x, y, color, count, speed = 1, emoji = null) => {
@@ -132,7 +132,7 @@ export default function CGPADash() {
         const finalCount = isMobile ? Math.floor(count * 0.5) : count;
         for (let i = 0; i < finalCount; i++) {
             entitiesRef.current.particles.push({
-                x, y, vx: (Math.random() - 0.5) * 8 * speed, vy: (Math.random() - 0.5) * 8 * speed,
+                x, y, vx: (Math.random() - 0.5) * 10 * speed, vy: (Math.random() - 0.5) * 10 * speed,
                 life: 1, color, size: Math.random() * 5 + 2, emoji
             });
         }
@@ -146,17 +146,17 @@ export default function CGPADash() {
             p.dy = p.jumpForce;
             p.isGrounded = false;
             p.canDoubleJump = true;
-            createParticles(p.x + p.width / 2, p.y + p.height, '#94a3b8', 8, 0.5);
+            createParticles(p.x + p.width / 2, p.y + p.height, '#94a3b8', 10, 0.5);
         } else if (p.canDoubleJump) {
             p.dy = p.jumpForce * 0.85;
             p.canDoubleJump = false;
-            createParticles(p.x + p.width / 2, p.y + p.height, '#a78bfa', 12, 0.8);
+            createParticles(p.x + p.width / 2, p.y + p.height, '#a78bfa', 15, 0.8);
             spawnPopup(p.x, p.y - 20, "CRAM!", "#8b5cf6");
         }
     };
 
     const startGame = () => {
-        playerRef.current = { x: 80, y: 200, width: 36, height: 36, dy: 0, jumpForce: -13, trail: [], canDoubleJump: false, isGrounded: false, invincibleTimer: 0 };
+        playerRef.current = { x: 80, y: 200, width: 34, height: 34, dy: 0, jumpForce: -14.5, trail: [], canDoubleJump: false, isGrounded: false, invincibleTimer: 0 };
         entitiesRef.current = { obstacles: [], powerups: [], popups: [], particles: [] };
         scoreRef.current = 0;
         frameRef.current = 0;
@@ -169,13 +169,13 @@ export default function CGPADash() {
     };
 
     const triggerGameOver = () => {
-        shakeRef.current = 10;
+        shakeRef.current = 15;
         setGameState('GAMEOVER');
         setFinalScore(Math.floor(scoreRef.current));
         setGameOverTitle(GAMEOVER_TITLES[Math.floor(Math.random() * GAMEOVER_TITLES.length)]);
 
         const p = playerRef.current;
-        createParticles(p.x + p.width / 2, p.y + p.height / 2, '#ef4444', 30, 1.5, "💀");
+        createParticles(p.x + p.width / 2, p.y + p.height / 2, '#ef4444', 40, 1.5, "💀");
 
         requestAnimationFrame(() => {
             const canvas = canvasRef.current;
@@ -209,10 +209,16 @@ export default function CGPADash() {
             if (p.life <= 0) { popups.splice(i, 1); continue; }
 
             ctx.globalAlpha = p.life;
-            ctx.font = 'bold 20px "Inter", sans-serif';
+            ctx.font = `900 ${p.size}px "Inter", sans-serif`;
             ctx.fillStyle = p.color;
             ctx.textAlign = 'center';
+
+            // Add text stroke for visibility
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#0f172a';
+            ctx.strokeText(p.text, p.x, p.y);
             ctx.fillText(p.text, p.x, p.y);
+
             ctx.globalAlpha = 1.0;
         }
     };
@@ -225,7 +231,8 @@ export default function CGPADash() {
         const height = CANVAS_HEIGHT;
         const groundY = height - 40;
 
-        const currentSpeed = GAME_SPEED + (scoreRef.current * 0.003);
+        // Aggressive speed scaling
+        const currentSpeed = BASE_GAME_SPEED + (scoreRef.current * 0.005);
         const p = playerRef.current;
 
         ctx.save();
@@ -255,13 +262,13 @@ export default function CGPADash() {
         if (p.y + p.height >= groundY) {
             p.y = groundY - p.height;
             p.dy = 0;
-            if (!p.isGrounded) createParticles(p.x + p.width / 2, groundY, '#cbd5e1', 5, 0.3);
+            if (!p.isGrounded) createParticles(p.x + p.width / 2, groundY, '#cbd5e1', 6, 0.3);
             p.isGrounded = true;
             p.canDoubleJump = false;
         }
 
         p.trail.push({ x: p.x, y: p.y });
-        if (p.trail.length > (p.invincibleTimer > 0 ? 12 : 6)) p.trail.shift();
+        if (p.trail.length > (p.invincibleTimer > 0 ? 15 : 7)) p.trail.shift();
 
         p.trail.forEach((pos, idx) => {
             const alpha = idx / 15;
@@ -276,20 +283,20 @@ export default function CGPADash() {
         ctx.fill();
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = '22px Arial';
+        ctx.font = '24px Arial';
         let playerEmoji = "🥵";
         if (p.invincibleTimer > 0) playerEmoji = "😈";
         else if (p.dy < -5) playerEmoji = "🚀";
         else if (!p.isGrounded && p.dy > 0) playerEmoji = "😱";
         ctx.fillText(playerEmoji, p.x + p.width / 2, p.y + p.height / 2 + 2);
 
-        // Spawning
-        const spawnRate = Math.max(45, 90 - Math.floor(scoreRef.current / 40));
+        // Spawning (More aggressive spawn rate as score increases)
+        const spawnRate = Math.max(30, 80 - Math.floor(scoreRef.current / 30));
         if (frameRef.current % spawnRate === 0) {
-            if (Math.random() < 0.15) {
-                const isCoffee = Math.random() < 0.6;
+            if (Math.random() < 0.12) {
+                const isCoffee = Math.random() < 0.5;
                 entitiesRef.current.powerups.push({
-                    x: width, y: groundY - 60 - Math.random() * 60,
+                    x: width, y: groundY - 70 - Math.random() * 60,
                     w: 30, h: 30,
                     type: isCoffee ? 'coffee' : 'past_year',
                     emoji: isCoffee ? '☕' : '📄',
@@ -298,10 +305,14 @@ export default function CGPADash() {
                 });
             } else {
                 const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
-                const isFloating = type.name === "MMLS Down" || type.name === "Ghosting";
+                // Base Y coordinate
+                let startY = groundY - type.h;
+                if (type.behavior === 'wave') startY -= 40; // Floating higher
+
                 entitiesRef.current.obstacles.push({
                     x: width,
-                    y: isFloating ? groundY - type.h - 50 : groundY - type.h,
+                    y: startY,
+                    baseY: startY,
                     width: type.w, height: type.h,
                     ...type, passed: false
                 });
@@ -309,6 +320,8 @@ export default function CGPADash() {
         }
 
         const { powerups, obstacles } = entitiesRef.current;
+
+        // POWERUPS
         for (let i = powerups.length - 1; i >= 0; i--) {
             let pup = powerups[i];
             pup.x -= currentSpeed * 0.8;
@@ -325,31 +338,41 @@ export default function CGPADash() {
                 if (pup.type === 'coffee') {
                     p.invincibleTimer = 300;
                     shakeRef.current = 5;
-                    spawnPopup(p.x, p.y - 40, "CAFFEINE RUSH!", "#facc15");
+                    spawnPopup(p.x, p.y - 40, "CAFFEINE RUSH!", "#facc15", 24);
                 } else {
                     scoreRef.current += 50;
-                    spawnPopup(p.x, p.y - 40, "LEAKED PAPER! +50", "#facc15");
+                    spawnPopup(p.x, p.y - 40, "LEAKED PAPER! +50", "#facc15", 24);
                 }
             }
             if (pup.x + pup.w < 0 || pup.collected) powerups.splice(i, 1);
         }
 
+        // OBSTACLES
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
-            obs.x -= currentSpeed;
+
+            // Behavior adjustments
+            let obsSpeed = currentSpeed;
+            if (obs.behavior === 'fast') obsSpeed *= 1.3; // Ghosts fly at you faster
+            obs.x -= obsSpeed;
+
+            if (obs.behavior === 'wave') {
+                // Bob up and down
+                obs.y = obs.baseY + Math.sin(frameRef.current * 0.1) * 20;
+            }
 
             ctx.fillStyle = obs.color;
             ctx.beginPath(); ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 6); ctx.fill();
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '22px Arial';
+            ctx.font = '24px Arial';
             ctx.fillText(obs.emoji, obs.x + obs.width / 2, obs.y + obs.height / 2 + 2);
 
-            const margin = 4;
+            const margin = 5; // Generous hitbox for fairness at high speeds
             if (p.x + margin < obs.x + obs.width - margin && p.x + p.width - margin > obs.x + margin && p.y + margin < obs.y + obs.height - margin && p.y + p.height - margin > obs.y + margin) {
                 if (p.invincibleTimer > 0) {
-                    createParticles(obs.x, obs.y, obs.color, 20, 2, "💥");
-                    spawnPopup(obs.x, obs.y - 20, "SMASHED!", "#facc15");
+                    createParticles(obs.x, obs.y, obs.color, 25, 2, "💥");
+                    spawnPopup(obs.x, obs.y - 20, "SMASHED!", "#facc15", 22);
                     shakeRef.current = 6;
                     obstacles.splice(i, 1);
                     continue;
@@ -362,9 +385,17 @@ export default function CGPADash() {
 
             if (!obs.passed && obs.x + obs.width < p.x) {
                 obs.passed = true;
-                scoreRef.current += 10;
-                const messages = ["Clutch!", "Phew!", "+10", "Dodge!"];
-                spawnPopup(p.x, p.y - 20, messages[Math.floor(Math.random() * messages.length)], "#60a5fa");
+
+                // Check for "Close Call" (passed very close to the top edge)
+                const distanceToTop = (p.y + p.height) - obs.y;
+                if (distanceToTop > -10 && distanceToTop < 10) {
+                    scoreRef.current += 30; // Bonus points
+                    spawnPopup(p.x, p.y - 30, "CLOSE CALL! +30", "#facc15", 22);
+                } else {
+                    scoreRef.current += 10;
+                    const messages = ["Clutch!", "Phew!", "+10", "Dodge!"];
+                    spawnPopup(p.x, p.y - 20, messages[Math.floor(Math.random() * messages.length)], "#60a5fa", 18);
+                }
             }
 
             if (obs.x + obs.width < 0) obstacles.splice(i, 1);
@@ -372,9 +403,9 @@ export default function CGPADash() {
 
         drawParticles(ctx);
 
-        scoreRef.current += 0.05;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-        ctx.beginPath(); ctx.roundRect(15, 15, 200, 45, 12); ctx.fill();
+        scoreRef.current += 0.08;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.beginPath(); ctx.roundRect(15, 15, 210, 45, 12); ctx.fill();
 
         ctx.fillStyle = '#f8fafc';
         ctx.textAlign = 'left';
@@ -383,7 +414,7 @@ export default function CGPADash() {
 
         if (p.invincibleTimer > 0) {
             ctx.fillStyle = '#facc15';
-            ctx.beginPath(); ctx.roundRect(15, 65, (p.invincibleTimer / 300) * 200, 6, 3); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(15, 65, (p.invincibleTimer / 300) * 210, 6, 3); ctx.fill();
         }
 
         ctx.restore();
@@ -405,7 +436,7 @@ export default function CGPADash() {
     const isPlaying = gameState === 'PLAYING';
 
     return (
-        <div className={`min-h-[calc(100vh-60px)] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center font-sans transition-all duration-500 py-6 px-4 sm:p-6`}>
+        <div className={`min-h-[calc(100vh-60px)] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center font-sans transition-all duration-500 p-4 sm:p-6`}>
 
             <div className={`w-full mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 transition-all duration-700
             ${isPlaying ? 'max-w-5xl justify-center' : 'max-w-6xl items-stretch'}`}>
@@ -414,13 +445,13 @@ export default function CGPADash() {
                 <div className={`w-full bg-slate-900 overflow-hidden shadow-2xl relative border-4 border-slate-700 flex flex-col transition-all duration-500 rounded-3xl sm:rounded-[2rem] 
                 ${isPlaying ? 'min-h-[500px]' : 'min-h-[460px] flex-1'}`}>
 
-                    {/* DEDICATED HEADER - NO LONGER ABSOLUTE (Fixes overlap/crash issue) */}
+                    {/* DEDICATED HEADER */}
                     <div className="w-full px-5 py-4 flex justify-between items-center bg-slate-900 border-b border-slate-800 shrink-0">
                         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-xl shadow-md font-bold text-xs sm:text-sm">
                             <Home size={16} /> <span>Hub</span>
                         </button>
-                        <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm uppercase">
-                            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                        <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm uppercase shadow-sm">
+                            <Zap size={14} className="animate-pulse text-yellow-400" />
                             <span>Arcade</span>
                         </div>
                     </div>
@@ -436,64 +467,69 @@ export default function CGPADash() {
                             style={{ WebkitTapHighlightColor: 'transparent' }}
                         />
 
-                        {/* START SCREEN */}
+                        {/* START SCREEN - Fixed layout to prevent emoji clipping */}
                         {gameState === 'START' && (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm text-white p-4">
-                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-[95%] sm:max-w-md text-center flex flex-col items-center">
-                                    <div className="text-5xl sm:text-6xl mb-4 animate-bounce">🥵</div>
-                                    <h2 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-2 tracking-tight">CGPA SURVIVOR</h2>
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 overflow-y-auto">
+                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-md text-center flex flex-col items-center justify-center gap-4 my-auto">
 
-                                    <p className="text-sm sm:text-base text-slate-300 mb-6 font-medium">
-                                        Dodge assignments, 8AM classes, and finals. Protect the GPA.
-                                    </p>
+                                    <div className="text-5xl sm:text-6xl animate-bounce drop-shadow-lg leading-none">🥵</div>
 
-                                    <div className="flex flex-row justify-center gap-3 w-full mb-6">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight leading-tight">CGPA SURVIVOR</h2>
+                                        <p className="text-xs sm:text-sm text-slate-300 font-medium">
+                                            Dodge assignments, 8AM classes, and finals.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-row justify-center gap-3 w-full">
                                         <div className="bg-slate-700/50 rounded-xl p-3 flex-1 flex flex-col items-center justify-center gap-2 border border-slate-600">
                                             <Coffee className="text-yellow-400 w-6 h-6" />
-                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider">Invincible</span>
+                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider text-center">Invincible</span>
                                         </div>
                                         <div className="bg-slate-700/50 rounded-xl p-3 flex-1 flex flex-col items-center justify-center gap-2 border border-slate-600">
                                             <BookOpen className="text-blue-400 w-6 h-6" />
-                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider">+50 Pts</span>
+                                            <span className="text-[10px] sm:text-xs text-slate-300 font-bold uppercase tracking-wider text-center">+50 Pts</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-3 w-full">
+                                    <div className="flex flex-col gap-3 w-full mt-2">
                                         <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-500 hover:bg-blue-400 text-white text-base sm:text-lg font-black rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-wide">
                                             <Play size={20} className="sm:w-6 sm:h-6" fill="currentColor" /> Start Semester
                                         </button>
 
-                                        <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-3.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl transition-colors border border-slate-600 shadow-md">
+                                        <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl transition-colors border border-slate-600 shadow-md">
                                             <ListOrdered size={16} /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
                                         </button>
                                     </div>
 
-                                    <p className="mt-5 text-[11px] text-slate-400 sm:hidden flex items-center justify-center gap-1.5 opacity-80 font-semibold">
+                                    <p className="text-[11px] text-slate-400 sm:hidden flex items-center justify-center gap-1.5 opacity-80 font-semibold mt-1">
                                         <Smartphone size={14} /> Rotate device for a larger view
                                     </p>
                                 </div>
                             </div>
                         )}
 
-                        {/* GAME OVER SCREEN */}
+                        {/* GAME OVER SCREEN - Fixed layout */}
                         {gameState === 'GAMEOVER' && (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md text-white p-4">
-                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-[95%] sm:max-w-sm text-center flex flex-col items-center">
-                                    <div className="text-4xl sm:text-5xl mb-3">💀</div>
-                                    <h2 className="text-xl sm:text-2xl font-black text-rose-400 mb-5 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto">
+                                <div className="bg-slate-800 border border-slate-600 p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-sm text-center flex flex-col items-center justify-center gap-4 my-auto">
 
-                                    <div className="bg-slate-900/80 w-full rounded-2xl p-4 mb-5 border border-slate-700 shadow-inner flex flex-col justify-center items-center gap-2">
+                                    <div className="text-4xl sm:text-5xl leading-none drop-shadow-md">💀</div>
+
+                                    <h2 className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
+
+                                    <div className="bg-slate-900/80 w-full rounded-2xl p-4 border border-slate-700 shadow-inner flex flex-col justify-center items-center gap-1">
                                         <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Final CGPA</p>
-                                        <p className="text-5xl font-black text-blue-400 drop-shadow-md">
+                                        <p className="text-5xl font-black text-blue-400 drop-shadow-md leading-none py-2">
                                             {(finalScore / 100).toFixed(2)}
                                         </p>
                                     </div>
 
-                                    <form onSubmit={submitScore} className="flex flex-col gap-3 w-full mb-4">
+                                    <form onSubmit={submitScore} className="flex flex-col gap-3 w-full">
                                         <input
                                             type="text" placeholder="Enter student name..." value={playerName}
                                             onChange={(e) => setPlayerName(e.target.value)} maxLength={12}
-                                            className="w-full px-4 py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
+                                            className="w-full px-4 py-3 sm:py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
                                             required
                                         />
                                         {nameError && <p className="text-rose-400 text-[11px] sm:text-xs font-bold animate-pulse px-2">{nameError}</p>}
@@ -514,7 +550,7 @@ export default function CGPADash() {
 
                 {/* LEADERBOARD */}
                 {(!isPlaying) && (
-                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[400px] sm:h-[500px] 
+                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[450px] sm:h-[500px] 
                     ${showLeaderboardOnMobile ? 'flex' : 'hidden lg:flex'}`}>
                         <div className="bg-slate-50 dark:bg-slate-800/80 p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
                             <h3 className="font-black text-slate-800 dark:text-white flex items-center gap-3 text-lg tracking-tight uppercase">
