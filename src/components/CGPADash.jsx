@@ -201,6 +201,31 @@ export default function CGPADash() {
         gameLoop();
     };
 
+    useEffect(() => {
+        const canvas = canvasRef.current;
+
+        const handleInstantAction = (e) => {
+            e.preventDefault();
+            if (gameState === 'PLAYING') {
+                jump();
+            } else if (gameState === 'START') {
+                startGame();
+            }
+        };
+
+        if (canvas) {
+            canvas.addEventListener('touchstart', handleInstantAction, { passive: false });
+            canvas.addEventListener('mousedown', handleInstantAction, { passive: false });
+        }
+
+        return () => {
+            if (canvas) {
+                canvas.removeEventListener('touchstart', handleInstantAction);
+                canvas.removeEventListener('mousedown', handleInstantAction);
+            }
+        };
+    }, [gameState]);
+
     const triggerGameOver = () => {
         shakeRef.current = 15;
         setGameState('GAMEOVER');
@@ -502,8 +527,6 @@ export default function CGPADash() {
                             ref={canvasRef}
                             width={CANVAS_WIDTH}
                             height={CANVAS_HEIGHT}
-                            onPointerDown={(e) => { e.preventDefault(); if (gameState === 'PLAYING') jump(); }}
-                            onContextMenu={(e) => e.preventDefault()}
                             className="w-full h-auto aspect-[2/1] object-contain cursor-pointer touch-none block mx-auto select-none outline-none"
                             style={{ WebkitTapHighlightColor: 'transparent', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                         />
