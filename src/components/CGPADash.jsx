@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone, Zap, Skull } from 'lucide-react';
+import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone, Zap, Skull, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const GAMEOVER_TITLES = [
@@ -53,6 +53,8 @@ export default function CGPADash() {
     const [playerName, setPlayerName] = useState('');
     const [nameError, setNameError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [pendingSubmission, setPendingSubmission] = useState(null);
 
     const reqRef = useRef(null);
     const frameRef = useRef(0);
@@ -116,44 +118,76 @@ export default function CGPADash() {
         setNameError('');
 
         const trimmedName = playerName.trim();
-        const localSavedName = localStorage.getItem('cgpa_dash_username');
 
         try {
-            const { data: existingUsers } = await supabase
+            const { data: existingUsers, error: fetchError } = await supabase
                 .from('minigame_scores')
                 .select('id, score, username')
                 .ilike('username', trimmedName)
                 .limit(1);
 
+            if (fetchError) throw fetchError;
+
             const existingUser = existingUsers?.[0];
 
             if (existingUser) {
-                if (localSavedName && localSavedName.toLowerCase() === trimmedName.toLowerCase()) {
-                    if (finalScore > existingUser.score) {
-                        await supabase
-                            .from('minigame_scores')
-                            .update({ score: finalScore })
-                            .eq('id', existingUser.id);
-                    }
-                } else {
-                    setNameError('Name in use! Choose another.');
-                    setIsSubmitting(false);
-                    return;
-                }
+                setPendingSubmission({
+                    id: existingUser.id,
+                    username: trimmedName,
+                    oldScore: existingUser.score,
+                    newScore: finalScore
+                });
+                setIsSubmitting(false);
+                return;
             } else {
-                await supabase.from('minigame_scores').insert([{ username: trimmedName, score: finalScore }]);
-                localStorage.setItem('cgpa_dash_username', trimmedName);
-            }
+                const { error: insertError } = await supabase
+                    .from('minigame_scores')
+                    .insert([{ username: trimmedName, score: finalScore }]);
 
+                if (insertError) throw insertError;
+
+                localStorage.setItem('cgpa_dash_username', trimmedName);
+                await fetchLeaderboard();
+                setGameState('START');
+                setShowLeaderboardOnMobile(true);
+            }
+        } catch (err) {
+            console.error("Error submitting score:", err);
+            setNameError('Network error or saving failed. Try again.');
+        } finally {
+            if (!pendingSubmission) setIsSubmitting(false);
+        }
+    };
+
+    const confirmOverwrite = async () => {
+        setIsSubmitting(true);
+        try {
+            const { error: updateError } = await supabase
+                .from('minigame_scores')
+                .update({ score: pendingSubmission.newScore })
+                .eq('id', pendingSubmission.id);
+
+            if (updateError) throw updateError;
+
+            localStorage.setItem('cgpa_dash_username', pendingSubmission.username);
             await fetchLeaderboard();
+            setPendingSubmission(null);
             setGameState('START');
             setShowLeaderboardOnMobile(true);
         } catch (err) {
-            console.error("Error submitting score:", err);
-            setNameError('Network error. Please try again.');
+            console.error("Error overwriting score:", err);
+            setNameError('Failed to overwrite record. Try again.');
+            setPendingSubmission(null);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const cancelOverwrite = () => {
+        localStorage.setItem('cgpa_dash_username', pendingSubmission.username);
+        setPendingSubmission(null);
+        setGameState('START');
+        setShowLeaderboardOnMobile(true);
     };
 
     const spawnPopup = (x, y, text, color = '#10b981', size = 20) => {
@@ -196,6 +230,7 @@ export default function CGPADash() {
         shakeRef.current = 0;
         setShowLeaderboardOnMobile(false);
         setNameError('');
+        setPendingSubmission(null);
         setGameState('PLAYING');
         if (reqRef.current) cancelAnimationFrame(reqRef.current);
         gameLoop();
@@ -580,43 +615,80 @@ export default function CGPADash() {
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto">
                                 <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-sm text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto">
 
-                                    <div className="text-4xl sm:text-5xl leading-none drop-shadow-md">🤡</div>
+                                    {!pendingSubmission ? (
+                                        <>
+                                            <div className="text-4xl sm:text-5xl leading-none drop-shadow-md">🤡</div>
 
-                                    <h2 className="text-lg sm:text-2xl font-black text-rose-400 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
+                                            <h2 className="text-lg sm:text-2xl font-black text-rose-400 tracking-tight uppercase leading-tight">{gameOverTitle}</h2>
 
-                                    <div className="bg-slate-900/80 w-full rounded-2xl p-3 sm:p-4 border border-slate-700 shadow-inner flex flex-col justify-center items-center gap-1">
-                                        <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Final CGPA</p>
-                                        <p className="text-4xl sm:text-5xl font-black text-emerald-400 drop-shadow-md leading-none py-1 sm:py-2">
-                                            {(finalScore / 100).toFixed(2)}
-                                        </p>
-                                    </div>
+                                            <div className="bg-slate-900/80 w-full rounded-2xl p-3 sm:p-4 border border-slate-700 shadow-inner flex flex-col justify-center items-center gap-1">
+                                                <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Final CGPA</p>
+                                                <p className="text-4xl sm:text-5xl font-black text-emerald-400 drop-shadow-md leading-none py-1 sm:py-2">
+                                                    {(finalScore / 100).toFixed(2)}
+                                                </p>
+                                            </div>
 
-                                    <form onSubmit={submitScore} className="flex flex-col gap-2 sm:gap-3 w-full">
-                                        <div className="flex flex-col gap-1 text-left">
-                                            <label className="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-widest pl-1">Join the Leaderboard</label>
-                                            <input
-                                                type="text" placeholder="Enter name for ranking..." value={playerName}
-                                                onChange={(e) => setPlayerName(e.target.value)} maxLength={12}
-                                                className="w-full px-4 py-3 sm:py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
-                                                required
-                                            />
+                                            <form onSubmit={submitScore} className="flex flex-col gap-2 sm:gap-3 w-full">
+                                                <div className="flex flex-col gap-1 text-left">
+                                                    <label className="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-widest pl-1">Join the Leaderboard</label>
+                                                    <input
+                                                        type="text" placeholder="Enter name for ranking..." value={playerName}
+                                                        onChange={(e) => setPlayerName(e.target.value)} maxLength={12}
+                                                        className="w-full px-4 py-3 sm:py-3.5 bg-slate-900 border border-slate-600 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50 text-center font-bold text-white text-sm sm:text-base placeholder-slate-500 transition-all shadow-inner"
+                                                        required
+                                                    />
+                                                </div>
+                                                {nameError && <p className="text-rose-400 text-[10px] sm:text-[11px] font-bold animate-pulse px-2">{nameError}</p>}
+
+                                                <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl disabled:opacity-50 transition-colors shadow-lg text-sm sm:text-base uppercase tracking-wide">
+                                                    <Trophy size={16} className="sm:w-5 sm:h-5" /> {isSubmitting ? 'Checking...' : 'Submit Rank'}
+                                                </button>
+                                            </form>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col gap-3 w-full bg-slate-900/80 p-4 rounded-xl border border-yellow-500/50 shadow-inner text-center animate-in fade-in zoom-in duration-300">
+                                            <div className="flex justify-center mb-1">
+                                                <AlertTriangle className="text-yellow-400 w-8 h-8" />
+                                            </div>
+                                            <h3 className="text-yellow-400 font-bold text-sm tracking-widest uppercase">Record Exists!</h3>
+
+                                            <div className="flex flex-col gap-2 w-full mt-2">
+                                                <div className="flex justify-between items-center bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                                    <span className="text-slate-400 text-xs font-bold uppercase">Old CGPA</span>
+                                                    <span className="text-white font-black text-lg">{(pendingSubmission.oldScore / 100).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                                    <span className="text-slate-400 text-xs font-bold uppercase">New CGPA</span>
+                                                    <span className="text-emerald-400 font-black text-lg">{(pendingSubmission.newScore / 100).toFixed(2)}</span>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-xs text-slate-300 font-medium mt-2 leading-relaxed">
+                                                Do you want to overwrite your existing rank on the leaderboard?
+                                            </p>
+
+                                            <div className="flex gap-2 mt-3">
+                                                <button onClick={confirmOverwrite} disabled={isSubmitting} className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-black rounded-lg py-3 text-xs sm:text-sm uppercase tracking-wide transition-colors">
+                                                    {isSubmitting ? '...' : 'Yes, Replace'}
+                                                </button>
+                                                <button onClick={cancelOverwrite} disabled={isSubmitting} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-black rounded-lg py-3 text-xs sm:text-sm uppercase tracking-wide transition-colors">
+                                                    No, Keep Old
+                                                </button>
+                                            </div>
                                         </div>
-                                        {nameError && <p className="text-rose-400 text-[10px] sm:text-[11px] font-bold animate-pulse px-2">{nameError}</p>}
+                                    )}
 
-                                        <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl disabled:opacity-50 transition-colors shadow-lg text-sm sm:text-base uppercase tracking-wide">
-                                            <Trophy size={16} className="sm:w-5 sm:h-5" /> {isSubmitting ? 'Saving...' : 'Submit Rank'}
-                                        </button>
-                                    </form>
+                                    {!pendingSubmission && (
+                                        <div className="flex flex-col gap-2 w-full mt-1">
+                                            <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-transparent hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors text-sm sm:text-base border border-slate-600 hover:border-slate-500">
+                                                <RotateCcw size={16} className="sm:w-5 sm:h-5" /> Retake Semester
+                                            </button>
 
-                                    <div className="flex flex-col gap-2 w-full mt-1">
-                                        <button onClick={startGame} className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-transparent hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors text-sm sm:text-base border border-slate-600 hover:border-slate-500">
-                                            <RotateCcw size={16} className="sm:w-5 sm:h-5" /> Retake Semester
-                                        </button>
-
-                                        <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors border border-slate-700 hover:border-slate-600 shadow-md text-sm sm:text-base">
-                                            <ListOrdered size={16} className="sm:w-5 sm:h-5" /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
-                                        </button>
-                                    </div>
+                                            <button onClick={() => setShowLeaderboardOnMobile(!showLeaderboardOnMobile)} className="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-colors border border-slate-700 hover:border-slate-600 shadow-md text-sm sm:text-base">
+                                                <ListOrdered size={16} className="sm:w-5 sm:h-5" /> {showLeaderboardOnMobile ? 'Hide Rankings' : 'View Rankings'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
