@@ -545,7 +545,7 @@ export default function CGPADash() {
             ${isPlaying ? 'max-w-5xl justify-center gap-0 sm:gap-8' : 'max-w-6xl items-stretch gap-6 lg:gap-8'}`}>
 
                 <div className={`w-full bg-slate-900 overflow-hidden shadow-2xl relative flex flex-col transition-all duration-500
-                ${isPlaying ? 'border-y-4 border-slate-700 sm:border-4 rounded-none sm:rounded-[2rem] min-h-[65vh] sm:min-h-[500px]' : 'border-4 border-slate-700 rounded-3xl sm:rounded-[2rem] min-h-[580px] sm:min-h-[600px] flex-1'}`}>
+                ${isPlaying ? 'border-y-4 border-slate-700 sm:border-4 rounded-none sm:rounded-[2rem] min-h-[65vh] sm:min-h-[500px]' : 'border-4 border-slate-700 rounded-3xl sm:rounded-[2rem] min-h-[580px] sm:min-h-[680px] flex-1'}`}>
 
                     <div className={`w-full px-5 py-4 justify-between items-center bg-slate-900 border-b border-slate-800 shrink-0 ${isPlaying ? 'hidden sm:flex' : 'flex'}`}>
                         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-xl shadow-md font-bold text-xs sm:text-sm">
