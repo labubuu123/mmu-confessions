@@ -478,7 +478,7 @@ export default function CGPADash() {
 
     return (
         <div
-            className={`min-h-[calc(100vh-60px)] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center font-sans transition-all duration-500 select-none ${isPlaying ? 'p-0 sm:p-6' : 'p-4 sm:p-6'}`}
+            className={`min-h-[calc(50vh-60px)] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center font-sans transition-all duration-500 select-none ${isPlaying ? 'p-0 sm:p-6' : 'p-2 sm:p-6'}`}
             style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
         >
             <div className={`w-full mx-auto flex flex-col lg:flex-row transition-all duration-700
