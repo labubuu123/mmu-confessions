@@ -32,27 +32,15 @@ export const upsertUserLocation = async (userId, latitude, longitude, profile) =
 
 export function useLocationTracking() {
     const [isTracking, setIsTracking] = useState(false);
-    const [showGpsModal, setShowGpsModal] = useState(false);
     
     const watchIdRef = useRef(null);
     const userIdRef = useRef(null);
     const profileRef = useRef({ username: 'Guest Map User', avatar_url: '' });
 
-    const startWatching = useCallback(async (userId = userIdRef.current, profile = profileRef.current, force = false) => {
+    const startWatching = useCallback(async (userId = userIdRef.current, profile = profileRef.current) => {
         if (!navigator.geolocation) {
             console.warn("Geolocation is not supported by this browser.");
             return;
-        }
-
-        if (!force && navigator.permissions) {
-            try {
-                const result = await navigator.permissions.query({ name: 'geolocation' });
-                if (result.state === 'prompt' || result.state === 'denied') {
-                    setShowGpsModal(true);
-                    return;
-                }
-            } catch (e) {
-            }
         }
         
         if (watchIdRef.current !== null) {
@@ -60,19 +48,15 @@ export function useLocationTracking() {
         }
         
         setIsTracking(true);
-        console.log('📡 Starting GPS tracking...');
+        console.log('📡 Automatically requesting browser GPS...');
         
         watchIdRef.current = navigator.geolocation.watchPosition(
             async (pos) => {
-                setShowGpsModal(false);
                 await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
             },
             (err) => {
-                console.warn('watchPosition error:', err.message);
-                if (err.code === 1) {
-                    stopWatching();
-                    setShowGpsModal(true);
-                }
+                console.warn('Location access denied or failed:', err.message);
+                setIsTracking(false);
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
@@ -88,12 +72,6 @@ export function useLocationTracking() {
         if (userIdRef.current) {
             await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
         }
-    };
-
-    const manualAllow = async (pos) => {
-        setShowGpsModal(false);
-        await upsertUserLocation(userIdRef.current, pos.coords.latitude, pos.coords.longitude, profileRef.current);
-        startWatching(userIdRef.current, profileRef.current, true);
     };
 
     useEffect(() => {
@@ -159,9 +137,5 @@ export function useLocationTracking() {
         };
     }, [startWatching]);
 
-    return {
-        showGpsModal,
-        setShowGpsModal,
-        manualAllow
-    };
+    return { isTracking };
 }

@@ -4,8 +4,7 @@ import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
 import { MapPin, Navigation, Loader2, Users, Radio, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocationTracking, getOrCreateGuestId } from '../hooks/useLocationTracking';
-import GpsPermissionModal from './GpsPermissionModal';
+import { useLocationTracking, getOrCreateGuestId } from './hooks/useLocationTracking';
 
 const simpleHash = (str) => {
     let hash = 0;
@@ -93,7 +92,7 @@ function MapController({ center, zoom }) {
 }
 
 export default function UserDistributionMap() {
-    const { showGpsModal, setShowGpsModal, manualAllow } = useLocationTracking();
+    useLocationTracking();
 
     const [locations, setLocations] = useState([]);
     const [myLocation, setMyLocation] = useState(null);
@@ -162,10 +161,6 @@ export default function UserDistributionMap() {
         }
     }, [myLocation]);
 
-    const onlineUsers = locations.filter(
-        (loc) => new Date() - new Date(loc.last_updated) < 3_600_000
-    ).length;
-
     const leafletPopupStyles = `
         .leaflet-popup-content-wrapper {
             background: transparent;
@@ -180,15 +175,6 @@ export default function UserDistributionMap() {
     return (
         <div className="relative w-full h-[calc(100dvh-64px)] bg-slate-100 overflow-hidden font-sans z-0 overscroll-none">
             <style>{leafletPopupStyles}</style>
-
-            <AnimatePresence>
-                {showGpsModal && (
-                    <GpsPermissionModal
-                        onAllow={manualAllow}
-                        onDismiss={() => setShowGpsModal(false)}
-                    />
-                )}
-            </AnimatePresence>
 
             <motion.div
                 initial={{ y: -50, opacity: 0 }}
