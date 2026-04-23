@@ -4,6 +4,8 @@ import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
 import { MapPin, Navigation, Loader2, Users, Radio, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocationTracking, getOrCreateGuestId } from './useLocationTracking';
+import GpsPermissionModal from './GpsPermissionModal';
 
 const simpleHash = (str) => {
     let hash = 0;
@@ -91,6 +93,8 @@ function MapController({ center, zoom }) {
 }
 
 export default function UserDistributionMap() {
+    const { showGpsModal, setShowGpsModal, manualAllow } = useLocationTracking();
+
     const [locations, setLocations] = useState([]);
     const [myLocation, setMyLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
@@ -124,12 +128,7 @@ export default function UserDistributionMap() {
 
         const fetchUserLoc = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            let activeId = session?.user?.id || localStorage.getItem('guest_user_id');
-
-            if (!activeId) {
-                activeId = 'guest_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('guest_user_id', activeId);
-            }
+            const activeId = session?.user?.id || getOrCreateGuestId();
 
             setCurrentUser({ id: activeId });
 
@@ -182,6 +181,15 @@ export default function UserDistributionMap() {
         <div className="relative w-full h-[calc(100dvh-64px)] bg-slate-100 overflow-hidden font-sans z-0 overscroll-none">
             <style>{leafletPopupStyles}</style>
 
+            <AnimatePresence>
+                {showGpsModal && (
+                    <GpsPermissionModal
+                        onAllow={manualAllow}
+                        onDismiss={() => setShowGpsModal(false)}
+                    />
+                )}
+            </AnimatePresence>
+
             <motion.div
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -203,14 +211,12 @@ export default function UserDistributionMap() {
                         {loading ? (
                             <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
                         ) : (
-                            <>
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                                        <Users className="w-3 h-3" /> Total
-                                    </span>
-                                    <span className="font-bold text-slate-800">{locations.length}</span>
-                                </div>
-                            </>
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                    <Users className="w-3 h-3" /> Total
+                                </span>
+                                <span className="font-bold text-slate-800">{locations.length}</span>
+                            </div>
                         )}
                     </div>
                 </div>

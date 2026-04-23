@@ -479,6 +479,7 @@ ALTER TABLE public.adult_confessions ADD COLUMN IF NOT EXISTS poll_options JSONB
 ALTER TABLE public.adult_comments ADD COLUMN IF NOT EXISTS parent_id BIGINT;
 ALTER TABLE public.adult_comments DROP CONSTRAINT IF EXISTS adult_comments_parent_id_fkey;
 ALTER TABLE public.adult_comments ADD CONSTRAINT adult_comments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.adult_comments(id) ON DELETE CASCADE;
+ALTER TABLE public.user_locations DROP CONSTRAINT IF EXISTS user_locations_user_id_fkey;
 ALTER TABLE public.adult_confessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 ALTER TABLE public.user_reputation ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
@@ -1655,8 +1656,8 @@ CREATE POLICY "Enable read access for all users" ON public.user_profiles FOR SEL
 CREATE POLICY "Enable read access for all logs" ON public.karma_activity_log FOR SELECT USING (true);
 
 CREATE POLICY "Locations viewable by everyone" ON public.user_locations FOR SELECT USING (true);
-CREATE POLICY "Users insert own location" ON public.user_locations FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users update own location" ON public.user_locations FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Allow anyone to insert location" ON public.user_locations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anyone to update location" ON public.user_locations FOR UPDATE USING (true);
 
 CREATE POLICY "Allow public read access" ON public.minigame_scores FOR SELECT USING (true);
 CREATE POLICY "Allow anon insert" ON public.minigame_scores FOR INSERT WITH CHECK (true);

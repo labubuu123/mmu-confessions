@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-const getOrCreateGuestId = () => {
+export const getOrCreateGuestId = () => {
     let guestId = localStorage.getItem('guest_user_id');
-    if (!guestId) {
+    if (!guestId || guestId.startsWith('guest_')) {
         guestId = crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
             (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
         );
@@ -26,6 +26,8 @@ export const upsertUserLocation = async (userId, latitude, longitude, profile) =
         },
         { onConflict: 'user_id' }
     );
+
+    if (error) console.error("Error saving location:", error);
 };
 
 export function useLocationTracking() {
@@ -35,6 +37,64 @@ export function useLocationTracking() {
     const watchIdRef = useRef(null);
     const userIdRef = useRef(null);
     const profileRef = useRef({ username: 'Guest Map User', avatar_url: '' });
+
+    const startWatching = useCallback(async (userId = userIdRef.current, profile = profileRef.current, force = false) => {
+        if (!navigator.geolocation) {
+            console.warn("Geolocation is not supported by this browser.");
+            return;
+        }
+
+        if (!force && navigator.permissions) {
+            try {
+                const result = await navigator.permissions.query({ name: 'geolocation' });
+                if (result.state === 'prompt' || result.state === 'denied') {
+                    setShowGpsModal(true);
+                    return;
+                }
+            } catch (e) {
+            }
+        }
+        
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+        }
+        
+        setIsTracking(true);
+        console.log('📡 Starting GPS tracking...');
+        
+        watchIdRef.current = navigator.geolocation.watchPosition(
+            async (pos) => {
+                setShowGpsModal(false);
+                await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
+            },
+            (err) => {
+                console.warn('watchPosition error:', err.message);
+                if (err.code === 1) {
+                    stopWatching();
+                    setShowGpsModal(true);
+                }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
+    }, []);
+
+    const stopWatching = async () => {
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
+        }
+        setIsTracking(false);
+
+        if (userIdRef.current) {
+            await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
+        }
+    };
+
+    const manualAllow = async (pos) => {
+        setShowGpsModal(false);
+        await upsertUserLocation(userIdRef.current, pos.coords.latitude, pos.coords.longitude, profileRef.current);
+        startWatching(userIdRef.current, profileRef.current, true);
+    };
 
     useEffect(() => {
         let subscription;
@@ -93,54 +153,15 @@ export function useLocationTracking() {
 
         return () => {
             if (subscription) subscription.unsubscribe();
-            stopWatching();
+            if (watchIdRef.current !== null) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+            }
         };
-    }, []);
-
-    const startWatching = (userId, profile) => {
-        if (!navigator.geolocation) {
-            console.warn("Geolocation is not supported by this browser.");
-            return;
-        }
-        
-        if (watchIdRef.current !== null) {
-            navigator.geolocation.clearWatch(watchIdRef.current);
-        }
-        
-        setIsTracking(true);
-        console.log('📡 Starting GPS tracking (Automatic)...');
-        
-        watchIdRef.current = navigator.geolocation.watchPosition(
-            async (pos) => {
-                setShowGpsModal(false);
-                await upsertUserLocation(userId, pos.coords.latitude, pos.coords.longitude, profile);
-            },
-            (err) => {
-                console.warn('watchPosition error:', err.message);
-                if (err.code === 1) {
-                    stopWatching();
-                    setShowGpsModal(true);
-                }
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    };
-
-    const stopWatching = async () => {
-        if (watchIdRef.current !== null) {
-            navigator.geolocation.clearWatch(watchIdRef.current);
-            watchIdRef.current = null;
-        }
-        setIsTracking(false);
-        console.log('🛑 Stopped GPS tracking.');
-
-        if (userIdRef.current) {
-            await supabase.from('user_locations').delete().eq('user_id', userIdRef.current);
-        }
-    };
+    }, [startWatching]);
 
     return {
         showGpsModal,
-        setShowGpsModal
+        setShowGpsModal,
+        manualAllow
     };
 }
