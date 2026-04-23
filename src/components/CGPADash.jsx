@@ -628,7 +628,7 @@ export default function CGPADash() {
                     ${showLeaderboardOnMobile ? 'flex' : 'hidden lg:flex'}`}>
                         <div className="bg-slate-50 dark:bg-slate-800/80 p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
                             <h3 className="font-black text-slate-800 dark:text-white flex items-center gap-2 text-base sm:text-lg tracking-tight uppercase">
-                                <Trophy className="text-yellow-500 w-5 h-5 sm:w-6 sm:h-6" /> Wall of Validation
+                                <Trophy className="text-yellow-500 w-5 h-5 sm:w-6 sm:h-6" /> Dean's List
                             </h3>
                             <button onClick={fetchLeaderboard} className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors px-3 py-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg uppercase shadow-sm">
                                 Refresh
