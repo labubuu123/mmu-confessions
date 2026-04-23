@@ -153,28 +153,52 @@ export default function AdminPanel() {
         }
     }, [activeTab])
 
-    async function checkSession() { await supabase.auth.signOut(); setUser(null); }
+    async function checkSession() {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const isVerified = await verifyAdminStatus();
+                if (isVerified) {
+                    setUser(session.user);
+                }
+            } else {
+                setUser(null);
+            }
+        } catch (err) {
+            console.error("Session check error:", err);
+            setUser(null);
+        }
+    }
+
     async function signIn(e) {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-        if (error) {
+            if (error) {
+                setError('Sign-in error: ' + error.message);
+                return; // The finally block will handle setLoading(false)
+            }
+
+            const isVerified = await verifyAdminStatus();
+
+            if (!isVerified) {
+                setError('Access Denied: You do not have administrator privileges.');
+            } else {
+                setUser(data.user);
+            }
+        } catch (err) {
+            console.error("Unexpected sign-in error:", err);
+            setError('An unexpected error occurred during sign in.');
+        } finally {
+            // Guarantee that the loading spinner stops regardless of success or failure
             setLoading(false);
-            return setError('Sign-in error: ' + error.message);
-        }
-
-        const isVerified = await verifyAdminStatus();
-        setLoading(false);
-
-        if (!isVerified) {
-            setError('Access Denied: You do not have administrator privileges.');
-        } else {
-            setUser(data.user);
         }
     }
+
     async function signOut() {
         if (!window.confirm('Are you sure want to sign out?')) return;
         setLoading(true);
@@ -1460,9 +1484,9 @@ export default function AdminPanel() {
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${a.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-                                                            a.type === 'error' ? 'bg-red-100 text-red-700' :
-                                                                a.type === 'success' ? 'bg-green-100 text-green-700' :
-                                                                    'bg-blue-100 text-blue-700'
+                                                        a.type === 'error' ? 'bg-red-100 text-red-700' :
+                                                            a.type === 'success' ? 'bg-green-100 text-green-700' :
+                                                                'bg-blue-100 text-blue-700'
                                                         }`}>
                                                         {a.type}
                                                     </span>
