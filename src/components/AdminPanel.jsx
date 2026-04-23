@@ -31,6 +31,9 @@ export default function AdminPanel() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+    const [failedAttempts, setFailedAttempts] = useState(0)
+    const [lockoutTimer, setLockoutTimer] = useState(0)
+
     const [posts, setPosts] = useState([])
     const [polls, setPolls] = useState({})
     const [parentPosts, setParentPosts] = useState({})
@@ -89,6 +92,39 @@ export default function AdminPanel() {
             return false;
         }
     };
+
+    useEffect(() => {
+        let timer;
+        if (lockoutTimer > 0) {
+            timer = setTimeout(() => setLockoutTimer(prev => prev - 1), 1000);
+        } else if (lockoutTimer === 0 && failedAttempts >= 5) {
+            setFailedAttempts(0);
+        }
+        return () => clearTimeout(timer);
+    }, [lockoutTimer, failedAttempts]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        let timeout;
+        const resetTimer = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+                setError('Session expired due to inactivity. Please sign in again.');
+            }, 900000);
+        };
+
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        events.forEach(e => window.addEventListener(e, resetTimer));
+        resetTimer();
+
+        return () => {
+            clearTimeout(timeout);
+            events.forEach(e => window.removeEventListener(e, resetTimer));
+        };
+    }, [user]);
 
     useEffect(() => {
         checkSession()
@@ -172,6 +208,12 @@ export default function AdminPanel() {
 
     async function signIn(e) {
         e.preventDefault();
+
+        if (lockoutTimer > 0) {
+            setError(`Too many failed attempts. Try again in ${lockoutTimer}s.`);
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -179,22 +221,32 @@ export default function AdminPanel() {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
             if (error) {
-                setError('Sign-in error: ' + error.message);
-                return; // The finally block will handle setLoading(false)
+                const newAttempts = failedAttempts + 1;
+                setFailedAttempts(newAttempts);
+
+                if (newAttempts >= 5) {
+                    setLockoutTimer(60);
+                    setError(`Too many failed attempts. Locked out for 60s.`);
+                } else {
+                    setError('Invalid email or password.');
+                }
+                return;
             }
+
+            setFailedAttempts(0);
 
             const isVerified = await verifyAdminStatus();
 
             if (!isVerified) {
+                await supabase.auth.signOut();
                 setError('Access Denied: You do not have administrator privileges.');
             } else {
                 setUser(data.user);
             }
         } catch (err) {
             console.error("Unexpected sign-in error:", err);
-            setError('An unexpected error occurred during sign in.');
+            setError('An unexpected error occurred. Please try again.');
         } finally {
-            // Guarantee that the loading spinner stops regardless of success or failure
             setLoading(false);
         }
     }
@@ -651,8 +703,18 @@ export default function AdminPanel() {
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Password</label>
                             <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition" required />
                         </div>
-                        <button type="submit" disabled={loading} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2">
-                            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><LogIn className="w-5 h-5" /> Sign In</>}
+                        <button
+                            type="submit"
+                            disabled={loading || lockoutTimer > 0}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold transition flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : lockoutTimer > 0 ? (
+                                <><AlertTriangle className="w-5 h-5" /> Locked out ({lockoutTimer}s)</>
+                            ) : (
+                                <><LogIn className="w-5 h-5" /> Sign In</>
+                            )}
                         </button>
                         {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium">{error}</div>}
                     </form>
