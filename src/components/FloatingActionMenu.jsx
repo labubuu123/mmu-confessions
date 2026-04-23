@@ -17,7 +17,6 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import LiveActivityPanel from './LiveActivityPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-import GpsPermissionModal from './GpsPermissionModal';
 import { useLocationTracking } from '../hooks/useLocationTracking';
 
 const EighteenPlusIcon = ({ className }) => (
