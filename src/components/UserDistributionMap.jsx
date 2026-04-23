@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { supabase } from '../lib/supabaseClient';
 import { MapPin, Navigation, Loader2, Users, Radio, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocationTracking, getOrCreateGuestId } from './useLocationTracking';
+import { useLocationTracking, getOrCreateGuestId } from '../hooks/useLocationTracking';
 import GpsPermissionModal from './GpsPermissionModal';
 
 const simpleHash = (str) => {
