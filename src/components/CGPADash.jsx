@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone, Zap, Skull, AlertTriangle } from 'lucide-react';
+import { Trophy, Play, RotateCcw, Home, Coffee, BookOpen, ListOrdered, Smartphone, Zap, Skull, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const GAMEOVER_TITLES = [
@@ -53,8 +53,10 @@ export default function CGPADash() {
     const [playerName, setPlayerName] = useState('');
     const [nameError, setNameError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
     const [pendingSubmission, setPendingSubmission] = useState(null);
+
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const audioCtxRef = useRef(null);
 
     const reqRef = useRef(null);
     const frameRef = useRef(0);
@@ -75,6 +77,65 @@ export default function CGPADash() {
 
     const CANVAS_WIDTH = 800;
     const CANVAS_HEIGHT = 400;
+
+    const initAudio = () => {
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
+        }
+    };
+
+    const playSound = (type) => {
+        if (!soundEnabled) return;
+        initAudio();
+        const ctx = audioCtxRef.current;
+        if (!ctx) return;
+
+        const playTone = (freq, type, dur, vol, endFreq) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + dur);
+
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + dur);
+        };
+
+        switch (type) {
+            case 'jump':
+                playTone(300, 'sine', 0.2, 0.1, 600);
+                break;
+            case 'doubleJump':
+                playTone(400, 'sine', 0.15, 0.1, 800);
+                setTimeout(() => playTone(600, 'sine', 0.15, 0.1, 1000), 100);
+                break;
+            case 'powerup':
+                playTone(440, 'square', 0.1, 0.05, 880);
+                setTimeout(() => playTone(880, 'square', 0.2, 0.05, 1760), 100);
+                break;
+            case 'coin':
+                playTone(1200, 'sine', 0.1, 0.03, 2000);
+                break;
+            case 'crash':
+                playTone(150, 'sawtooth', 0.3, 0.1, 50);
+                break;
+            case 'gameOver':
+                playTone(300, 'sawtooth', 0.3, 0.1, 100);
+                setTimeout(() => playTone(250, 'sawtooth', 0.3, 0.1, 80), 300);
+                setTimeout(() => playTone(200, 'sawtooth', 0.5, 0.1, 50), 600);
+                break;
+            default:
+                break;
+        }
+    };
 
     useEffect(() => {
         fetchLeaderboard();
@@ -210,11 +271,13 @@ export default function CGPADash() {
         const p = playerRef.current;
 
         if (p.isGrounded) {
+            playSound('jump');
             p.dy = p.jumpForce;
             p.isGrounded = false;
             p.canDoubleJump = true;
             createParticles(p.x + p.width / 2, p.y + p.height, '#94a3b8', 10, 0.5);
         } else if (p.canDoubleJump) {
+            playSound('doubleJump');
             p.dy = p.jumpForce * 0.85;
             p.canDoubleJump = false;
             createParticles(p.x + p.width / 2, p.y + p.height, '#a78bfa', 15, 0.8);
@@ -223,6 +286,7 @@ export default function CGPADash() {
     };
 
     const startGame = () => {
+        initAudio();
         playerRef.current = { x: 80, y: 200, width: 48, height: 48, dy: 0, jumpForce: -15.0, trail: [], canDoubleJump: false, isGrounded: false, invincibleTimer: 0 };
         entitiesRef.current = { obstacles: [], powerups: [], popups: [], particles: [] };
         scoreRef.current = 0;
@@ -262,6 +326,7 @@ export default function CGPADash() {
     }, [gameState]);
 
     const triggerGameOver = () => {
+        playSound('gameOver');
         shakeRef.current = 15;
         setGameState('GAMEOVER');
         setFinalScore(Math.floor(scoreRef.current));
@@ -424,6 +489,7 @@ export default function CGPADash() {
 
             if (!pup.collected && p.x < pup.x + pup.w && p.x + p.width > pup.x && p.y < pup.y + pup.h && p.y + p.height > pup.y) {
                 pup.collected = true;
+                playSound('powerup');
                 createParticles(pup.x, pup.y, pup.color, 20, 1.2, pup.emoji);
 
                 if (pup.type === 'coffee') {
@@ -470,6 +536,7 @@ export default function CGPADash() {
             const margin = 6;
             if (p.x + margin < obs.x + obs.width - margin && p.x + p.width - margin > obs.x + margin && p.y + margin < obs.y + obs.height - margin && p.y + p.height - margin > obs.y + margin) {
                 if (p.invincibleTimer > 0) {
+                    playSound('crash');
                     createParticles(obs.x, obs.y, obs.color, 25, 2, "💥");
                     spawnPopup(obs.x, obs.y - 20, "DESTROYED!", "#facc15", 26);
                     shakeRef.current = 6;
@@ -484,6 +551,7 @@ export default function CGPADash() {
 
             if (!obs.passed && obs.x + obs.width < p.x) {
                 obs.passed = true;
+                playSound('coin');
                 const distanceToTop = (p.y + p.height) - obs.y;
                 if (distanceToTop > -10 && distanceToTop < 10) {
                     scoreRef.current += 30;
@@ -551,9 +619,18 @@ export default function CGPADash() {
                         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-xl shadow-md font-bold text-xs sm:text-sm">
                             <Home size={16} /> <span>Home</span>
                         </button>
-                        <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm uppercase shadow-sm">
-                            <Zap size={14} className="animate-pulse text-emerald-400" />
-                            <span>Arcade</span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setSoundEnabled(!soundEnabled)}
+                                className={`flex items-center justify-center p-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm shadow-sm transition-colors ${soundEnabled ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20' : 'text-slate-400 bg-slate-800 border border-slate-700'}`}
+                                title={soundEnabled ? "Mute Sound" : "Enable Sound"}
+                            >
+                                {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                            </button>
+                            <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl font-bold tracking-widest text-xs sm:text-sm uppercase shadow-sm">
+                                <Zap size={14} className="animate-pulse text-emerald-400" />
+                                <span>Arcade</span>
+                            </div>
                         </div>
                     </div>
 
@@ -568,9 +645,16 @@ export default function CGPADash() {
 
                         {gameState === 'START' && (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 overflow-y-auto">
-                                <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-md text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto">
+                                <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-md text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto relative">
 
-                                    <div className="text-5xl sm:text-6xl animate-bounce drop-shadow-lg leading-none">🤓</div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setSoundEnabled(!soundEnabled); }}
+                                        className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-700 p-2 rounded-lg"
+                                    >
+                                        {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                                    </button>
+
+                                    <div className="text-5xl sm:text-6xl animate-bounce drop-shadow-lg leading-none mt-4">🤓</div>
 
                                     <div className="flex flex-col items-center gap-1 sm:gap-2">
                                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 tracking-tight leading-tight">CGPA SURVIVOR</h2>
@@ -613,7 +697,7 @@ export default function CGPADash() {
 
                         {gameState === 'GAMEOVER' && (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto">
-                                <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-sm text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto">
+                                <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-sm text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto relative">
 
                                     {!pendingSubmission ? (
                                         <>
