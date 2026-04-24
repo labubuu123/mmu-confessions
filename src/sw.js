@@ -11,14 +11,17 @@ self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
   
   const options = {
-    body: data.body || 'New activity on MMU Confessions',
-    icon: '/favicon.svg',
+    body: data.body || 'You have a new update on MMU Confessions',
+    icon: '/icon-192x192.png',
     badge: '/favicon.svg',
-    data: { url: data.url || '/' }
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/' },
+    tag: data.tag || 'general-update',
+    renotify: true
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'New Notification', options)
+    self.registration.showNotification(data.title || 'MMU Confessions', options)
   );
 });
 
@@ -28,10 +31,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-          return client.focus();
-        }
+      const client = windowClients.find(c => c.visibilityState === 'visible') || windowClients[0];
+      
+      if (client && 'focus' in client) {
+        client.navigate(urlToOpen);
+        return client.focus();
       }
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
