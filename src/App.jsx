@@ -1,5 +1,5 @@
-import React, { useEffect, useState, lazy, Suspense } from "react";
-import { Routes, Route, useParams, useNavigate, Link } from "react-router-dom";
+import React, { useEffect, useState, lazy, Suspense, useRef } from "react";
+import { Routes, Route, useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { Megaphone, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -32,7 +32,21 @@ const AppContent = () => {
   const [onlineCount, setOnlineCount] = useState(0);
   const [announcement, setAnnouncement] = useState(null);
 
+  const location = useLocation();
+  const prevPathname = useRef(location.pathname);
+
   useRealtimeNotifications();
+
+  useEffect(() => {
+    const isOpeningModal = location.pathname.startsWith('/post/') && prevPathname.current === '/';
+    const isClosingModal = location.pathname === '/' && prevPathname.current.startsWith('/post/');
+
+    if (!isOpeningModal && !isClosingModal) {
+      window.scrollTo(0, 0);
+    }
+
+    prevPathname.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
