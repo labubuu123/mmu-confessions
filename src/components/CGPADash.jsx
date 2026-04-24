@@ -647,13 +647,6 @@ export default function CGPADash() {
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 overflow-y-auto">
                                 <div className="bg-slate-800 border border-slate-600 p-5 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[90%] sm:max-w-md text-center flex flex-col items-center justify-center gap-3 sm:gap-4 my-auto relative">
 
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setSoundEnabled(!soundEnabled); }}
-                                        className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-slate-700 p-2 rounded-lg"
-                                    >
-                                        {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                                    </button>
-
                                     <div className="text-5xl sm:text-6xl animate-bounce drop-shadow-lg leading-none mt-4">🤓</div>
 
                                     <div className="flex flex-col items-center gap-1 sm:gap-2">
