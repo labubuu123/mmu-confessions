@@ -24,6 +24,7 @@ import { useRealtimeNotifications } from "./hooks/useRealtimeNotifications";
 import { supabase } from "./lib/supabaseClient";
 import ReloadPrompt from "./components/ReloadPrompt";
 import UserDistributionMap from './components/UserDistributionMap';
+import BuyMeCoffee from "./components/BuyMeCoffee";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
@@ -180,7 +181,7 @@ const AppContent = () => {
           <Route path="/cgpa-dash" element={<CGPADash />} />
         </Routes>
       </main>
-
+      <BuyMeCoffee />
       <FloatingActionMenu />
 
       <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
