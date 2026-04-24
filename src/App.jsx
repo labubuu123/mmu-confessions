@@ -38,14 +38,21 @@ const AppContent = () => {
   useRealtimeNotifications();
 
   useEffect(() => {
-    const isOpeningModal = location.pathname.startsWith('/post/') && prevPathname.current === '/';
-    const isClosingModal = location.pathname === '/' && prevPathname.current.startsWith('/post/');
+    const currentPath = location.pathname;
+    const prevPath = prevPathname.current;
+
+    const isOpeningModal = currentPath.startsWith('/post/') && prevPath === '/';
+    const isClosingModal = currentPath === '/' && prevPath.startsWith('/post/');
 
     if (!isOpeningModal && !isClosingModal) {
-      window.scrollTo(0, 0);
+      setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }, 10);
     }
 
-    prevPathname.current = location.pathname;
+    prevPathname.current = currentPath;
   }, [location.pathname]);
 
   useEffect(() => {
