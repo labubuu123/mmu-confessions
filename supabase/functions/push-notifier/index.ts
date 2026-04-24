@@ -18,6 +18,7 @@ serve(async (req) => {
 
   try {
     const payload = await req.json();
+    
     const { table, record } = payload;
 
     const supabase = createClient(
@@ -31,57 +32,74 @@ serve(async (req) => {
     let url = "/";
     let tag = "general";
 
-    if (table === 'whisper_messages') {
-      targetUserId = record.receiver_id;
-      title = "New Whisper 🤫";
-      body = record.content ? `${record.content.substring(0, 40)}...` : "Someone sent you a secret message.";
-      url = `/whisper?chat=${record.sender_id}`;
-      tag = `whisper-${record.sender_id}`;
+    if (table === 'confessions') {
+      title = 'New Confession! 📢';
+      body = record.text ? `${record.text.substring(0, 50)}...` : 'Someone posted a new confession.';
+      url = `/post/${record.id}`;
+      tag = `confession-${record.id}`;
     }
     
+    else if (table === 'whisper_messages') {
+      title = `New message in ${record.room_tag} 🤫`;
+      body = record.content ? `${record.author_name}: ${record.content.substring(0, 40)}...` : `Someone wrote a message in ${record.room_tag}`;
+      url = `/whisper?room=${encodeURIComponent(record.room_tag)}`;
+      tag = `whisper-${record.room_tag}`;
+      
+      if (record.reply_to_id) {
+        const { data: origMsg } = await supabase.from('whisper_messages').select('author_id').eq('id', record.reply_to_id).single();
+        if (origMsg && origMsg.author_id && origMsg.author_id !== record.author_id) {
+            targetUserId = origMsg.author_id;
+            title = `New Reply in ${record.room_tag} 💬`;
+        }
+      }
+    }
+
+    else if (table === 'whisper_dm_messages') {
+      const { data: thread } = await supabase.from('whisper_dm_threads').select('user1_id, user2_id').eq('id', record.thread_id).single();
+      if (thread) {
+          targetUserId = thread.user1_id === record.sender_id ? thread.user2_id : thread.user1_id;
+      }
+      title = `Private Whisper from ${record.sender_name} 🤫`;
+      body = record.content ? `${record.content.substring(0, 40)}...` : 'Sent you a private message.';
+      url = `/whisper`;
+      tag = `dm-${record.thread_id}`;
+    }
+
+    else if (table === 'comments') {
+      const { data: post } = await supabase.from('confessions').select('author_id').eq('id', record.post_id).single();
+      if (post && post.author_id !== record.author_id) {
+        targetUserId = post.author_id;
+        title = "New Reply on your Confession 💬";
+        body = record.text ? `${record.text.substring(0, 40)}...` : "Someone replied to your post.";
+        url = `/post/${record.post_id}`;
+        tag = `comment-${record.post_id}`;
+      } else {
+        return new Response(JSON.stringify({ message: 'Ignored: Comment on own post' }), { headers: corsHeaders });
+      }
+    }
+
     else if (table === 'matchmaker_matches') {
-      targetUserId = record.matched_user_id;
+      targetUserId = record.user2_id;
       title = "It's a Match! 💘";
       body = "Someone matched with your profile in the Matchmaker.";
       url = `/matchmaker/connections`;
       tag = "new-match";
     }
 
-    else if (table === 'comments') {
-      const { data: post } = await supabase
-        .from('confessions')
-        .select('author_id')
-        .eq('id', record.post_id)
-        .single();
-        
-      if (post && post.author_id !== record.user_id) {
-        targetUserId = post.author_id;
-        title = "New Reply 💬";
-        body = "Someone replied to your confession.";
-        url = `/post/${record.post_id}`;
-        tag = `comment-${record.post_id}`;
-      }
+    else {
+      return new Response(JSON.stringify({ message: 'Table not supported by push-notifier' }), { headers: corsHeaders });
     }
 
-    else if (table === 'marketplace_offers') {
-      targetUserId = record.seller_id;
-      title = "New Offer on Marketplace 🛒";
-      body = `Someone is interested in your item!`;
-      url = `/marketplace/item/${record.item_id}`;
-      tag = `offer-${record.item_id}`;
+    let query = supabase.from('push_subscriptions').select('*');
+    
+    if (targetUserId) {
+        query = query.eq('user_id', targetUserId);
     }
 
-    if (!targetUserId) {
-      return new Response(JSON.stringify({ message: 'Ignored: No target user identified' }), { headers: corsHeaders });
-    }
-
-    const { data: subscriptions } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('user_id', targetUserId);
+    const { data: subscriptions } = await query;
 
     if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ message: 'User has no active subscriptions' }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ message: 'No active subscribers found for this target' }), { headers: corsHeaders });
     }
 
     const SITE_URL = 'https://mmuconfessions.fun';
