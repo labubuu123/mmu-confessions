@@ -25,7 +25,7 @@ const isStandalone = () => {
   return !!window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 };
 
-export const usePushSubscription = (userId = null) => {
+export const usePushSubscription = () => {
   const [loading, setLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -54,21 +54,10 @@ export const usePushSubscription = (userId = null) => {
 
     if (!('PushManager' in window)) {
       if (isIOS() && !isStandalone()) {
-        alert("To enable notifications on iPhone/iPad, tap 'Share' (square with an arrow) -> 'Add to Home Screen'. Open the app from your home screen to enable notifications.");
+        alert("To enable notifications on iPhone/iPad, you must first tap 'Share' (the square with an arrow) and select 'Add to Home Screen'. Then open the app from your home screen to enable notifications.");
       } else {
         alert("Push notifications are not supported on this device or browser.");
       }
-      return;
-    }
-
-    let currentUserId = userId;
-    if (!currentUserId) {
-      const { data } = await supabase.auth.getSession();
-      currentUserId = data.session?.user?.id || localStorage.getItem('anon_user_id') || localStorage.getItem('matchmaker_id');
-    }
-
-    if (!currentUserId) {
-      alert("You must be logged in or have a valid profile to enable notifications.");
       return;
     }
 
@@ -89,18 +78,16 @@ export const usePushSubscription = (userId = null) => {
 
       const subJson = subscription.toJSON();
       
-      const { error } = await supabase.from('push_subscriptions').upsert({
-        user_id: currentUserId,
+      const { error } = await supabase.from('push_subscriptions').insert({
         endpoint: subJson.endpoint,
         p256dh: subJson.keys.p256dh,
-        auth: subJson.keys.auth,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'endpoint' });
+        auth: subJson.keys.auth
+      });
 
-      if (error) throw error;
+      if (error && error.code !== '23505') throw error;
 
       setIsSubscribed(true);
-      alert("Notifications enabled! You'll be alerted for new matches, whispers, and replies.");
+      alert("Notifications enabled! You will now be alerted of new confessions.");
     } catch (error) {
       console.error("Subscription failed:", error);
       alert("Failed to subscribe.");
