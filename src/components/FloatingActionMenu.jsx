@@ -75,9 +75,22 @@ export default function FloatingActionMenu() {
     } = useLocationTracking();
 
     useEffect(() => {
+        const getOrSetAnonId = () => {
+            let anonId = localStorage.getItem('anon_support_id');
+            if (!anonId) {
+                anonId = 'anon_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+                localStorage.setItem('anon_support_id', anonId);
+            }
+            return anonId;
+        };
+
         const fetchIdentity = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) setIdentityId(session.user.id);
+            if (session?.user) {
+                setIdentityId(session.user.id);
+            } else {
+                setIdentityId(getOrSetAnonId());
+            }
         };
         fetchIdentity();
 
@@ -88,7 +101,7 @@ export default function FloatingActionMenu() {
             if (session?.user) {
                 setIdentityId(session.user.id);
             } else {
-                setIdentityId(null);
+                setIdentityId(getOrSetAnonId());
             }
         });
 
@@ -160,6 +173,8 @@ export default function FloatingActionMenu() {
             <span className="text-xs font-medium text-gray-700 dark:text-slate-300 text-center">{label}</span>
         </motion.button>
     );
+
+    const isAnonymous = String(identityId).startsWith('anon_');
 
     return (
         <>
@@ -262,8 +277,8 @@ export default function FloatingActionMenu() {
                                     <div>
                                         <h3 className="font-bold text-sm">Admin Support</h3>
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                                            <p className="text-xs text-indigo-100">Authenticated User</p>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${isAnonymous ? 'bg-yellow-400' : 'bg-green-400'}`} />
+                                            <p className="text-xs text-indigo-100">{isAnonymous ? 'Guest User' : 'Authenticated User'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -271,12 +286,7 @@ export default function FloatingActionMenu() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-slate-950 scroll-smooth">
-                                {!identityId ? (
-                                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-2">
-                                        <MessageSquare className="w-12 h-12 opacity-20" />
-                                        <p className="text-sm">Please log in to contact support.</p>
-                                    </div>
-                                ) : chatHistory.length === 0 ? (
+                                {chatHistory.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-2">
                                         <MessageSquare className="w-12 h-12 opacity-20" />
                                         <p className="text-sm">How can we help you today?</p>
@@ -294,10 +304,10 @@ export default function FloatingActionMenu() {
                             <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 flex gap-2 shrink-0 safe-pb">
                                 <input
                                     type="text" value={message} onChange={(e) => setMessage(e.target.value)}
-                                    disabled={!identityId} placeholder={identityId ? 'Type a message...' : 'Login required...'}
+                                    placeholder="Type a message..."
                                     className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
                                 />
-                                <button type="submit" disabled={!message.trim() || !identityId} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
+                                <button type="submit" disabled={!message.trim()} className="p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-95">
                                     <Send className="w-4 h-4" />
                                 </button>
                             </form>
