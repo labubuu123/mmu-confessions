@@ -33,7 +33,6 @@ export default function AdminPanel() {
     const [error, setError] = useState(null)
     const [failedAttempts, setFailedAttempts] = useState(0)
     const [lockoutTimer, setLockoutTimer] = useState(0)
-
     const [posts, setPosts] = useState([])
     const [polls, setPolls] = useState({})
     const [parentPosts, setParentPosts] = useState({})
@@ -73,6 +72,8 @@ export default function AdminPanel() {
     const [marketLoading, setMarketLoading] = useState(false);
     const [analyticsData, setAnalyticsData] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [ads, setAds] = useState([]);
+    const [loadingAds, setLoadingAds] = useState(false);
 
     const verifyAdminStatus = async () => {
         try {
@@ -168,6 +169,7 @@ export default function AdminPanel() {
         if (activeTab === 'marketplace') fetchMarketItems();
         if (activeTab === 'analytics') fetchAnalyticsData();
         if (activeTab === 'lostfound') fetchLostFound();
+        if (activeTab === 'ads') fetchAds();
     }, [posts, activeTab, user])
 
     useEffect(() => {
@@ -683,6 +685,54 @@ export default function AdminPanel() {
         fetchLostFound();
     }
 
+    const fetchAds = async () => {
+        setLoadingAds(true);
+        try {
+            const { data, error } = await supabase
+                .from('advertisements')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setAds(data || []);
+        } catch (error) {
+            console.error('Error fetching ads:', error);
+        } finally {
+            setLoadingAds(false);
+        }
+    };
+
+    const handleAdStatus = async (adId, newStatus) => {
+        try {
+            const { error } = await supabase
+                .from('advertisements')
+                .update({ status: newStatus })
+                .eq('id', adId);
+
+            if (error) throw error;
+            setAds(ads.map(ad => ad.id === adId ? { ...ad, status: newStatus } : ad));
+        } catch (error) {
+            console.error('Error updating ad:', error);
+            alert('Failed to update advertisement status');
+        }
+    };
+
+    const deleteAd = async (adId) => {
+        if (!window.confirm('Are you sure you want to permanently delete this advertisement?')) return;
+        try {
+            const { error } = await supabase
+                .from('advertisements')
+                .delete()
+                .eq('id', adId);
+
+            if (error) throw error;
+            setAds(ads.filter(ad => ad.id !== adId));
+        } catch (error) {
+            console.error('Error deleting ad:', error);
+            alert('Failed to delete advertisement');
+        }
+    };
+
     if (!user) {
         return (
             <div className="flex items-start justify-center bg-gray-50 dark:bg-gray-900 px-4 pt-10 md:pt-12">
@@ -735,6 +785,7 @@ export default function AdminPanel() {
         { id: 'sponsorships', label: 'Sponsorships', icon: Briefcase },
         { id: 'support', label: 'Support', icon: MessageSquare },
         { id: 'announcements', label: 'Announcements', icon: Megaphone },
+        { id: 'ads', label: 'Advertisements', icon: Megaphone },
     ];
 
     return (
@@ -802,6 +853,11 @@ export default function AdminPanel() {
                         {activeTab === 'analytics' && (
                             <button onClick={() => fetchAnalyticsData()} className="p-2 text-gray-500 hover:text-indigo-600 transition" title="Refresh">
                                 <RefreshCw className={`w-5 h-5 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                            </button>
+                        )}
+                        {activeTab === 'ads' && (
+                            <button onClick={() => fetchAds()} className="p-2 text-gray-500 hover:text-indigo-600 transition" title="Refresh Ads">
+                                <RefreshCw className={`w-5 h-5 ${loadingAds ? 'animate-spin' : ''}`} />
                             </button>
                         )}
                         <button onClick={signOut} className="p-2 text-gray-500 hover:text-red-600 transition" title="Sign Out">
@@ -1071,7 +1127,7 @@ export default function AdminPanel() {
                                                         )}
 
                                                         {p.is_sponsored && p.sponsor_url && (
-                                                            <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30 text-xs text-yellow-700 dark:text-yellow-500 flex items-center gap-2">
+                                                            <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:yellow-900/30 text-xs text-yellow-700 dark:text-yellow-500 flex items-center gap-2">
                                                                 <LinkIcon className="w-4 h-4" />
                                                                 Link: <a href={p.sponsor_url} target="_blank" rel="noreferrer" className="underline truncate">{p.sponsor_url}</a>
                                                             </div>
@@ -1384,6 +1440,104 @@ export default function AdminPanel() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'ads' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-bold text-gray-600 dark:text-gray-400 uppercase text-sm">Advertisement Management</h3>
+                                <span className="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg font-bold">{ads.length} ads</span>
+                            </div>
+
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400">
+                                            <tr>
+                                                <th className="px-6 py-4 font-semibold">Poster</th>
+                                                <th className="px-6 py-4 font-semibold">Details</th>
+                                                <th className="px-6 py-4 font-semibold">Package & Payment</th>
+                                                <th className="px-6 py-4 font-semibold">Status</th>
+                                                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {ads.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                                        No advertisements found.
+                                                    </td>
+                                                </tr>
+                                            ) : ads.map(ad => (
+                                                <tr key={ad.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <a href={ad.poster_url} target="_blank" rel="noreferrer">
+                                                            <img src={ad.poster_url} alt="Ad" className="w-24 h-24 object-cover rounded-xl border border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity" />
+                                                        </a>
+                                                    </td>
+                                                    <td className="px-6 py-4 max-w-xs">
+                                                        <p className="text-gray-900 dark:text-white font-medium line-clamp-2 mb-2">{ad.caption}</p>
+                                                        <a href={ad.whatsapp_link} target="_blank" rel="noreferrer" className="text-green-600 dark:text-green-400 font-medium text-xs hover:underline flex items-center mb-1">
+                                                            <LinkIcon className="w-3 h-3 mr-1" /> Check WhatsApp Link
+                                                        </a>
+                                                        <p className="text-gray-400 text-xs flex items-center">
+                                                            <Clock className="w-3 h-3 mr-1" />
+                                                            {new Date(ad.created_at).toLocaleDateString()}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 mb-2 border border-blue-200 dark:border-blue-800/50">
+                                                            {ad.package_type === 'feed' ? 'Pinned Feed' : 'Marketplace Banner'}
+                                                        </span>
+                                                        <div className="text-gray-900 dark:text-white font-extrabold text-lg">
+                                                            RM {ad.amount_paid}.00
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold border ${ad.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50' :
+                                                            ad.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/50' :
+                                                                'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800/50'
+                                                            }`}>
+                                                            {ad.status === 'pending_approval' ? 'PENDING' : ad.status.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end space-x-2">
+                                                            {ad.status !== 'approved' && (
+                                                                <button
+                                                                    onClick={() => handleAdStatus(ad.id, 'approved')}
+                                                                    className="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors border border-green-100 dark:border-green-800/30"
+                                                                    title="Approve Ad"
+                                                                >
+                                                                    <CheckCircle className="w-5 h-5" />
+                                                                </button>
+                                                            )}
+                                                            {ad.status !== 'rejected' && (
+                                                                <button
+                                                                    onClick={() => handleAdStatus(ad.id, 'rejected')}
+                                                                    className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-800/30"
+                                                                    title="Reject Ad"
+                                                                >
+                                                                    <XCircle className="w-5 h-5" />
+                                                                </button>
+                                                            )}
+                                                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                                                            <button
+                                                                onClick={() => deleteAd(ad.id)}
+                                                                className="p-2 bg-gray-50 dark:bg-gray-800 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border border-gray-200 dark:border-gray-700"
+                                                                title="Delete Ad"
+                                                            >
+                                                                <Trash2 className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}

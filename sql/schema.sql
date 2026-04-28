@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS public.whisper_dm_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS user_locations (
+CREATE TABLE IF NOT EXISTS public.user_locations (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     username TEXT,
     avatar_url TEXT,
@@ -413,11 +413,26 @@ CREATE TABLE IF NOT EXISTS user_locations (
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
-CREATE TABLE IF NOT EXISTS minigame_scores (
+CREATE TABLE IF NOT EXISTS public.minigame_scores (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     username TEXT NOT NULL,
     score INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.advertisements (
+    id uuid default gen_random_uuid() primary key,
+    package_type text not null,
+    brand_name text not null,
+    color text default '#3B82F6',
+    caption text not null,
+    website_link text,
+    whatsapp_link text,
+    poster_url text not null,
+    media_urls text[],
+    amount_paid integer not null,
+    status text default 'pending_approval',
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
@@ -501,6 +516,7 @@ ALTER TABLE public.whisper_dm_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whisper_dm_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.minigame_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.advertisements ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -1662,6 +1678,15 @@ CREATE POLICY "Allow anyone to update location" ON public.user_locations FOR UPD
 CREATE POLICY "Allow public read access" ON public.minigame_scores FOR SELECT USING (true);
 CREATE POLICY "Allow anon insert" ON public.minigame_scores FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow anon update" ON public.minigame_scores FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public inserts for advertisements" ON public.advertisements FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public to view approved advertisements" ON public.advertisements FOR SELECT USING (status = 'approved');
+CREATE POLICY "Allow admins to view all advertisements" ON public.advertisements FOR SELECT USING (public.is_admin());
+CREATE POLICY "Allow admins to update advertisements" ON public.advertisements FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Allow admins to delete advertisements" ON public.advertisements FOR DELETE USING (public.is_admin());
+CREATE POLICY "Allow public uploads to ads bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ads');
+CREATE POLICY "Allow public to view ads bucket" ON storage.objects FOR SELECT USING (bucket_id = 'ads');
+CREATE POLICY "Allow admins to delete ads bucket" ON storage.objects FOR DELETE USING (bucket_id = 'ads' AND public.is_admin());
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;

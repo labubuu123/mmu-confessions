@@ -25,6 +25,7 @@ import { supabase } from "./lib/supabaseClient";
 import ReloadPrompt from "./components/ReloadPrompt";
 import UserDistributionMap from './components/UserDistributionMap';
 import BuyMeCoffee from "./components/BuyMeCoffee";
+import AdvertiseWithUs from './components/AdvertiseWithUs';
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 
@@ -179,6 +180,7 @@ const AppContent = () => {
           <Route path="/whisper" element={<WhisperChat />} />
           <Route path="/map" element={<UserDistributionMap />} />
           <Route path="/cgpa-dash" element={<CGPADash />} />
+          <Route path="/advertise" element={<AdvertiseWithUs />} />
         </Routes>
       </main>
       <BuyMeCoffee />

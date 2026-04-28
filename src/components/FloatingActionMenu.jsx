@@ -11,7 +11,8 @@ import {
     ShoppingBag,
     Lightbulb,
     Globe,
-    Gamepad2
+    Gamepad2,
+    Megaphone
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -157,6 +158,7 @@ export default function FloatingActionMenu() {
     const handleMapClick = () => { setIsOpen(false); navigate('/map'); };
     const handleToolsClick = () => { setIsOpen(false); navigate('/tools'); };
     const handleGameClick = () => { setIsOpen(false); navigate('/cgpa-dash'); };
+    const handleAdvertiseClick = () => { setIsOpen(false); navigate('/advertise'); };
     const handleContactAdminClick = () => { setIsOpen(false); setIsChatOpen(true); setIsActivityOpen(false); };
     const handleLiveActivityClick = () => { setIsOpen(false); setIsActivityOpen(true); setIsChatOpen(false); };
     const handleDismissTips = () => { setShowTips(false); localStorage.setItem('has_seen_menu_tips_v1', 'true'); };
@@ -237,6 +239,7 @@ export default function FloatingActionMenu() {
                                 <MenuButton icon={Activity} label="Live Comments" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
                                 <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
                                 <MenuButton icon={Gamepad2} label="Mini Game" onClick={handleGameClick} bgClass="bg-purple-100 dark:bg-purple-900/40" colorClass="text-purple-600 dark:text-purple-400" />
+                                <MenuButton icon={Megaphone} label="Advertise With Us" onClick={handleAdvertiseClick} bgClass="bg-yellow-100 dark:bg-yellow-900/40" colorClass="text-yellow-600 dark:text-yellow-400" />
                             </div>
                             <button
                                 onClick={handleContactAdminClick}
