@@ -1689,7 +1689,6 @@ CREATE POLICY "Allow admins to view all advertisements" ON public.advertisements
 CREATE POLICY "Allow admins to update advertisements" ON public.advertisements FOR UPDATE USING (public.is_admin());
 CREATE POLICY "Allow admins to delete advertisements" ON public.advertisements FOR DELETE USING (public.is_admin());
 CREATE POLICY "Allow public uploads to ads bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ads');
-CREATE POLICY "Allow public to view ads bucket" ON storage.objects FOR SELECT USING (bucket_id = 'ads');
 CREATE POLICY "Allow admins to delete ads bucket" ON storage.objects FOR DELETE USING (bucket_id = 'ads' AND public.is_admin());
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
