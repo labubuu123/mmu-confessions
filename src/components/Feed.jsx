@@ -32,22 +32,39 @@ const fetchConfessions = async ({ pageParam = 0 }) => {
 
     let ads = [];
     if (pageParam === 0) {
-        const { data: adsData } = await supabase
+        const { data: adsData, error: adsError } = await supabase
             .from('advertisements')
             .select('*')
             .eq('status', 'approved')
             .order('created_at', { ascending: false });
 
-        ads = (adsData || []).map(ad => ({
-            ...ad,
-            is_sponsored: true,
-            author_name: ad.brand_name,
-            text: ad.caption,
-            media_url: ad.poster_url,
-            media_type: 'images',
-            reactions: [],
-            comments_count: 0
-        }));
+        if (!adsError && adsData) {
+            ads = adsData.map(ad => {
+                let waNumber = ad.whatsapp_link || '';
+                if (waNumber.includes('wa.me/')) {
+                    waNumber = waNumber.split('wa.me/')[1];
+                }
+
+                return {
+                    id: `ad-${ad.id}`,
+                    is_sponsored: true,
+                    author_name: ad.brand_name,
+                    brand_color: ad.color,
+                    text: ad.caption,
+                    sponsor_url: ad.website_link,
+                    whatsapp_number: waNumber,
+                    media_url: ad.poster_url,
+                    media_urls: ad.media_urls,
+                    media_type: 'images',
+                    created_at: ad.created_at,
+                    pinned: true,
+                    reactions: [],
+                    events: [],
+                    polls: [],
+                    lost_and_found: []
+                };
+            });
+        }
     }
 
     return [...ads, ...(confessions || [])];
@@ -73,7 +90,8 @@ export default function Feed() {
         queryKey: ['confessions'],
         queryFn: fetchConfessions,
         getNextPageParam: (lastPage, allPages) => {
-            return lastPage?.length >= 10 ? allPages.length : undefined;
+            const confessionCount = lastPage?.filter(post => !post.is_sponsored).length || 0;
+            return confessionCount === 10 ? allPages.length : undefined;
         },
         staleTime: 1000 * 60 * 5,
         retry: 1,
@@ -144,7 +162,7 @@ export default function Feed() {
 
             const firstPage = oldData.pages[0] ? [...oldData.pages[0]] : [];
             const newFirstPage = [...newPostsQueue, ...firstPage];
-            const uniqueFirstPage = Array.from(new Map(newFirstPage.map(item => [item.id || item.brand_name, item])).values());
+            const uniqueFirstPage = Array.from(new Map(newFirstPage.map(item => [item.id, item])).values());
 
             return {
                 ...oldData,
@@ -258,14 +276,14 @@ export default function Feed() {
                         <Virtuoso
                             useWindowScroll
                             data={allPosts}
-                            computeItemKey={(index, post) => post.id || post.brand_name || index}
+                            computeItemKey={(index, post) => post.id || index}
                             endReached={loadMore}
                             overscan={500}
                             itemContent={(index, post) => (
                                 <div className="pb-2">
                                     <PostCard
                                         post={post}
-                                        onOpen={(p) => p.is_sponsored ? null : navigate(`/post/${p.id}`)}
+                                        onOpen={(p) => navigate(p.is_sponsored ? '#' : `/post/${p.id}`)}
                                         onQuote={handleQuote}
                                         priority={index < 2}
                                     />
