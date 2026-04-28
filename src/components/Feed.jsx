@@ -10,7 +10,50 @@ import PostModal from './PostModal'
 import { FeedSkeleton } from './LoadingSkeleton'
 import SEO from './SEO'
 
-const fetchConfessions = async ({ pageParam = 0 }) => {
+const fetchConfessions = async ({ pageParam = 0, signal }) => {
+    let ads = [];
+    
+    if (pageParam === 0) {
+        try {
+            const { data: adsData, error: adsError } = await supabase
+                .from('advertisements')
+                .select('*')
+                .eq('status', 'approved')
+                .order('created_at', { ascending: false })
+                .abortSignal(signal);
+
+            if (!adsError && adsData) {
+                ads = adsData.map(ad => {
+                    let waNumber = ad.whatsapp_link || '';
+                    if (waNumber.includes('wa.me/')) {
+                        waNumber = waNumber.split('wa.me/')[1];
+                    }
+
+                    return {
+                        id: `ad-${ad.id}`,
+                        is_sponsored: true,
+                        author_name: ad.brand_name,
+                        brand_color: ad.color,
+                        text: ad.caption,
+                        sponsor_url: ad.website_link,
+                        whatsapp_number: waNumber,
+                        media_url: ad.poster_url,
+                        media_urls: ad.media_urls,
+                        media_type: 'images',
+                        created_at: ad.created_at,
+                        pinned: true,
+                        reactions: [],
+                        events: [],
+                        polls: [],
+                        lost_and_found: []
+                    };
+                });
+            }
+        } catch (error) {
+            console.warn("Ads fetch aborted or failed:", error.message);
+        }
+    }
+
     const { data: confessions, error: confError } = await supabase
         .from('confessions')
         .select(`
@@ -23,48 +66,14 @@ const fetchConfessions = async ({ pageParam = 0 }) => {
         .eq('approved', true)
         .order('pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .range(pageParam * 10, (pageParam + 1) * 10 - 1);
+        .range(pageParam * 10, (pageParam + 1) * 10 - 1)
+        .abortSignal(signal);
 
     if (confError) {
-        console.error("Fetch error:", confError.message);
-        throw new Error(confError.message);
-    }
-
-    let ads = [];
-    if (pageParam === 0) {
-        const { data: adsData, error: adsError } = await supabase
-            .from('advertisements')
-            .select('*')
-            .eq('status', 'approved')
-            .order('created_at', { ascending: false });
-
-        if (!adsError && adsData) {
-            ads = adsData.map(ad => {
-                let waNumber = ad.whatsapp_link || '';
-                if (waNumber.includes('wa.me/')) {
-                    waNumber = waNumber.split('wa.me/')[1];
-                }
-
-                return {
-                    id: `ad-${ad.id}`,
-                    is_sponsored: true,
-                    author_name: ad.brand_name,
-                    brand_color: ad.color,
-                    text: ad.caption,
-                    sponsor_url: ad.website_link,
-                    whatsapp_number: waNumber,
-                    media_url: ad.poster_url,
-                    media_urls: ad.media_urls,
-                    media_type: 'images',
-                    created_at: ad.created_at,
-                    pinned: true,
-                    reactions: [],
-                    events: [],
-                    polls: [],
-                    lost_and_found: []
-                };
-            });
+        if (confError.name !== 'AbortError' && !confError.message?.includes('AbortError')) {
+            console.error("Fetch error:", confError.message);
         }
+        throw new Error(confError.message);
     }
 
     return [...ads, ...(confessions || [])];
@@ -84,6 +93,7 @@ export default function Feed() {
         hasNextPage,
         isFetchingNextPage,
         status,
+        isLoading,
         refetch,
         isRefetching
     } = useInfiniteQuery({
@@ -93,9 +103,11 @@ export default function Feed() {
             const confessionCount = lastPage?.filter(post => !post.is_sponsored).length || 0;
             return confessionCount === 10 ? allPages.length : undefined;
         },
-        staleTime: 1000 * 60 * 5,
-        retry: 1,
-        retryDelay: 1000,
+        staleTime: 1000 * 60 * 2,
+        retry: 3,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
     });
 
     const allPosts = useMemo(() => {
@@ -103,7 +115,7 @@ export default function Feed() {
     }, [data]);
 
     useEffect(() => {
-        const channelName = 'global-feed-updates';
+        const channelName = `global-feed-updates-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         const channel = supabase
             .channel(channelName)
             .on('postgres_changes', {
@@ -215,6 +227,8 @@ export default function Feed() {
         }
     };
 
+    const isInitialLoading = isLoading || status === 'loading' || status === 'pending';
+
     return (
         <>
             <SEO
@@ -242,7 +256,7 @@ export default function Feed() {
                 )}
 
                 <div className="space-y-6">
-                    {status === 'loading' ? (
+                    {isInitialLoading ? (
                         <FeedSkeleton count={3} />
                     ) : status === 'error' ? (
                         <div className="text-center py-20 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30 mt-4 shadow-sm">
