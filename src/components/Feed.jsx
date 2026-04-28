@@ -11,7 +11,7 @@ import { FeedSkeleton } from './LoadingSkeleton'
 import SEO from './SEO'
 
 const fetchConfessions = async ({ pageParam = 0 }) => {
-    const { data, error } = await supabase
+    const { data: confessions, error: confError } = await supabase
         .from('confessions')
         .select(`
             *,
@@ -25,11 +25,32 @@ const fetchConfessions = async ({ pageParam = 0 }) => {
         .order('created_at', { ascending: false })
         .range(pageParam * 10, (pageParam + 1) * 10 - 1);
 
-    if (error) {
-        console.error("Fetch error:", error.message);
-        throw new Error(error.message);
+    if (confError) {
+        console.error("Fetch error:", confError.message);
+        throw new Error(confError.message);
     }
-    return data || [];
+
+    let ads = [];
+    if (pageParam === 0) {
+        const { data: adsData } = await supabase
+            .from('advertisements')
+            .select('*')
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+
+        ads = (adsData || []).map(ad => ({
+            ...ad,
+            is_sponsored: true,
+            author_name: ad.brand_name,
+            text: ad.caption,
+            media_url: ad.poster_url,
+            media_type: 'images',
+            reactions: [],
+            comments_count: 0
+        }));
+    }
+
+    return [...ads, ...(confessions || [])];
 };
 
 export default function Feed() {
@@ -52,7 +73,7 @@ export default function Feed() {
         queryKey: ['confessions'],
         queryFn: fetchConfessions,
         getNextPageParam: (lastPage, allPages) => {
-            return lastPage?.length === 10 ? allPages.length : undefined;
+            return lastPage?.length >= 10 ? allPages.length : undefined;
         },
         staleTime: 1000 * 60 * 5,
         retry: 1,
@@ -87,6 +108,15 @@ export default function Feed() {
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
+                table: 'advertisements'
+            }, (payload) => {
+                if (payload.new.status === 'approved') {
+                    refetch();
+                }
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
                 table: 'confessions'
             }, (payload) => {
                 queryClient.setQueryData(['confessions'], (oldData) => {
@@ -106,7 +136,7 @@ export default function Feed() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [queryClient]);
+    }, [queryClient, refetch]);
 
     function handleLoadNewPosts() {
         queryClient.setQueryData(['confessions'], (oldData) => {
@@ -114,7 +144,7 @@ export default function Feed() {
 
             const firstPage = oldData.pages[0] ? [...oldData.pages[0]] : [];
             const newFirstPage = [...newPostsQueue, ...firstPage];
-            const uniqueFirstPage = Array.from(new Map(newFirstPage.map(item => [item.id, item])).values());
+            const uniqueFirstPage = Array.from(new Map(newFirstPage.map(item => [item.id || item.brand_name, item])).values());
 
             return {
                 ...oldData,
@@ -189,7 +219,7 @@ export default function Feed() {
                         className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-all shadow-lg animate-fade-in-down"
                     >
                         <ArrowUp className="w-5 h-5" />
-                        {newPostsQueue.length} New Confession{newPostsQueue.length > 1 ? 's' : ''} - Click to Load
+                        {newPostsQueue.length} New Update{newPostsQueue.length > 1 ? 's' : ''} - Click to Load
                     </button>
                 )}
 
@@ -228,14 +258,14 @@ export default function Feed() {
                         <Virtuoso
                             useWindowScroll
                             data={allPosts}
-                            computeItemKey={(index, post) => post.id || index}
+                            computeItemKey={(index, post) => post.id || post.brand_name || index}
                             endReached={loadMore}
                             overscan={500}
                             itemContent={(index, post) => (
                                 <div className="pb-2">
                                     <PostCard
                                         post={post}
-                                        onOpen={(p) => navigate(`/post/${p.id}`)}
+                                        onOpen={(p) => p.is_sponsored ? null : navigate(`/post/${p.id}`)}
                                         onQuote={handleQuote}
                                         priority={index < 2}
                                     />
