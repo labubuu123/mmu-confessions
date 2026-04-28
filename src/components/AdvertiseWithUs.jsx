@@ -185,7 +185,7 @@ export default function AdvertiseWithUs() {
 
     if (status === 'success') {
         return (
-            <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center">
+            <div className="min-h-screen pt-5 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}

@@ -432,7 +432,8 @@ CREATE TABLE IF NOT EXISTS public.advertisements (
     media_urls text[],
     amount_paid integer not null,
     status text default 'pending_approval',
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    rejection_reason text
 );
 
 INSERT INTO public.whisper_rooms (tag, is_private) VALUES
@@ -1548,6 +1549,9 @@ END $$;
 DROP POLICY IF EXISTS "Enable insert for all users (confessions)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable read for all users (confessions)" ON storage.objects;
 DROP POLICY IF EXISTS "Enable delete for admin (confessions)" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public uploads to ads bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public to view ads bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admins to delete ads bucket" ON storage.objects;
 
 CREATE POLICY "Enable insert for all users" ON public.confessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read for approved posts" ON public.confessions FOR SELECT USING (approved = true);
