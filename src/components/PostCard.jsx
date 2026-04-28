@@ -500,7 +500,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
                             sizes="(max-width: 640px) 100vw, 640px"
                             alt="Sponsored Content"
                             loading={priority ? "eager" : "lazy"}
-                            fetchPriority={priority ? "high" : "auto"}
+                            fetchpriority={priority ? "high" : "auto"}
                             className="w-full h-auto max-h-[80vh] object-contain bg-black/5 dark:bg-black/20 shadow-inner transition-transform duration-700 group-hover/img:scale-[1.01]"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
@@ -517,7 +517,7 @@ export default function PostCard({ post, onOpen, onQuote, priority = false }) {
                             <div key={idx} className="relative cursor-pointer group/img" onClick={(e) => handleImageClick(e, url)}>
                                 <img
                                     loading={priority ? "eager" : "lazy"}
-                                    fetchPriority={priority ? "high" : "auto"}
+                                    fetchpriority={priority ? "high" : "auto"}
                                     src={getOptimizedUrl(url, 800)}
                                     srcSet={generateSrcSet(url)}
                                     sizes={getImageSizes()}

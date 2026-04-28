@@ -46,6 +46,8 @@ export default function Feed() {
         hasNextPage,
         isFetchingNextPage,
         status,
+        refetch,
+        isRefetching
     } = useInfiniteQuery({
         queryKey: ['confessions'],
         queryFn: fetchConfessions,
@@ -62,7 +64,7 @@ export default function Feed() {
     }, [data]);
 
     useEffect(() => {
-        const channelName = `global-feed-updates-${Date.now()}`;
+        const channelName = 'global-feed-updates';
         const channel = supabase
             .channel(channelName)
             .on('postgres_changes', {
@@ -200,11 +202,12 @@ export default function Feed() {
                             <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-1">Connection Error</h3>
                             <p className="text-red-600 dark:text-red-500 mb-6 text-sm">{error?.message || 'Failed to load posts. Please try again.'}</p>
                             <button
-                                onClick={() => window.location.reload()}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition shadow-md active:scale-95"
+                                onClick={() => refetch()}
+                                disabled={isRefetching}
+                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition shadow-md active:scale-95 disabled:opacity-50"
                             >
-                                <RefreshCw className="w-4 h-4" />
-                                Try Again
+                                <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                                {isRefetching ? 'Retrying...' : 'Try Again'}
                             </button>
                         </div>
                     ) : status === 'success' && allPosts.length === 0 ? (
@@ -213,11 +216,12 @@ export default function Feed() {
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">No Confessions Found</h3>
                             <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">Server might be busy processing your requests.</p>
                             <button
-                                onClick={() => window.location.reload()}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition shadow-md hover:shadow-lg active:scale-95"
+                                onClick={() => refetch()}
+                                disabled={isRefetching}
+                                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50"
                             >
-                                <RefreshCw className="w-4 h-4" />
-                                Refresh Page
+                                <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                                {isRefetching ? 'Loading...' : 'Refresh Feed'}
                             </button>
                         </div>
                     ) : (
