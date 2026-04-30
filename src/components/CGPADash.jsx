@@ -773,7 +773,7 @@ export default function CGPADash() {
                 </div>
 
                 {(!isPlaying) && (
-                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-[450px] sm:h-[500px] 
+                    <div className={`w-full lg:w-[380px] bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col h-fit 
                     ${showLeaderboardOnMobile ? 'flex' : 'hidden lg:flex'}`}>
                         <div className="bg-slate-50 dark:bg-slate-800/80 p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
                             <h3 className="font-black text-slate-800 dark:text-white flex items-center gap-2 text-base sm:text-lg tracking-tight uppercase">
@@ -784,7 +784,7 @@ export default function CGPADash() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-3 scroll-smooth">
+                        <div className="flex-1 p-3">
                             {leaderboard.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                                     <Skull size={56} className="opacity-20 animate-pulse" />
