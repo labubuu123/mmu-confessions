@@ -87,7 +87,7 @@ const AppContent = () => {
 
   useEffect(() => {
     const userPresenceKey = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const channelName = `online-users-${Date.now()}`;
+    const channelName = 'global-online-users';
     const channel = supabase.channel(channelName, {
       config: { presence: { key: userPresenceKey } },
     });
