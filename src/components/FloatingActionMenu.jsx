@@ -237,7 +237,7 @@ export default function FloatingActionMenu() {
                                 <MenuButton icon={ShoppingBag} label="Marketplace" onClick={handleMarketplaceClick} bgClass="bg-emerald-100 dark:bg-emerald-900/40" colorClass="text-emerald-600 dark:text-emerald-400" />
                                 <MenuButton icon={Heart} label="Matchmaker" onClick={handleMatchmakerClick} bgClass="bg-pink-100 dark:bg-pink-900/40" colorClass="text-pink-600 dark:text-pink-400" animateIcon />
                                 <MenuButton icon={Globe} label="Live Map" onClick={handleMapClick} bgClass="bg-blue-100 dark:bg-blue-900/40" colorClass="text-blue-600 dark:text-blue-400" />
-                                <MenuButton icon={Activity} label="Live Comm." onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
+                                <MenuButton icon={Activity} label="Comment" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
                                 <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
                                 <MenuButton icon={Gamepad2} label="Mini Game" onClick={handleGameClick} bgClass="bg-purple-100 dark:bg-purple-900/40" colorClass="text-purple-600 dark:text-purple-400" />
                                 <MenuButton icon={Megaphone} label="Advertise" onClick={handleAdvertiseClick} bgClass="bg-yellow-100 dark:bg-yellow-900/40" colorClass="text-yellow-600 dark:text-yellow-400" />
