@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ReloadPrompt() {
     const {
-        offlineReady: [offlineReady, setOfflineReady],
         needRefresh: [needRefresh, setNeedRefresh],
         updateServiceWorker,
     } = useRegisterSW({
@@ -22,7 +21,6 @@ export default function ReloadPrompt() {
     })
 
     const close = () => {
-        setOfflineReady(false)
         setNeedRefresh(false)
     }
 
@@ -33,7 +31,7 @@ export default function ReloadPrompt() {
 
     return (
         <AnimatePresence>
-            {(needRefresh || offlineReady) && (
+            {needRefresh && (
                 <motion.div
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -46,12 +44,10 @@ export default function ReloadPrompt() {
                         </div>
                         <div className="flex-1">
                             <h3 className="font-bold text-gray-900 dark:text-white text-sm">
-                                {needRefresh ? 'New Version Available' : 'Ready to work offline'}
+                                New Version Available
                             </h3>
                             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                {needRefresh
-                                    ? 'A new update is available. Refresh to see the latest content.'
-                                    : 'App has been cached for offline use.'}
+                                A new update is available. Refresh to see the latest content.
                             </p>
                         </div>
                         <button
@@ -62,33 +58,22 @@ export default function ReloadPrompt() {
                         </button>
                     </div>
 
-                    {needRefresh ? (
-                        <div className="flex gap-2 mt-1">
-                            <button
-                                onClick={handleRefresh}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shadow-md shadow-indigo-500/20"
-                            >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                Refresh Now
-                            </button>
-                            <button
-                                onClick={() => setNeedRefresh(false)}
-                                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
-                            >
-                                <Clock className="w-3.5 h-3.5" />
-                                Later
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="flex gap-2 mt-1">
-                            <button
-                                onClick={close}
-                                className="w-full px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex gap-2 mt-1">
+                        <button
+                            onClick={handleRefresh}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Refresh Now
+                        </button>
+                        <button
+                            onClick={close}
+                            className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
+                        >
+                            <Clock className="w-3.5 h-3.5" />
+                            Later
+                        </button>
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>

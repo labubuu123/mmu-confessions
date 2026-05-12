@@ -22,7 +22,7 @@ import { useLocationTracking } from '../hooks/useLocationTracking';
 
 const EighteenPlusIcon = ({ className }) => (
     <div className={`${className} flex items-center justify-center`}>
-        <span className="font-black text-sm leading-none tracking-tighter scale-125">18+</span>
+        <span className="font-black text-xs sm:text-sm leading-none tracking-tighter scale-125">18+</span>
     </div>
 );
 
@@ -167,12 +167,12 @@ export default function FloatingActionMenu() {
     const MenuButton = ({ icon: Icon, label, onClick, colorClass, bgClass, animateIcon }) => (
         <motion.button
             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClick}
-            className="flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50/50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent hover:border-gray-200 dark:hover:border-slate-600 transition-all group backdrop-blur-sm"
+            className="flex flex-col items-center justify-center py-2.5 px-1 rounded-xl bg-gray-50/50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent hover:border-gray-200 dark:hover:border-slate-600 transition-all group backdrop-blur-sm"
         >
-            <div className={`w-10 h-10 ${bgClass} rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200`}>
-                <Icon className={`w-5 h-5 ${colorClass} ${animateIcon ? 'animate-pulse' : ''}`} />
+            <div className={`w-8 h-8 ${bgClass} rounded-full flex items-center justify-center mb-1 group-hover:scale-110 transition-transform duration-200`}>
+                <Icon className={`w-4 h-4 ${colorClass} ${animateIcon ? 'animate-pulse' : ''}`} />
             </div>
-            <span className="text-xs font-medium text-gray-700 dark:text-slate-300 text-center">{label}</span>
+            <span className="text-[10px] font-medium text-gray-700 dark:text-slate-300 text-center leading-tight">{label}</span>
         </motion.button>
     );
 
@@ -212,40 +212,42 @@ export default function FloatingActionMenu() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.9 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[340px] flex flex-col gap-3"
+                        className="fixed z-50 bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[320px] flex flex-col gap-2"
                     >
-                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 p-4 overflow-hidden border border-white/20 dark:border-white/5">
-                            <div className="flex items-center justify-between mb-4 px-1">
-                                <h3 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Quick Menu</h3>
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 p-3 overflow-hidden border border-white/20 dark:border-white/5">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                                <h3 className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Quick Menu</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+
+                            <div className="grid grid-cols-3 gap-2">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                                     onClick={handleNightsClick}
-                                    className="col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 hover:border-rose-900/50 relative overflow-hidden group shadow-lg"
+                                    className="col-span-3 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-slate-900 dark:bg-slate-950 border border-slate-800 hover:border-rose-900/50 relative overflow-hidden group shadow-lg"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                                    <div className="w-10 h-10 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 transition-colors">
+                                    <div className="w-8 h-8 bg-rose-950/30 rounded-lg flex items-center justify-center group-hover:bg-rose-900 transition-colors">
                                         <EighteenPlusIcon className="text-rose-500 group-hover:text-white transition-colors" />
                                     </div>
                                     <div className="flex flex-col items-start">
-                                        <span className="text-sm font-black text-slate-200 group-hover:text-rose-400 transition-colors uppercase tracking-tight">MY西斯 · NSFW</span>
+                                        <span className="text-xs font-black text-slate-200 group-hover:text-rose-400 transition-colors uppercase tracking-tight">MY西斯 · NSFW</span>
                                     </div>
                                 </motion.button>
 
                                 <MenuButton icon={ShoppingBag} label="Marketplace" onClick={handleMarketplaceClick} bgClass="bg-emerald-100 dark:bg-emerald-900/40" colorClass="text-emerald-600 dark:text-emerald-400" />
                                 <MenuButton icon={Heart} label="Matchmaker" onClick={handleMatchmakerClick} bgClass="bg-pink-100 dark:bg-pink-900/40" colorClass="text-pink-600 dark:text-pink-400" animateIcon />
                                 <MenuButton icon={Globe} label="Live Map" onClick={handleMapClick} bgClass="bg-blue-100 dark:bg-blue-900/40" colorClass="text-blue-600 dark:text-blue-400" />
-                                <MenuButton icon={Activity} label="Live Comments" onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
+                                <MenuButton icon={Activity} label="Live Comm." onClick={handleLiveActivityClick} bgClass="bg-orange-100 dark:bg-orange-900/40" colorClass="text-orange-600 dark:text-orange-400" />
                                 <MenuButton icon={Wrench} label="Tools" onClick={handleToolsClick} bgClass="bg-cyan-100 dark:bg-cyan-900/40" colorClass="text-cyan-600 dark:text-cyan-400" />
                                 <MenuButton icon={Gamepad2} label="Mini Game" onClick={handleGameClick} bgClass="bg-purple-100 dark:bg-purple-900/40" colorClass="text-purple-600 dark:text-purple-400" />
-                                <MenuButton icon={Megaphone} label="Advertise With Us" onClick={handleAdvertiseClick} bgClass="bg-yellow-100 dark:bg-yellow-900/40" colorClass="text-yellow-600 dark:text-yellow-400" />
+                                <MenuButton icon={Megaphone} label="Advertise" onClick={handleAdvertiseClick} bgClass="bg-yellow-100 dark:bg-yellow-900/40" colorClass="text-yellow-600 dark:text-yellow-400" />
                             </div>
+
                             <button
                                 onClick={handleContactAdminClick}
-                                className="w-full mt-3 flex items-center justify-center gap-2 py-3 px-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl transition-colors text-sm font-medium"
+                                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl transition-colors text-xs font-medium"
                             >
-                                <MessageSquare className="w-4 h-4" />
+                                <MessageSquare className="w-3.5 h-3.5" />
                                 <span>Contact Admin Support</span>
                             </button>
                         </div>
