@@ -99,13 +99,13 @@ export default function CommentForm({ postId, parentId = null, onCommentPosted }
                         onBlur={() => setTimeout(() => setIsFocused(false), 100)}
                         placeholder={parentId ? "Write a reply..." : "Write a comment..."}
                         className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition text-base resize-none"
-                        maxLength={5000}
+                        maxLength={500}
                         rows={isFocused ? 3 : 1}
                         style={{ minHeight: isFocused ? '80px' : '44px' }}
                     />
                     {isFocused && (
                         <div className={`absolute bottom-2 right-2 text-xs ${isNearLimit ? 'text-red-500' : 'text-gray-400'}`}>
-                            {charCount}/5000
+                            {charCount}/500
                         </div>
                     )}
                 </div>
